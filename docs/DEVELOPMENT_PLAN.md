@@ -5,6 +5,7 @@
 ## 1. 提案の要点
 
 - **技術スタック**: TypeScript + React + Vite(ブラウザで動く Web アプリ)
+- **配布ターゲット**: Web アプリを主軸としつつ、同一コードベースから **Windows 向け exe(デスクトップアプリ)** も配布する(ユーザー承認済み方針)
 - **設計方針**: ゲームロジックと UI を完全分離し、ロジックは純粋な TypeScript モジュールとして単体テスト可能にする
 - **進め方**: 下記のフェーズを 1 フェーズずつ(場合によりさらに細かく)AGENT に割り当て、毎回動く状態でコミットする
 
@@ -16,8 +17,19 @@
 | UI | React + Vite | 起動・ビルドが速く、Cloud Agent 環境でブラウザ検証しやすい |
 | テスト | Vitest | Vite と統合されており設定が最小で済む |
 | 状態管理 | まずは React 標準(useReducer 等) | 規模が見えるまで外部ライブラリを増やさない |
+| デスクトップ化 | Tauri(第一候補) / Electron(代替) | Web の成果物をそのままラップして exe 化できる。Tauri は成果物が軽量(数 MB)で Rust 側にロジックを書く必要はない |
 
 ネイティブアプリ(iOS/Android)が最終目標の場合でも、ロジックを UI 非依存の TS モジュールにしておけば移植コストを最小化できる。
+
+### Web + exe 両対応の方針
+
+- アプリ本体はあくまで「Vite でビルドされる Web アプリ」。exe はそれをネイティブウィンドウでラップしたもの。
+- したがって **通常の開発・テスト・レビューはすべて Web 側(ブラウザ)で行い、exe は配布用パッケージング工程としてのみ扱う**。
+- ブラウザ API に依存する箇所(音声再生、永続化など)は薄い抽象を介して使い、デスクトップ側で差し替えが必要になっても局所化できるようにする。
+  - 永続化: `localStorage` 直呼びではなく `src/platform/storage.ts` のようなラッパー経由にする
+  - 音声: Web Audio API を `src/platform/audio.ts` 経由で使う
+- exe のビルドは GitHub Actions(Windows ランナー)で自動化し、成果物を Release に添付する。Cloud Agent 環境(Linux)では exe の動作確認ができないため、CI ビルドの成功をもって検証とする。
+- Tauri 導入は Phase 4(UI 最小実装)完了後の「Phase 4.5」として行う。それまでは Web のみで開発を進める。
 
 ## 3. アーキテクチャ方針
 
@@ -30,9 +42,12 @@ src/
     payout.ts      # 払い出し計算
     state.ts       # 遊技状態(通常/ボーナス/AT)・メダル管理
   ui/          # React コンポーネント(リール表示、ボタン、演出)
-  assets/      # 画像・サウンド
+  platform/    # ブラウザ/デスクトップ差異を吸収する薄いラッパー(storage, audio)
+  assets/      # 画像・サウンド(管理ルールは docs/ASSET_GUIDELINES.md 参照)
+src-tauri/     # (Phase 4.5 以降)Tauri の設定・exe ビルド用。ゲームコードは置かない
 docs/
   SPEC.md      # 機種仕様書(役構成・確率・リール配列などの一次情報)
+  ASSET_GUIDELINES.md  # 素材(画像・音声・液晶データ)の管理ルール
   HANDOVER.md  # 最新の引継ぎ資料
   handover/    # 引継ぎ履歴
 ```
@@ -66,6 +81,11 @@ docs/
 ### Phase 4: UI 実装(最小)
 - リール表示・レバー/停止ボタン・メダル枚数表示
 - ブラウザで 1 ゲーム回せる状態にする
+
+### Phase 4.5: exe パッケージング(Tauri 導入)
+- Tauri を導入し、Web ビルドをそのまま Windows exe としてパッケージングできるようにする
+- GitHub Actions(Windows ランナー)で exe ビルドを自動化し、Release に成果物を添付する
+- `npm run build`(Web)と `npm run tauri build`(exe)の両方が通ることを CI で保証する
 
 ### Phase 5: 演出・仕上げ
 - 停止時の演出、告知、サウンド
