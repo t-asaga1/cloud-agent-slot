@@ -1,0 +1,69 @@
+{
+  "source": "筐体.png",
+  "imageSize": {
+    "width": 1596,
+    "height": 2688
+  },
+  "lcd": {
+    "name": "lcd",
+    "px": {
+      "x": 114,
+      "y": 76,
+      "width": 1375,
+      "height": 778
+    },
+    "ratio": {
+      "x": 0.07143,
+      "y": 0.02827,
+      "width": 0.86153,
+      "height": 0.28943
+    }
+  },
+  "reelWindows": [
+    {
+      "name": "left",
+      "px": {
+        "x": 374,
+        "y": 959,
+        "width": 253,
+        "height": 373
+      },
+      "ratio": {
+        "x": 0.23434,
+        "y": 0.35677,
+        "width": 0.15852,
+        "height": 0.13876
+      }
+    },
+    {
+      "name": "middle",
+      "px": {
+        "x": 671,
+        "y": 964,
+        "width": 251,
+        "height": 367
+      },
+      "ratio": {
+        "x": 0.42043,
+        "y": 0.35863,
+        "width": 0.15727,
+        "height": 0.13653
+      }
+    },
+    {
+      "name": "right",
+      "px": {
+        "x": 965,
+        "y": 963,
+        "width": 255,
+        "height": 368
+      },
+      "ratio": {
+        "x": 0.60464,
+        "y": 0.35826,
+        "width": 0.15977,
+        "height": 0.1369
+      }
+    }
+  ]
+}

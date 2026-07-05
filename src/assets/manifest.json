@@ -1,0 +1,22 @@
+{
+  "assets": [
+    {
+      "id": "cabinet_frame",
+      "path": "images/cabinet/cabinet_frame.webp",
+      "type": "image",
+      "origin": "user-provided",
+      "tool": "scripts/intake_cabinet.py で変換(プレースホルダー色検出 → 透過抜き → WebP q82)",
+      "license": "project-original",
+      "note": "入稿元: incoming/cabinet/筐体.png(1596x2688 PNG、完全オリジナル筐体画像)。水色エリア=液晶、ピンク矩形3枚=リール窓(左・中・右)を透過に抜いてある。下部パネルに機種名らしき「義経物語」の表記あり。"
+    },
+    {
+      "id": "cabinet_layout",
+      "path": "cabinet_layout.json",
+      "type": "data",
+      "origin": "generated",
+      "tool": "scripts/intake_cabinet.py(入稿画像のプレースホルダー色から自動検出)",
+      "license": "project-original",
+      "note": "筐体画像内の液晶エリア・リール窓3枚のはめ込み座標(px と正規化比率)。cabinet_frame と常にセットで再生成すること。"
+    }
+  ]
+}
