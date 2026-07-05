@@ -4,6 +4,7 @@ import { drawRole, theoreticalDenominator } from './core/lottery';
 import { calcPayout } from './core/payout';
 import { createRng, randomSeed } from './core/rng';
 import { SETTINGS, type Role, type Setting } from './core/roles';
+import { CabinetPrototype } from './ui/CabinetPrototype';
 
 const ROLE_LABELS: Record<Role, string> = {
   REPLAY: 'リプレイ',
@@ -58,11 +59,23 @@ function App() {
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — Phase 1 コア動作確認</h1>
+      <h1>パチスロアプリ — 開発検証ページ</h1>
       <p className="note">
-        役抽選(<code>core/lottery</code>)・払い出し(<code>core/payout</code>)・シード付き乱数(
-        <code>core/rng</code>)の動作確認ページ。リール・状態遷移・演出は今後のフェーズで実装。
+        役抽選(<code>core/lottery</code>)・払い出し(<code>core/payout</code>)・リール停止制御(
+        <code>core/reel</code>)の動作確認ページ。状態遷移・演出は今後のフェーズで実装。
       </p>
+
+      <section className="proto-section">
+        <h2>筐体レイアウト試作(Phase 2 リール制御 + 入稿筐体画像)</h2>
+        <p className="note">
+          入稿された筐体画像の液晶エリア・リール窓に、液晶コンテンツと 20 コマ × 3
+          リール(引き込み優先度探索方式の停止制御)をはめ込んだ試作。レバーオンで役抽選し、停止ボタンで
+          <code>core/reel</code> の停止制御がそのまま動く。
+        </p>
+        <CabinetPrototype setting={setting} />
+      </section>
+
+      <h2>Phase 1 コア動作確認(抽選・払い出し)</h2>
 
       <section className="panel">
         <label>

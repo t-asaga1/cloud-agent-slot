@@ -1,0 +1,160 @@
+.cabinet-proto {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.cabinet-stage {
+  position: relative;
+  width: min(420px, 100%);
+  aspect-ratio: 1596 / 2688;
+  background: #0b0d12;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cabinet-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.cabinet-lcd {
+  position: absolute;
+  z-index: 1;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #22406e 0%, #101a2e 60%, #0a0f1c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lcd-content {
+  text-align: center;
+  color: #dbe6ff;
+}
+
+.lcd-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: #7f96c4;
+  margin: 0 0 6px;
+}
+
+.lcd-role {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: #ffd76a;
+  text-shadow: 0 0 12px rgba(255, 190, 60, 0.55);
+}
+
+.lcd-sub {
+  font-size: 0.85rem;
+  margin: 0;
+  color: #aebede;
+}
+
+.cabinet-reel {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr;
+  background: linear-gradient(180deg, #d9dce2 0%, #f4f5f7 18%, #ffffff 50%, #f4f5f7 82%, #d9dce2 100%);
+}
+
+.reel-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.reel-cell:last-child {
+  border-bottom: none;
+}
+
+.reel-cell-middle {
+  background: rgba(255, 214, 90, 0.18);
+}
+
+.reel-cell-spin .sym {
+  filter: blur(1.5px);
+  opacity: 0.75;
+}
+
+.sym {
+  font-size: clamp(18px, 5.2cqw, 34px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cabinet-stage .sym {
+  font-size: 1.6rem;
+}
+
+.sym-red7 {
+  color: #d61f2c;
+  -webkit-text-stroke: 1px #7a0a12;
+}
+
+.sym-white7 {
+  color: #f4f6fb;
+  -webkit-text-stroke: 1px #8a93a5;
+}
+
+.sym-bar {
+  color: #101216;
+  background: #ffd94d;
+  border: 2px solid #101216;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.95rem !important;
+}
+
+.sym-replay {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 2px solid #1d4ed8;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 0.95rem !important;
+}
+
+.cabinet-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cabinet-controls button {
+  font-size: 0.95rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #3b4252;
+  background: #1f2430;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cabinet-controls button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cabinet-controls button.lever {
+  background: #b91c1c;
+  border-color: #dc2626;
+  font-weight: 700;
+}
+
+.cabinet-hint {
+  font-size: 0.8rem;
+  color: #9aa4b2;
+}

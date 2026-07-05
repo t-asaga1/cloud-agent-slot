@@ -15,6 +15,15 @@
   margin-bottom: 20px;
 }
 
+.app h2 {
+  font-size: 1.1rem;
+  margin: 24px 0 8px;
+}
+
+.proto-section {
+  margin-bottom: 28px;
+}
+
 .panel {
   display: flex;
   align-items: center;
