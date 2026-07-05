@@ -1,0 +1,97 @@
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.app h1 {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.note {
+  color: #9aa4b2;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+.panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel select,
+.panel button {
+  font-size: 1rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #3b4252;
+  background: #1f2430;
+  color: inherit;
+  cursor: pointer;
+}
+
+.panel button.lever {
+  background: #b91c1c;
+  border-color: #dc2626;
+  font-weight: 700;
+}
+
+.panel button.lever:hover {
+  background: #dc2626;
+}
+
+.status {
+  font-size: 1.05rem;
+}
+
+.plus {
+  color: #4ade80;
+}
+
+.minus {
+  color: #f87171;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.columns h2 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  border: 1px solid #3b4252;
+  padding: 4px 8px;
+  text-align: center;
+}
+
+th {
+  background: #1f2430;
+}
+
+@media (max-width: 640px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}

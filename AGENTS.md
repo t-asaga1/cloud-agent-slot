@@ -13,10 +13,12 @@ Cloud Agent 本番開発用リポジトリ。
 - ルールはユーザーの指示により途中で変更されることがある。変更されたら本ファイルを更新すること。
 
 ## 開発コマンド
-（使用する言語が決まったら追記）
-- インストール: （例: npm install）
-- テスト: （例: npm test）
-- 開発サーバー: （例: npm run dev）
+技術スタック: TypeScript + React + Vite + Vitest(Node 22 / npm)
+- インストール: `npm install`
+- テスト: `npm test`(Vitest。`src/**/*.test.ts` を実行)
+- lint: `npm run lint`(oxlint)
+- ビルド: `npm run build`(`tsc -b` + `vite build`)
+- 開発サーバー: `npm run dev`(Vite、デフォルト http://localhost:5173)
 
 ## Cloud Agent 向けルール
 - 変更後は必ずテストを実行すること

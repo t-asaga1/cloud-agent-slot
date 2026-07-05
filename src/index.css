@@ -1,0 +1,21 @@
+:root {
+  font-family: system-ui, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.6;
+  color: #e2e8f0;
+  background: #151821;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+}
+
+code {
+  font-family: ui-monospace, Consolas, monospace;
+  background: #1f2430;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
