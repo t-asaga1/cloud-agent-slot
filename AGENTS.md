@@ -26,6 +26,7 @@ Cloud Agent 本番開発用リポジトリ。
 - 変更内容は PR 用に簡潔にまとめること
 
 ## Cursor Cloud specific instructions
-- 現状このリポジトリは雛形（プレースホルダー）で、追跡ファイルは `README.md` と `AGENTS.md` のみ。アプリケーションコード・パッケージ定義（`package.json` / `requirements.txt` 等）・テスト・ビルド設定は存在しない。
-- そのためインストールする依存関係、起動できるアプリ、実行できる lint/test/build は現時点で無い。実際のコードが追加されるまで「環境セットアップ」で行うべき作業は無い。
-- VM には Node.js 22 / npm 10 / Python 3.12 / Go 1.22 / Rust(cargo) 1.83 / Java 21 が既にインストール済み。言語を選定したら、対応するパッケージマネージャの定義ファイルを追加し、この節と `## 開発コマンド` を更新し、SetupVmEnvironment の update script も実際のインストールコマンドへ更新すること。
+- 技術スタックは TypeScript + React + Vite + Vitest(Node 22 / npm)。環境セットアップは `npm install` のみで、`npm test` / `npm run lint` / `npm run build` / `npm run dev` が動く。
+- 素材取り込みスクリプト(`scripts/intake_cabinet.py` 等)を実行する場合は Python 3.12 + `pip install pillow numpy scipy` が必要。
+- VM には Node.js 22 / npm 10 / Python 3.12 / ffmpeg がインストール済み。動画・音声素材の変換(WebM/OGG)は ffmpeg を使う。
+- UI 変更時は `npm run dev`(http://localhost:5173)をブラウザで開いて動作確認し、スクリーンショット/動画を PR に添付すること。
