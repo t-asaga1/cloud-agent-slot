@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #006(筐体画像取り込み + Phase 2 リール制御 + 筐体レイアウト試作)
-- 作成日: 2026-07-05
-- 履歴コピー: `docs/handover/006_cabinet_intake_and_reel_control.md`
+- 作成者: AGENT #007(筐体画像取り込み + Phase 2 リール制御 + 筐体レイアウト試作)
+- 作成日: 2026-07-09
+- 履歴コピー: `docs/handover/007_cabinet_intake_and_reel_control.md`
 
 ## プロジェクト概要
 
@@ -16,7 +16,8 @@
 3. AGENT #003: 素材入稿フロー(`incoming/`)、リール 20 コマ・内部状態 12 種・演出別レイヤーの `docs/SPEC.md` 骨子。
 4. AGENT #004: プロジェクト雛形 + Phase 1 コアロジック(`rng` / `lottery` / `payout` + テスト 24 件)、SPEC に確率・配列・ラインの叩き台を追記。
 5. AGENT #005: PR チェーン(#3〜#5 の base 誤り)を解消する統合 PR を作成。main に docs / src / incoming がすべて反映済み。
-6. AGENT #006(今回)が以下を実施:
+6. AGENT #006: Excel 設計仕様書の入稿方法を整備(PR #9)。推奨フローは **`incoming/specs/` に xlsx を置いてコミット & プッシュ**。VM 上で openpyxl(Python)により xlsx の全シート・セル・数式が読めることを検証済み。`incoming/README.md` に仕様書入稿ルールを追記。
+7. AGENT #007(今回)が以下を実施:
    - **筐体画像の取り込み**(ユーザーが `incoming/cabinet/筐体.png` に入稿した完全オリジナル作品):
      - `scripts/intake_cabinet.py` を作成。水色エリア(液晶)とピンク矩形 3 枚(リール窓 左・中・右)を色マスク + 連結成分解析で自動検出し、該当エリアを透過に抜いた `src/assets/images/cabinet/cabinet_frame.webp`(236 KB、上限 500 KB 以内)と、はめ込み座標 `src/assets/cabinet_layout.json`(px と正規化比率)を生成。
      - `src/assets/manifest.json` に `origin: user-provided` / `license: project-original` で登録。参照用の `src/assets/index.ts` も作成。
@@ -37,12 +38,14 @@
 
 - **Phase 1 完了 + Phase 2 完了**(リール制御)。Phase 3(遊技状態管理)は未着手。
 - テスト: **46 件全パス**(`npm test`)。lint / build も通る。
+- ユーザーから Excel 仕様書が入稿される可能性あり(`incoming/specs/` またはチャット添付)。入稿されたら内容を `docs/SPEC.md` に反映し、`src/core/` の数値・テストとセットで整合させること。
 - リポジトリ構成:
   - `src/core/` … rng / roles / lottery / payout / **reel**(全て単体テスト付き)
   - `src/assets/` … 筐体フレーム WebP + はめ込み座標 JSON + manifest
   - `src/ui/CabinetPrototype.tsx` … 筐体レイアウト試作(暫定 UI)
   - `src/App.tsx` … 開発検証ページ(筐体試作 + Phase 1 動作確認)
   - `scripts/intake_cabinet.py` … 筐体画像取り込み(再実行可能。要 `pip install pillow numpy scipy`)
+  - `incoming/` … README に素材・仕様書入稿ルールあり(現在入稿物なし)
 - 既知の制約・注意点:
   - **REG(白7)は左リールを最後に押したときだけ揃う**(左の白7 = 12 番の下段にチェリー = 11 番があり、誤チェリー出目防止の蹴飛ばしと干渉するため)。配列側の調整で解消可能(SPEC 2.1 参照)。
   - チャンス目の専用出目が未定義。定義が決まったら `reel.ts` の停止制御と `judgeDisplay` を更新すること。
@@ -53,15 +56,17 @@
 
 ユーザーの指示内容を最優先とした上で、次を実施:
 
-1. **`incoming/` に素材が入稿されていたら最優先で取り込む**(`docs/ASSET_GUIDELINES.md` の手順)。特にリール図柄(1 図柄 1 ファイル)が入稿されたら、`CabinetPrototype` の暫定テキスト図柄を差し替える。
-2. **Phase 3(遊技状態管理)に着手**: `src/core/state.ts` に内部状態 12 種の遷移(データ駆動テーブル)、メダル増減、ゲーム数管理を実装。1 ゲームの流れ(BET → レバー → 抽選 → 停止 → 表示役判定 → 払い出し)を通しで動かすテストを書く。取りこぼし時は `judgeDisplay` の表示役で払い出すこと。
-3. SPEC 未確定事項(機種名「義経物語」の扱い、チャンス目出目、AT 管理方式、状態遷移テーブル)にユーザーから回答があれば反映。
-4. 余力があれば REG の左最終停止制約の解消(リール配列調整。SPEC の表と `REEL_STRIPS`・テストをセットで更新)。
-5. 作業終了時に本ファイルを更新し、`docs/handover/007_*.md` に履歴を残す。
+1. **`incoming/` に素材・仕様書が入稿されていたら最優先で取り込む**(`docs/ASSET_GUIDELINES.md` の手順)。特にリール図柄(1 図柄 1 ファイル)が入稿されたら、`CabinetPrototype` の暫定テキスト図柄を差し替える。
+2. **Excel 仕様書(`incoming/specs/*.xlsx` 等)が入稿されていたら**: openpyxl(`pip3 install --user openpyxl`、VM は Python 3.12)で全シートを読み取り、内容を `docs/SPEC.md` へ反映。確率・配当・配列の数値は `src/core/` の実装・テストと必ずセットで更新する。数式セルは `load_workbook(path)` で数式文字列、`data_only=True` で計算済み値が取れる(後者は Excel 側で保存時に計算されている場合のみ)。
+3. **Phase 3(遊技状態管理)に着手**: `src/core/state.ts` に内部状態 12 種の遷移(データ駆動テーブル)、メダル増減、ゲーム数管理を実装。1 ゲームの流れ(BET → レバー → 抽選 → 停止 → 表示役判定 → 払い出し)を通しで動かすテストを書く。取りこぼし時は `judgeDisplay` の表示役で払い出すこと。
+4. SPEC 未確定事項(機種名「義経物語」の扱い、チャンス目出目、AT 管理方式、状態遷移テーブル)にユーザーから回答があれば反映。
+5. 余力があれば REG の左最終停止制約の解消(リール配列調整。SPEC の表と `REEL_STRIPS`・テストをセットで更新)。
+6. 作業終了時に本ファイルを更新し、`docs/handover/008_*.md` に履歴を残す。
 
 ## 注意事項
 
 - ブランチは `cursor/<説明>-<suffix>` 形式で作成し、**PR は必ず base を `main`** にすること。
+- **PR は 1 本ずつマージすること**。複数 AGENT が並行で同じファイル(特に本ファイル)を更新すると競合する。競合したら main をブランチへマージして解消する。
 - `AGENTS.md` のルール(テスト実行、不要ファイル削除禁止、PR 用の簡潔なまとめ)を守ること。
 - **確率・配当・リール配列などの数値は `docs/SPEC.md` と `src/core/` の実装を必ず一致させる**(網羅テストが配列から期待値を再計算するため、片方だけの変更はテストで検出される)。
 - 素材の追加・変更は必ず `docs/ASSET_GUIDELINES.md` に従い、`src/assets/manifest.json` を更新すること。筐体画像を差し替える場合は `scripts/intake_cabinet.py` を再実行すれば座標 JSON ごと再生成される。
