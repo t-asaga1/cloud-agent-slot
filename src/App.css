@@ -1,5 +1,5 @@
 .app {
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 24px 16px 64px;
 }
@@ -13,6 +13,53 @@
   color: #9aa4b2;
   font-size: 0.85rem;
   margin-bottom: 20px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* --- 筐体ビュー --- */
+
+.cabinet {
+  position: relative;
+  width: 100%;
+}
+
+.cabinet-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cabinet .lcd {
+  position: absolute;
+  object-fit: cover;
+  background: #000;
+}
+
+.reel-window {
+  position: absolute;
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr;
+  background: #111;
+}
+
+.reel-window img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  min-height: 0;
+}
+
+/* --- 操作パネル --- */
+
+.side h2 {
+  font-size: 1rem;
+  margin: 16px 0 8px;
 }
 
 .panel {
@@ -52,6 +99,15 @@
 
 .status {
   font-size: 1.05rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.miss {
+  color: #9aa4b2;
+  font-size: 0.9rem;
+  margin-left: 6px;
 }
 
 .plus {
@@ -60,17 +116,6 @@
 
 .minus {
   color: #f87171;
-}
-
-.columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-.columns h2 {
-  font-size: 1rem;
-  margin-bottom: 8px;
 }
 
 table {
@@ -90,8 +135,8 @@ th {
   background: #1f2430;
 }
 
-@media (max-width: 640px) {
-  .columns {
+@media (max-width: 720px) {
+  .layout {
     grid-template-columns: 1fr;
   }
 }
