@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #006(素材取り込み + 仮素材生成 + Phase 2 リール制御)
+- 作成者: AGENT #007(素材取り込み + 仮素材生成 + Phase 2 リール制御)
 - 作成日: 2026-07-09
-- 履歴コピー: `docs/handover/006_assets_and_phase2_reel.md`
+- 履歴コピー: `docs/handover/007_assets_and_phase2_reel.md`
 
 ## プロジェクト概要
 
@@ -18,7 +18,8 @@
 5. AGENT #004 がプロジェクト雛形 + Phase 1 コアロジック(rng/lottery/payout + テスト 24 件)+ SPEC 叩き台(確率・配列・ライン)を実装。
 6. AGENT #005 が PR チェーンの構造問題を解消し、全成果物を main へ統合。
 7. ユーザーが筐体画像(`incoming/cabinet/筐体.png`、完全オリジナル)を入稿。水色矩形=液晶のはめ込み位置、ピンク矩形 3 枚=リール窓(左・中・右)。
-8. AGENT #006(今回)が以下を実施:
+8. AGENT #006 が Excel 設計仕様書の入稿方法を整備(PR #9)。推奨フローは **`incoming/specs/` に xlsx を置いてコミット & プッシュ**。VM 上で openpyxl(Python)により xlsx の全シート・セル・数式が読めることを検証済み。`incoming/README.md` に仕様書入稿ルールを追記。
+9. AGENT #007(今回)が以下を実施:
    - **筐体画像の取り込み**: WebP 変換(277 KB)→ `src/assets/images/cabinet/cabinet_frame.webp`。マーカー矩形の座標をピクセル検出し `src/assets/layout.ts` に定義(液晶 x116,y80,1369x768 / リール窓 3 枚)。取り込みスクリプトは `scripts/import_cabinet.py`(再実行可能)。取り込み後、ガイドラインに従い `incoming/` の元ファイルは削除(履歴には残る)。
    - **筐体以外の全素材の仮素材を生成**(ユーザー指示: 黒背景+白文字「●●（仮）」形式で後から差し替え可能に):
      - リール図柄 7 種(400x200 WebP、横長 2:1 で窓の 1 コマにフィット)
@@ -40,12 +41,14 @@
 
 - **Phase 1 完了、Phase 2 完了**(リール制御 + 網羅テスト)。Phase 3(遊技状態管理)は未着手。
 - テスト 42 件全パス、lint/build 成功。
+- ユーザーから Excel 仕様書が入稿される可能性あり(`incoming/specs/` またはチャット添付)。入稿されたら内容を `docs/SPEC.md` に反映し、`src/core/` の数値・テストとセットで整合させること。
 - リポジトリ構成:
   - `src/core/` … rng / lottery / payout / **reel(新規)** — 全て単体テスト付き
   - `src/assets/` … 筐体(実素材)+ 仮素材 40 件 + `manifest.json` + `layout.ts`(はめ込み座標)+ `index.ts`(ID 参照)
   - `src/platform/audio.ts` … 音声再生ラッパー(exe 対応のための抽象化)
   - `src/App.tsx` … 筐体表示 + 1G 消化 + ステージ/BGM 確認ページ(本格 UI は Phase 4)
   - `scripts/` … `import_cabinet.py`(筐体取り込み)/ `gen_placeholder_assets.py`(仮素材再生成)
+  - `incoming/` … README に素材・仕様書入稿ルールあり(現在入稿物なし)
 - 仮素材の再生成に必要な環境: `pip install pillow numpy` + `sudo apt-get install -y fonts-noto-cjk`(日本語フォント)。ffmpeg は VM 導入済み。
 
 ## 次の AGENT へのタスク
@@ -53,13 +56,15 @@
 ユーザーの指示内容を最優先とした上で、次を実施:
 
 1. **`incoming/` に素材が入稿されていたら最優先で取り込む**(`docs/ASSET_GUIDELINES.md` の手順)。実素材が来たら `src/assets/` の同名仮素材ファイルを差し替え、`manifest.json` の該当エントリを `user-provided` に更新するだけでよい。
-2. ユーザーから SPEC 叩き台(有効ライン・リール配列・確率・払い出し・停止制御の蹴飛ばしルール)への回答があれば反映。修正時は `src/core/` の数値・テストも必ずセットで更新。
-3. **Phase 3(遊技状態管理)に着手**: `src/core/state.ts` に内部抽選状態 12 種の遷移(データ駆動テーブル)、メダル増減、ゲーム数管理、1 ゲームの通しフロー(BET → レバー → 抽選 → 停止 → 払い出し)を実装しテストする(`docs/DEVELOPMENT_PLAN.md` Phase 3 参照)。
-4. 作業終了時に本ファイルを更新し、`docs/handover/007_*.md` に履歴を残す。
+2. **Excel 仕様書(`incoming/specs/*.xlsx` 等)が入稿されていたら**: openpyxl(`pip3 install --user openpyxl`、VM は Python 3.12)で全シートを読み取り、内容を `docs/SPEC.md` へ反映。確率・配当・配列の数値は `src/core/` の実装・テストと必ずセットで更新する。数式セルは `load_workbook(path)` で数式文字列、`data_only=True` で計算済み値が取れる(後者は Excel 側で保存時に計算されている場合のみ)。
+3. ユーザーから SPEC 叩き台(有効ライン・リール配列・確率・払い出し・停止制御の蹴飛ばしルール)への回答があれば反映。修正時は `src/core/` の数値・テストも必ずセットで更新。
+4. **Phase 3(遊技状態管理)に着手**: `src/core/state.ts` に内部抽選状態 12 種の遷移(データ駆動テーブル)、メダル増減、ゲーム数管理、1 ゲームの通しフロー(BET → レバー → 抽選 → 停止 → 払い出し)を実装しテストする(`docs/DEVELOPMENT_PLAN.md` Phase 3 参照)。
+5. 作業終了時に本ファイルを更新し、`docs/handover/008_*.md` に履歴を残す。
 
 ## 注意事項
 
 - ブランチは `cursor/<説明>-<suffix>` 形式で作成し、**PR は必ず base を `main` にして作成すること**(suffix は環境から指示される)。
+- **PR は 1 本ずつマージすること**。複数 AGENT が並行で同じファイル(特に本ファイル)を更新すると競合する。競合したら main をブランチへマージして解消する。
 - `AGENTS.md` のルール(テスト実行、不要ファイル削除禁止、PR 用の簡潔なまとめ)を守ること。
 - **確率・配当・配列などの数値は `docs/SPEC.md` と `src/core/` の実装を必ず一致させる**(テストが理論値・配列制約を参照しているため、片方だけの変更はテストで検出される)。
 - リール配列(`REEL_LAYOUT`)や蹴飛ばしルールを変更したら、`src/core/reel.test.ts` の網羅テストが検出してくれる。テストの期待値計算(`expectedDisplay`)側の意図も理解した上で変更すること。
