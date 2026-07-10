@@ -4,31 +4,28 @@
  * 出所・ライセンスは manifest.json を参照。
  */
 
+import type { Background } from '../core/background';
 import type { ReelSymbol } from '../core/reel';
 
 import cabinetFrame from './images/cabinet/cabinet_frame.webp';
 import lcdBgFallback from './images/lcd/lcd_bg_fallback.webp';
 
-import symbolBar from './images/reels/symbol_bar.webp';
+import symbolBarBlack from './images/reels/symbol_bar_black.webp';
+import symbolBarWhite from './images/reels/symbol_bar_white.webp';
 import symbolBell from './images/reels/symbol_bell.webp';
+import symbolBlank from './images/reels/symbol_blank.webp';
 import symbolCherry from './images/reels/symbol_cherry.webp';
 import symbolReplay from './images/reels/symbol_replay.webp';
 import symbolSevenRed from './images/reels/symbol_seven_red.webp';
-import symbolSevenWhite from './images/reels/symbol_seven_white.webp';
 import symbolWatermelon from './images/reels/symbol_watermelon.webp';
 
-import stageAtEnding from './video/stage/stage_at_ending.webm';
-import stageAtExtend from './video/stage/stage_at_extend.webm';
-import stageAtMain from './video/stage/stage_at_main.webm';
-import stageAtUpper from './video/stage/stage_at_upper.webm';
-import stageBonusBig from './video/stage/stage_bonus_big.webm';
-import stageBonusReg from './video/stage/stage_bonus_reg.webm';
-import stageCzHigh from './video/stage/stage_cz_high.webm';
-import stageCzLow from './video/stage/stage_cz_low.webm';
-import stageNormalA from './video/stage/stage_normal_a.webm';
-import stageNormalB from './video/stage/stage_normal_b.webm';
-import stageNormalC from './video/stage/stage_normal_c.webm';
-import stageOmen from './video/stage/stage_omen.webm';
+import stageAtBg from './video/stage/stage_at_bg.webm';
+import stageBgBenkei from './video/stage/stage_bg_benkei.webm';
+import stageBgShizuka from './video/stage/stage_bg_shizuka.webm';
+import stageBgYoshitsune from './video/stage/stage_bg_yoshitsune.webm';
+import stageBgYugata from './video/stage/stage_bg_yugata.webm';
+import stageBgZencho from './video/stage/stage_bg_zencho.webm';
+import stageUpperAtBg from './video/stage/stage_upper_at_bg.webm';
 
 import effectCutinStrong from './video/effect/effect_cutin_strong.webm';
 import effectCutinWeak from './video/effect/effect_cutin_weak.webm';
@@ -37,9 +34,6 @@ import bgmAtEnding from './audio/bgm/bgm_at_ending.ogg';
 import bgmAtExtend from './audio/bgm/bgm_at_extend.ogg';
 import bgmAtMain from './audio/bgm/bgm_at_main.ogg';
 import bgmAtUpper from './audio/bgm/bgm_at_upper.ogg';
-import bgmBonusBig from './audio/bgm/bgm_bonus_big.ogg';
-import bgmBonusReg from './audio/bgm/bgm_bonus_reg.ogg';
-import bgmCzHigh from './audio/bgm/bgm_cz_high.ogg';
 import bgmCzLow from './audio/bgm/bgm_cz_low.ogg';
 import bgmNormalA from './audio/bgm/bgm_normal_a.ogg';
 import bgmNormalB from './audio/bgm/bgm_normal_b.ogg';
@@ -55,80 +49,85 @@ import seReelStop from './audio/se/se_reel_stop.ogg';
 export const CABINET_FRAME_URL = cabinetFrame;
 export const LCD_BG_FALLBACK_URL = lcdBgFallback;
 
-/** リール図柄 → 画像 URL */
+/** リール図柄 → 画像 URL(全 8 種。実素材=ユーザー入稿。docs/SPEC.md「3.」) */
 export const SYMBOL_IMAGES: Record<ReelSymbol, string> = {
   SEVEN_RED: symbolSevenRed,
-  SEVEN_WHITE: symbolSevenWhite,
-  BAR: symbolBar,
+  BAR_BLACK: symbolBarBlack,
+  BAR_WHITE: symbolBarWhite,
   BELL: symbolBell,
   WATERMELON: symbolWatermelon,
   CHERRY: symbolCherry,
   REPLAY: symbolReplay,
+  BLANK: symbolBlank,
 };
 
-/** 演出ステージ ID(docs/SPEC.md「4. 演出状態」) */
+/**
+ * 演出ステージ ID(docs/SPEC.md「5. 背景」の 9 種)。
+ * 通常 5 背景 + AT 2(小役/バトル)+ 上位 AT 2(小役/バトル)。
+ */
 export const STAGE_IDS = [
-  'STAGE_NORMAL_A',
-  'STAGE_NORMAL_B',
-  'STAGE_NORMAL_C',
-  'STAGE_CZ_LOW',
-  'STAGE_CZ_HIGH',
-  'STAGE_OMEN',
-  'STAGE_BONUS_BIG',
-  'STAGE_BONUS_REG',
-  'STAGE_AT_MAIN',
-  'STAGE_AT_UPPER',
-  'STAGE_AT_EXTEND',
-  'STAGE_AT_ENDING',
+  'BG_YOSHITSUNE',
+  'BG_SHIZUKA',
+  'BG_BENKEI',
+  'BG_YUGATA',
+  'BG_ZENCHO',
+  'AT_KOYAKU',
+  'AT_BATTLE',
+  'UPPER_AT_KOYAKU',
+  'UPPER_AT_BATTLE',
 ] as const;
 
 export type StageId = (typeof STAGE_IDS)[number];
 
 export const STAGE_LABELS: Record<StageId, string> = {
-  STAGE_NORMAL_A: '通常ステージA',
-  STAGE_NORMAL_B: '通常ステージB',
-  STAGE_NORMAL_C: '通常ステージC',
-  STAGE_CZ_LOW: 'チャンスゾーン(低)',
-  STAGE_CZ_HIGH: 'チャンスゾーン(高)',
-  STAGE_OMEN: '前兆ステージ',
-  STAGE_BONUS_BIG: 'BIGボーナス中',
-  STAGE_BONUS_REG: 'REGボーナス中',
-  STAGE_AT_MAIN: 'AT本編',
-  STAGE_AT_UPPER: '上位AT',
-  STAGE_AT_EXTEND: '継続バトル',
-  STAGE_AT_ENDING: 'エンディング',
+  BG_YOSHITSUNE: '義経背景',
+  BG_SHIZUKA: '静背景',
+  BG_BENKEI: '弁慶背景',
+  BG_YUGATA: '夕方背景',
+  BG_ZENCHO: '前兆背景',
+  AT_KOYAKU: 'AT中(小役パート)',
+  AT_BATTLE: 'AT中(バトルパート)',
+  UPPER_AT_KOYAKU: '上位AT中(小役パート)',
+  UPPER_AT_BATTLE: '上位AT中(バトルパート)',
 };
 
-/** ステージ → ループ背景動画 URL */
+/** 通常時の背景(core/background.ts の Background)→ ステージ ID */
+export const STAGE_FOR_BACKGROUND: Record<Background, StageId> = {
+  YOSHITSUNE: 'BG_YOSHITSUNE',
+  SHIZUKA: 'BG_SHIZUKA',
+  BENKEI: 'BG_BENKEI',
+  YUGATA: 'BG_YUGATA',
+  ZENCHO: 'BG_ZENCHO',
+};
+
+/**
+ * ステージ → ループ背景動画 URL。
+ * AT / 上位 AT は小役・バトルの各パート専用動画が未入稿のため、
+ * 入稿済みの AT 背景 1 本を両パートで共用している(入稿され次第差し替え)。
+ */
 export const STAGE_VIDEOS: Record<StageId, string> = {
-  STAGE_NORMAL_A: stageNormalA,
-  STAGE_NORMAL_B: stageNormalB,
-  STAGE_NORMAL_C: stageNormalC,
-  STAGE_CZ_LOW: stageCzLow,
-  STAGE_CZ_HIGH: stageCzHigh,
-  STAGE_OMEN: stageOmen,
-  STAGE_BONUS_BIG: stageBonusBig,
-  STAGE_BONUS_REG: stageBonusReg,
-  STAGE_AT_MAIN: stageAtMain,
-  STAGE_AT_UPPER: stageAtUpper,
-  STAGE_AT_EXTEND: stageAtExtend,
-  STAGE_AT_ENDING: stageAtEnding,
+  BG_YOSHITSUNE: stageBgYoshitsune,
+  BG_SHIZUKA: stageBgShizuka,
+  BG_BENKEI: stageBgBenkei,
+  BG_YUGATA: stageBgYugata,
+  BG_ZENCHO: stageBgZencho,
+  AT_KOYAKU: stageAtBg,
+  AT_BATTLE: stageAtBg,
+  UPPER_AT_KOYAKU: stageUpperAtBg,
+  UPPER_AT_BATTLE: stageUpperAtBg,
 };
 
-/** ステージ → BGM URL */
+/** ステージ → BGM URL(BGM は全て仮素材のまま。実素材入稿で差し替え) */
 export const STAGE_BGMS: Record<StageId, string> = {
-  STAGE_NORMAL_A: bgmNormalA,
-  STAGE_NORMAL_B: bgmNormalB,
-  STAGE_NORMAL_C: bgmNormalC,
-  STAGE_CZ_LOW: bgmCzLow,
-  STAGE_CZ_HIGH: bgmCzHigh,
-  STAGE_OMEN: bgmOmen,
-  STAGE_BONUS_BIG: bgmBonusBig,
-  STAGE_BONUS_REG: bgmBonusReg,
-  STAGE_AT_MAIN: bgmAtMain,
-  STAGE_AT_UPPER: bgmAtUpper,
-  STAGE_AT_EXTEND: bgmAtExtend,
-  STAGE_AT_ENDING: bgmAtEnding,
+  BG_YOSHITSUNE: bgmNormalA,
+  BG_SHIZUKA: bgmNormalB,
+  BG_BENKEI: bgmNormalC,
+  BG_YUGATA: bgmCzLow,
+  BG_ZENCHO: bgmOmen,
+  AT_KOYAKU: bgmAtMain,
+  AT_BATTLE: bgmAtExtend,
+  UPPER_AT_KOYAKU: bgmAtUpper,
+  UPPER_AT_BATTLE: bgmAtEnding,
 };
 
 /** 演出動画 URL */
