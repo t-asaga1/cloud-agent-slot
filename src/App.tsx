@@ -15,18 +15,18 @@ import { drawRole } from './core/lottery';
 import { calcPayout } from './core/payout';
 import { resolveSpin, windowAt, type StopPositions } from './core/reel';
 import { createRng, randomSeed } from './core/rng';
-import { SETTINGS, isRareRole, type Role, type Setting } from './core/roles';
+import { isRareRole, type Role } from './core/roles';
 import { isBgmPlaying, playBgm, playSe, stopBgm } from './platform/audio';
 
 const ROLE_LABELS: Record<Role, string> = {
   REPLAY: 'リプレイ',
-  BELL: 'ベル',
-  WATERMELON: 'スイカ',
-  CHERRY_WEAK: '弱チェリー',
-  CHERRY_STRONG: '強チェリー',
+  BELL: '押し順ベル',
+  CHERRY_CORNER: '角チェリー',
+  CHERRY_CENTER: '中段チェリー',
+  WATERMELON_WEAK: '弱スイカ',
+  WATERMELON_STRONG: '強スイカ',
   CHANCE_ME: 'チャンス目',
-  BONUS_BIG: 'BIG',
-  BONUS_REG: 'REG',
+  REACH_ME: 'リーチ目',
   NONE: 'ハズレ',
 };
 
@@ -87,7 +87,6 @@ function reducer(prev: PlayState, action: Action): PlayState {
 }
 
 function App() {
-  const [setting, setSetting] = useState<Setting>(1);
   const [stage, setStage] = useState<StageId>('STAGE_NORMAL_A');
   const [bgmOn, setBgmOn] = useState(false);
   const [seed] = useState(randomSeed);
@@ -96,15 +95,15 @@ function App() {
 
   const onLever = () => {
     playSe(SE.leverOn);
-    const won = drawRole(rng, setting);
-    // 押下位置はランダム(目押しなし)。押し順は順押し固定(Phase 4 で停止ボタン化)
+    const won = drawRole(rng);
+    // 押下位置はランダム(タイミング目押しは Phase 4 で停止ボタン化)。押し順は順押し固定
     const pushes: [number, number, number] = [
       rng.nextInt(20),
       rng.nextInt(20),
       rng.nextInt(20),
     ];
     const { positions, displayed } = resolveSpin(won, pushes);
-    if (won === 'BONUS_BIG' || won === 'BONUS_REG') playSe(SE.bonus);
+    if (won === 'REACH_ME') playSe(SE.bonus);
     else if (isRareRole(won)) playSe(SE.rare);
     else if (calcPayout(displayed, true).payout > 0) playSe(SE.payout);
     else playSe(SE.reelStop);
@@ -162,19 +161,6 @@ function App() {
 
         <section className="side">
           <div className="panel">
-            <label>
-              設定:
-              <select
-                value={setting}
-                onChange={(e) => setSetting(Number(e.target.value) as Setting)}
-              >
-                {SETTINGS.map((s) => (
-                  <option key={s} value={s}>
-                    設定{s}
-                  </option>
-                ))}
-              </select>
-            </label>
             <label>
               ステージ:
               <select value={stage} onChange={(e) => onStageChange(e.target.value as StageId)}>

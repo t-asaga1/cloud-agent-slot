@@ -1,14 +1,20 @@
 import type { Role } from './roles';
 
 /**
- * リール配列と停止制御(Phase 2)。
+ * リール配列と停止制御(Phase 2 実装の暫定適合版)。
  *
- * - 各リール 20 コマ × 3 本。配列は docs/SPEC.md「2. リール仕様」の叩き台と一致させること。
- * - 停止制御は「引き込み優先度による探索方式」(docs/DEVELOPMENT_PLAN.md Phase 2):
+ * 【注意・暫定】本モジュールは旧叩き台の配列(白7 あり)+ 中段 1 ラインのままで、
+ * 役名のみ Excel 仕様(roles.ts)へ適合させた過渡期実装。
+ * Excel 仕様への本対応(Excel 配列 20 コマ + 有効ライン横 3 + 斜め 2 +
+ * タイミング目押し + DDT 黒バー制御。docs/SPEC.md「3.」確定事項)は
+ * 網羅テストの再設計込みで書き直しが必要(docs/HANDOVER.md 参照)。
+ *
+ * - 停止制御は「引き込み優先度による探索方式」:
  *   押下位置から最大 4 コマ先まで(計 5 候補)を探索し、
  *   当選役を揃える > 蹴飛ばし(非当選役を揃えない)の優先度で停止位置を決める。
- * - 有効ラインは中段 1 ライン。チェリーは左リール限定で、
- *   角(上段・下段)=弱チェリー / 中段=強チェリー の停止形で区別する。
+ * - チェリーは左リール限定で、角(上段・下段)=角チェリー / 中段=中段チェリー。
+ * - 弱スイカ・強スイカは暫定的に同一停止形(中段スイカ揃い)。
+ * - リーチ目は暫定的に赤7 の中段揃いで表現。
  * - 回転アニメーションは UI 層の責務。本モジュールは「押下位置 → 停止位置」の純関数のみ持つ。
  */
 
@@ -41,7 +47,7 @@ const CH = 'CHERRY';
 const RP = 'REPLAY';
 
 /**
- * リール配列(コマ番号 0〜19)。docs/SPEC.md のリール配列叩き台と一致。
+ * リール配列(コマ番号 0〜19)。旧叩き台の配列(暫定。Excel 配列への差し替えは次タスク)。
  * [左, 中, 右]
  */
 export const REEL_LAYOUT: readonly (readonly ReelSymbol[])[] = [
@@ -65,26 +71,16 @@ export function windowAt(reel: ReelIndex, position: number): [ReelSymbol, ReelSy
   return [komaAt(reel, position + 1), komaAt(reel, position), komaAt(reel, position - 1)];
 }
 
-/** 中段ライン(有効ライン)で揃うと成立扱いになる役 → 構成図柄 */
+/** ライン揃いで成立を表現する役 → 構成図柄(暫定: 中段 1 ライン) */
 export const LINE_ROLE_SYMBOL = {
   REPLAY: 'REPLAY',
   BELL: 'BELL',
-  WATERMELON: 'WATERMELON',
-  BONUS_BIG: 'SEVEN_RED',
-  BONUS_REG: 'BAR',
+  WATERMELON_WEAK: 'WATERMELON',
+  WATERMELON_STRONG: 'WATERMELON',
+  REACH_ME: 'SEVEN_RED',
 } as const satisfies Partial<Record<Role, ReelSymbol>>;
 
 type LineRole = keyof typeof LINE_ROLE_SYMBOL;
-
-/** 中段に同一図柄が 3 つ並んだときの役(該当なしは undefined) */
-const SYMBOL_LINE_ROLE: Partial<Record<ReelSymbol, LineRole>> = {
-  REPLAY: 'REPLAY',
-  BELL: 'BELL',
-  WATERMELON: 'WATERMELON',
-  SEVEN_RED: 'BONUS_BIG',
-  BAR: 'BONUS_REG',
-  // SEVEN_WHITE・CHERRY の 3 つ揃いはどの役でもない「禁止出目」として常に蹴飛ばす
-};
 
 /**
  * 100% 引き込みが保証されるライン役(配列側で全リール 4 コマ以内配置。テストで保証)。
@@ -111,19 +107,26 @@ export type StopPositions = [number, number, number];
 /**
  * 全リール停止後の表示役の判定。
  * - 中段ラインの 3 つ揃いを最優先で判定する。
- * - ライン役がなければ左リールのチェリー(中段=強 / 角=弱)を判定する。
- * - チャンス目は特定の停止形を持たない(Phase 2 叩き台)ため、本関数は返さない。
+ * - スイカ揃いは弱・強で同一図柄のため、内部当選役(wonRole)で弱・強を区別する。
+ * - ライン役がなければ左リールのチェリー(中段=中段チェリー / 角=角チェリー)を判定する。
+ * - チャンス目は特定の停止形を持たない(暫定)ため、本関数は返さない。
  *   成立役としてのチャンス目は内部当選(drawRole の結果)側で扱う。
  */
-export function judgeDisplay(positions: StopPositions): Role {
+export function judgeDisplay(positions: StopPositions, wonRole: Role = 'NONE'): Role {
   const line = REEL_INDEXES.map((r) => komaAt(r, positions[r]));
   if (line[0] === line[1] && line[1] === line[2]) {
-    const role = SYMBOL_LINE_ROLE[line[0]];
-    if (role) return role;
+    const symbol = line[0];
+    if (symbol === 'REPLAY') return 'REPLAY';
+    if (symbol === 'BELL') return 'BELL';
+    if (symbol === 'SEVEN_RED') return 'REACH_ME';
+    if (symbol === 'WATERMELON') {
+      // 弱・強は同一図柄。当選役側で区別する(非当選時の揃いは蹴飛ばしで発生しない)
+      if (wonRole === 'WATERMELON_WEAK' || wonRole === 'WATERMELON_STRONG') return wonRole;
+    }
   }
   const cherry = leftCherryState(positions[0]);
-  if (cherry === 'center') return 'CHERRY_STRONG';
-  if (cherry === 'corner') return 'CHERRY_WEAK';
+  if (cherry === 'center') return 'CHERRY_CENTER';
+  if (cherry === 'corner') return 'CHERRY_CORNER';
   return 'NONE';
 }
 
@@ -148,26 +151,31 @@ export function canReachCleanOnLeft(pushPosition: number, symbol: ReelSymbol): b
   return false;
 }
 
-/** 左リールで弱チェリー(角チェリーかつ中段チェリーでない)を引き込めるか */
-export function canReachWeakCherry(pushPosition: number): boolean {
+/** 左リールで角チェリー(中段チェリーでない)を引き込めるか */
+export function canReachCornerCherry(pushPosition: number): boolean {
   for (let s = 0; s <= MAX_SLIP; s++) {
     if (leftCherryState(pushPosition + s) === 'corner') return true;
   }
   return false;
 }
 
-/** 左リールで強チェリー(中段チェリー)を引き込めるか */
-export function canReachStrongCherry(pushPosition: number): boolean {
+/** 左リールで中段チェリーを引き込めるか */
+export function canReachCenterCherry(pushPosition: number): boolean {
   for (let s = 0; s <= MAX_SLIP; s++) {
     if (leftCherryState(pushPosition + s) === 'center') return true;
   }
   return false;
 }
 
+/** 当選役 role がライン揃いで使う図柄(ライン役でなければ undefined) */
+function roleLineSymbol(role: Role): ReelSymbol | undefined {
+  return isLineRole(role) ? LINE_ROLE_SYMBOL[role] : undefined;
+}
+
 /**
  * この停止位置が、停止済みリールと合わせて中段 3 つ揃いを完成させてしまうか。
  * 未停止リールが残っていれば後続の蹴飛ばしで回避できるため false。
- * SEVEN_WHITE・CHERRY 揃いはどの役でもない禁止出目として、当選役に関わらず違法扱い。
+ * 当選役の図柄以外の 3 つ揃い(他役・白7/チェリー/バー等の禁止出目)は違法扱い。
  */
 function completesIllegalLine(
   reel: ReelIndex,
@@ -182,9 +190,7 @@ function completesIllegalLine(
     if (pos === undefined) return false;
     if (komaAt(other, pos) !== symbol) return false;
   }
-  const lineRole = SYMBOL_LINE_ROLE[symbol];
-  if (lineRole === undefined) return true;
-  return lineRole !== wonRole;
+  return symbol !== roleLineSymbol(wonRole);
 }
 
 /**
@@ -192,10 +198,10 @@ function completesIllegalLine(
  *
  * 優先度: 当選役を引き込める位置 > それ以外(蹴飛ばし後) > スベリ最小。
  * 蹴飛ばし(除外)ルール:
- * - 非当選のライン役・禁止出目(白7/チェリー揃い)を完成させる位置
+ * - 非当選のライン役・禁止出目(白7/チェリー/バー揃い)を完成させる位置
  * - 左リール: チェリー非当選時にチェリーが窓内に見える位置
  *   (ただし 100% 引き込み役の当選図柄を引き込む場合は許容)
- * - 左リール: 弱チェリー当選時の中段チェリー / 強チェリー当選時の角チェリー
+ * - 左リール: 角チェリー当選時の中段チェリー / 中段チェリー当選時の角チェリー
  * - 中・右リール: 左リールが最後に残る場合、非当選図柄の中段テンパイを作る位置。
  *   左リールはチェリー排除と併用するため蹴飛ばしの自由度が低く、テンパイを許すと
  *   蹴飛ばせない押下位置が生じる(例: リプレイテンパイ + 左押下位置 1)
@@ -213,8 +219,8 @@ export function resolveStop(
   stopped: readonly (number | undefined)[] = [undefined, undefined, undefined],
 ): number {
   const push = ((pushPosition % KOMA_COUNT) + KOMA_COUNT) % KOMA_COUNT;
-  const lineSymbol = isLineRole(wonRole) ? LINE_ROLE_SYMBOL[wonRole] : undefined;
-  const cherryWon = wonRole === 'CHERRY_WEAK' || wonRole === 'CHERRY_STRONG';
+  const lineSymbol = roleLineSymbol(wonRole);
+  const cherryWon = wonRole === 'CHERRY_CORNER' || wonRole === 'CHERRY_CENTER';
 
   // 左リール停止前に中・右で非当選図柄の中段テンパイを作らない(上記コメント参照)
   let tenpaiAvoid: ReelSymbol | undefined;
@@ -239,17 +245,17 @@ export function resolveStop(
     let wins = false;
     if (lineSymbol !== undefined) {
       wins = symbol === lineSymbol;
-    } else if (reel === 0 && wonRole === 'CHERRY_WEAK') {
+    } else if (reel === 0 && wonRole === 'CHERRY_CORNER') {
       wins = cherry === 'corner';
-    } else if (reel === 0 && wonRole === 'CHERRY_STRONG') {
+    } else if (reel === 0 && wonRole === 'CHERRY_CENTER') {
       wins = cherry === 'center';
     }
 
     // --- 蹴飛ばし(除外)判定 ---
     if (reel === 0 && cherry !== 'none') {
       if (cherryWon) {
-        if (wonRole === 'CHERRY_WEAK' && cherry === 'center') continue;
-        if (wonRole === 'CHERRY_STRONG' && cherry === 'corner') continue;
+        if (wonRole === 'CHERRY_CORNER' && cherry === 'center') continue;
+        if (wonRole === 'CHERRY_CENTER' && cherry === 'corner') continue;
       } else if (
         !(wins && GUARANTEED_LINE_ROLES.includes(wonRole as LineRole))
       ) {
@@ -313,5 +319,5 @@ export function resolveSpin(
     stopped[reel] = resolveStop(reel, pushPositions[reel], wonRole, stopped);
   }
   const positions = stopped as StopPositions;
-  return { positions, displayed: judgeDisplay(positions) };
+  return { positions, displayed: judgeDisplay(positions, wonRole) };
 }
