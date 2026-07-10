@@ -87,7 +87,7 @@ function reducer(prev: PlayState, action: Action): PlayState {
 }
 
 function App() {
-  const [stage, setStage] = useState<StageId>('BG_YOSHITSUNE');
+  const [stage, setStage] = useState<StageId>('STAGE_YOSHITSUNE');
   const [bgmOn, setBgmOn] = useState(false);
   const [seed] = useState(randomSeed);
   const rng = useMemo(() => createRng(seed), [seed]);
@@ -129,8 +129,8 @@ function App() {
     <main className="app">
       <h1>パチスロアプリ — 素材確認 + Phase 2 リール制御</h1>
       <p className="note">
-        筐体・リール図柄・背景動画はユーザー入稿の実素材。BGM/SE
-        は仮素材(サイン波合成)で、実素材の入稿後に差し替える。リールの出目は
+        筐体・背景動画・リール図柄はユーザー入稿素材。BGM/SE
+        は仮素材で、実素材の入稿後に差し替える(AT/上位ATの背景は小役・バトル共用)。リールの出目は
         <code>core/reel</code> の停止制御(引き込み優先度探索)の実出力。
       </p>
 

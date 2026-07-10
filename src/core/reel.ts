@@ -20,13 +20,12 @@ import type { Role } from './roles';
 
 export const REEL_SYMBOLS = [
   'SEVEN_RED',
-  'BAR_BLACK',
-  'BAR_WHITE',
+  'SEVEN_WHITE',
+  'BAR',
   'BELL',
   'WATERMELON',
   'CHERRY',
   'REPLAY',
-  'BLANK',
 ] as const;
 
 export type ReelSymbol = (typeof REEL_SYMBOLS)[number];
@@ -40,8 +39,8 @@ export type ReelIndex = 0 | 1 | 2;
 export const REEL_INDEXES: readonly ReelIndex[] = [0, 1, 2];
 
 const R7 = 'SEVEN_RED';
-const BB = 'BAR_BLACK';
-const WB = 'BAR_WHITE';
+const W7 = 'SEVEN_WHITE';
+const BAR = 'BAR';
 const BE = 'BELL';
 const WM = 'WATERMELON';
 const CH = 'CHERRY';
@@ -49,13 +48,12 @@ const RP = 'REPLAY';
 
 /**
  * リール配列(コマ番号 0〜19)。旧叩き台の配列(暫定。Excel 配列への差し替えは次タスク)。
- * 図柄名のみ Excel 仕様の 8 種へ改名済み(旧: 白7 → 白バー / BAR → 黒バー)。
  * [左, 中, 右]
  */
 export const REEL_LAYOUT: readonly (readonly ReelSymbol[])[] = [
-  [R7, RP, BE, CH, WM, RP, BE, BB, WM, RP, BE, CH, WB, RP, BE, WM, RP, BE, BB, WM],
-  [RP, BE, WM, R7, RP, BE, CH, BB, RP, BE, WM, WB, RP, BE, CH, BB, RP, BE, WM, CH],
-  [BE, RP, CH, WM, BE, RP, R7, WM, BE, RP, BB, WM, BE, RP, WB, WM, BE, RP, BB, WM],
+  [R7, RP, BE, CH, WM, RP, BE, BAR, WM, RP, BE, CH, W7, RP, BE, WM, RP, BE, BAR, WM],
+  [RP, BE, WM, R7, RP, BE, CH, BAR, RP, BE, WM, W7, RP, BE, CH, BAR, RP, BE, WM, CH],
+  [BE, RP, CH, WM, BE, RP, R7, WM, BE, RP, BAR, WM, BE, RP, W7, WM, BE, RP, BAR, WM],
 ];
 
 /**
