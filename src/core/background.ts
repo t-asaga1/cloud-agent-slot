@@ -20,9 +20,20 @@ export type BackgroundWeights = readonly [number, number, number, number, number
 
 export type BackgroundTable = Record<Background, BackgroundWeights>;
 
-/** 背景移行の契機 */
+/**
+ * 同一背景での経過ゲーム数がこの値に達すると背景移行抽せん(契機 ELAPSED)。
+ * 暫定 30G(後から変更の可能性あり。確定・回答 15)。
+ * カウンタは背景移行時(契機を問わず)にリセットする。
+ */
+export const BACKGROUND_ELAPSED_GAMES = 30;
+
+/**
+ * 背景移行の契機。
+ * ELAPSED と FAKE_OMEN_NEXT が同一ゲームで重なった場合は
+ * FAKE_OMEN_NEXT(偽前兆当せん)を優先する(確定・回答 15)。
+ */
 export const BACKGROUND_TRIGGERS = [
-  'ELAPSED_30G', // 同一背景で 30 ゲーム経過
+  'ELAPSED', // 同一背景で BACKGROUND_ELAPSED_GAMES ゲーム経過
   'FAKE_OMEN_NEXT', // 偽前兆演出に当せんした次のゲーム
   'FAKE_OMEN_FAIL', // 偽前兆演出後、連続演出に失敗した後のゲーム
   'HONZENCHO_NEXT', // 本前兆にモード移行した次のゲーム
@@ -52,7 +63,7 @@ const HONZENCHO_NEXT_TABLE: BackgroundTable = {
 
 /** 地獄・通常モード滞在(両モード同一テーブル) */
 const HELL_NORMAL_TABLES: Record<BackgroundTrigger, BackgroundTable> = {
-  ELAPSED_30G: {
+  ELAPSED: {
     YOSHITSUNE: [0, 100, 0, 0, 0],
     SHIZUKA: [0, 0, 100, 0, 0],
     BENKEI: [100, 0, 0, 0, 0],
@@ -76,8 +87,8 @@ const HELL_NORMAL_TABLES: Record<BackgroundTrigger, BackgroundTable> = {
   HONZENCHO_NEXT: HONZENCHO_NEXT_TABLE,
 };
 
-/** 天国モード滞在(30G 経過と連続演出失敗後は同一テーブル) */
-const HEAVEN_30G_TABLE: BackgroundTable = {
+/** 天国モード滞在(規定ゲーム数経過と連続演出失敗後は同一テーブル) */
+const HEAVEN_ELAPSED_TABLE: BackgroundTable = {
   YOSHITSUNE: [0, 50, 0, 50, 0],
   SHIZUKA: [0, 0, 50, 50, 0],
   BENKEI: [50, 0, 0, 50, 0],
@@ -86,7 +97,7 @@ const HEAVEN_30G_TABLE: BackgroundTable = {
 };
 
 const HEAVEN_TABLES: Record<BackgroundTrigger, BackgroundTable> = {
-  ELAPSED_30G: HEAVEN_30G_TABLE,
+  ELAPSED: HEAVEN_ELAPSED_TABLE,
   FAKE_OMEN_NEXT: {
     YOSHITSUNE: [25, 0, 0, 50, 25],
     SHIZUKA: [0, 25, 0, 50, 25],
@@ -94,7 +105,7 @@ const HEAVEN_TABLES: Record<BackgroundTrigger, BackgroundTable> = {
     YUGATA: [0, 0, 0, 50, 50],
     ZENCHO: [0, 0, 0, 0, 100],
   },
-  FAKE_OMEN_FAIL: HEAVEN_30G_TABLE,
+  FAKE_OMEN_FAIL: HEAVEN_ELAPSED_TABLE,
   HONZENCHO_NEXT: HONZENCHO_NEXT_TABLE,
 };
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BACKGROUNDS,
   BACKGROUND_DENOM,
+  BACKGROUND_ELAPSED_GAMES,
   BACKGROUND_INITIAL,
   BACKGROUND_TRANSITION,
   BACKGROUND_TRIGGERS,
@@ -47,10 +48,12 @@ describe('背景移行テーブル(静的検証・docs/SPEC.md「5.」と一致)
     );
   });
 
-  it('天国の 30G 経過と連続演出失敗後は同一テーブル', () => {
-    expect(BACKGROUND_TRANSITION.HEAVEN.ELAPSED_30G).toBe(
-      BACKGROUND_TRANSITION.HEAVEN.FAKE_OMEN_FAIL,
-    );
+  it('天国の規定ゲーム数経過と連続演出失敗後は同一テーブル', () => {
+    expect(BACKGROUND_TRANSITION.HEAVEN.ELAPSED).toBe(BACKGROUND_TRANSITION.HEAVEN.FAKE_OMEN_FAIL);
+  });
+
+  it('経過ゲーム数の規定値は暫定 30G(確定・回答 15。変更時は SPEC とセットで更新)', () => {
+    expect(BACKGROUND_ELAPSED_GAMES).toBe(30);
   });
 });
 
@@ -76,12 +79,12 @@ describe('drawInitialBackground', () => {
 });
 
 describe('drawBackgroundTransition', () => {
-  it('地獄 30G 経過: 義経 → 静 100%(ローテーション)', () => {
+  it('地獄 規定ゲーム数経過: 義経 → 静 100%(ローテーション)', () => {
     const rng = createRng(12);
     for (let i = 0; i < 100; i++) {
-      expect(drawBackgroundTransition(rng, 'HELL', 'ELAPSED_30G', 'YOSHITSUNE')).toBe('SHIZUKA');
-      expect(drawBackgroundTransition(rng, 'HELL', 'ELAPSED_30G', 'SHIZUKA')).toBe('BENKEI');
-      expect(drawBackgroundTransition(rng, 'HELL', 'ELAPSED_30G', 'BENKEI')).toBe('YOSHITSUNE');
+      expect(drawBackgroundTransition(rng, 'HELL', 'ELAPSED', 'YOSHITSUNE')).toBe('SHIZUKA');
+      expect(drawBackgroundTransition(rng, 'HELL', 'ELAPSED', 'SHIZUKA')).toBe('BENKEI');
+      expect(drawBackgroundTransition(rng, 'HELL', 'ELAPSED', 'BENKEI')).toBe('YOSHITSUNE');
     }
   });
 
