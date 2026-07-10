@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """仮素材(プレースホルダー)の一括生成スクリプト。
 
-ユーザー入稿済みの筐体画像以外の素材(リール図柄・液晶背景動画・演出動画・BGM・SE)を
+ユーザー入稿済みの素材(筐体画像・リール図柄・背景動画)以外の素材
+(液晶フォールバック静止画・演出動画・BGM・SE)を
 「黒背景 + 白文字の ●●（仮)」形式で生成する。実素材が入稿されたら同名ファイルを
 差し替えるだけで置き換えられる。
+※ ユーザー入稿素材の取り込み(変換)は scripts/import_incoming_assets.py 参照。
 
 実行: python3 scripts/gen_placeholder_assets.py
 依存: pip install pillow / ffmpeg / fonts-noto-cjk(日本語フォント)
@@ -24,31 +26,18 @@ FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 # 定義(SPEC.md と一致させること)
 # ---------------------------------------------------------------------------
 
-# リール図柄 7 種(id, 表示ラベル)
-SYMBOLS = [
-    ("symbol_seven_red", "赤7"),
-    ("symbol_seven_white", "白7"),
-    ("symbol_bar", "BAR"),
-    ("symbol_bell", "ベル"),
-    ("symbol_watermelon", "スイカ"),
-    ("symbol_cherry", "チェリー"),
-    ("symbol_replay", "リプレイ"),
-]
-
-# 演出ステージ 12 種(id, 表示ラベル)— SPEC.md「4. 演出状態」
+# 演出ステージ(背景)9 種(id, 表示ラベル)— SPEC.md「5. 背景と背景移行抽せん」
+# 図柄・背景動画はユーザー入稿済みのため、本スクリプトでは BGM の仮素材のみ生成する
 STAGES = [
-    ("normal_a", "通常ステージA"),
-    ("normal_b", "通常ステージB"),
-    ("normal_c", "通常ステージC"),
-    ("cz_low", "チャンスゾーン(低)"),
-    ("cz_high", "チャンスゾーン(高)"),
-    ("omen", "前兆ステージ"),
-    ("bonus_big", "BIGボーナス中"),
-    ("bonus_reg", "REGボーナス中"),
-    ("at_main", "AT本編"),
-    ("at_upper", "上位AT"),
-    ("at_extend", "継続バトル"),
-    ("at_ending", "エンディング"),
+    ("yoshitsune", "義経背景"),
+    ("shizuka", "静背景"),
+    ("benkei", "弁慶背景"),
+    ("yugata", "夕方背景"),
+    ("zencho", "前兆背景"),
+    ("at_koyaku", "AT(小役パート)"),
+    ("at_battle", "AT(バトルパート)"),
+    ("at_upper_koyaku", "上位AT(小役パート)"),
+    ("at_upper_battle", "上位AT(バトルパート)"),
 ]
 
 # 演出動画(id, 表示ラベル, 秒数)
@@ -68,18 +57,15 @@ SES = [
 
 # BGM のステージ別ベース周波数(単純な 2 音コードのループ。区別が付けばよい)
 BGM_BASE_HZ = {
-    "normal_a": 220,
-    "normal_b": 233,
-    "normal_c": 247,
-    "cz_low": 262,
-    "cz_high": 277,
-    "omen": 196,
-    "bonus_big": 294,
-    "bonus_reg": 311,
-    "at_main": 330,
-    "at_upper": 349,
-    "at_extend": 370,
-    "at_ending": 392,
+    "yoshitsune": 220,
+    "shizuka": 233,
+    "benkei": 247,
+    "yugata": 262,
+    "zencho": 196,
+    "at_koyaku": 330,
+    "at_battle": 349,
+    "at_upper_koyaku": 370,
+    "at_upper_battle": 392,
 }
 
 
@@ -121,11 +107,6 @@ def gen_placeholder_image(
 
 
 def gen_images() -> None:
-    # リール図柄は表示窓の 1 コマが横長(約 2:1)なので同比率で作り、文字を最大化する
-    for asset_id, label in SYMBOLS:
-        gen_placeholder_image(
-            ASSETS / f"images/reels/{asset_id}.webp", label, (400, 200), start_ratio=1.6
-        )
     gen_placeholder_image(ASSETS / "images/lcd/lcd_bg_fallback.webp", "液晶画面", (1280, 720))
 
 
@@ -152,8 +133,6 @@ def gen_placeholder_video(path: Path, label: str, duration: int) -> None:
 
 
 def gen_videos() -> None:
-    for stage_id, label in STAGES:
-        gen_placeholder_video(ASSETS / f"video/stage/stage_{stage_id}.webm", label, 4)
     for effect_id, label, duration in EFFECTS:
         gen_placeholder_video(ASSETS / f"video/effect/{effect_id}.webm", label, duration)
 

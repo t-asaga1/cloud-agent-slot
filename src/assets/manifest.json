@@ -12,64 +12,73 @@
     "id": "symbol_seven_red",
     "path": "images/reels/symbol_seven_red.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/red7.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「赤7」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「赤7」(2026-07-10 入稿)"
   },
   {
-    "id": "symbol_seven_white",
-    "path": "images/reels/symbol_seven_white.webp",
+    "id": "symbol_bar_black",
+    "path": "images/reels/symbol_bar_black.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/blackbar.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「白7」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「黒バー」(2026-07-10 入稿)。reel.ts 本対応まで旧図柄 BAR に割り当て"
   },
   {
-    "id": "symbol_bar",
-    "path": "images/reels/symbol_bar.webp",
+    "id": "symbol_bar_white",
+    "path": "images/reels/symbol_bar_white.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/whitebar.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「BAR」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「白バー」(2026-07-10 入稿)。reel.ts 本対応まで旧図柄 SEVEN_WHITE に割り当て"
   },
   {
     "id": "symbol_bell",
     "path": "images/reels/symbol_bell.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/bell.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「ベル」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「ベル」(2026-07-10 入稿)"
   },
   {
     "id": "symbol_watermelon",
     "path": "images/reels/symbol_watermelon.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/suika.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「スイカ」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「スイカ」(2026-07-10 入稿)"
   },
   {
     "id": "symbol_cherry",
     "path": "images/reels/symbol_cherry.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/cherry.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「チェリー」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「チェリー」(2026-07-10 入稿)"
   },
   {
     "id": "symbol_replay",
     "path": "images/reels/symbol_replay.webp",
     "type": "image",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/replay.png を WebP 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール図柄「リプレイ」の仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
+    "note": "リール図柄「リプレイ」(2026-07-10 入稿)"
+  },
+  {
+    "id": "symbol_blank",
+    "path": "images/reels/symbol_blank.webp",
+    "type": "image",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/図柄画像/blank.png を WebP 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "リール図柄「ブランク」(2026-07-10 入稿)。reel.ts の 8 図柄化(Excel 配列本対応)で使用予定"
   },
   {
     "id": "lcd_bg_fallback",
@@ -81,112 +90,67 @@
     "note": "液晶の静止画フォールバック仮素材(黒背景+白文字)。実素材入稿で差し替え予定"
   },
   {
-    "id": "stage_normal_a",
-    "path": "video/stage/stage_normal_a.webm",
+    "id": "stage_yoshitsune",
+    "path": "video/stage/stage_yoshitsune.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/義経背景1.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "通常ステージAのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "義経背景のループ動画(2026-07-10 入稿。元 1920x1080/30fps/9.7 秒)"
   },
   {
-    "id": "stage_normal_b",
-    "path": "video/stage/stage_normal_b.webm",
+    "id": "stage_shizuka",
+    "path": "video/stage/stage_shizuka.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/静背景1.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "通常ステージBのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "静背景のループ動画(2026-07-10 入稿。元 1280x720/24fps/15 秒)"
   },
   {
-    "id": "stage_normal_c",
-    "path": "video/stage/stage_normal_c.webm",
+    "id": "stage_benkei",
+    "path": "video/stage/stage_benkei.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/弁慶背景1.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "通常ステージCのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "弁慶背景のループ動画(2026-07-10 入稿。元 1280x720/24fps/15 秒)"
   },
   {
-    "id": "stage_cz_low",
-    "path": "video/stage/stage_cz_low.webm",
+    "id": "stage_yugata",
+    "path": "video/stage/stage_yugata.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/夕方背景1.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "チャンスゾーン(低)のループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "夕方背景のループ動画(2026-07-10 入稿。元 1280x720/24fps/15 秒)"
   },
   {
-    "id": "stage_cz_high",
-    "path": "video/stage/stage_cz_high.webm",
+    "id": "stage_zencho",
+    "path": "video/stage/stage_zencho.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/前兆背景1.mp4 を WebM/VP9 720p 変換(4:3 → 中央クロップ): scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "チャンスゾーン(高)のループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "前兆背景のループ動画(2026-07-10 入稿。元 1440x1080/30fps/11.3 秒)"
   },
   {
-    "id": "stage_omen",
-    "path": "video/stage/stage_omen.webm",
+    "id": "stage_at",
+    "path": "video/stage/stage_at.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/AT背景1.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "前兆ステージのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "stage_bonus_big",
-    "path": "video/stage/stage_bonus_big.webm",
-    "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "BIGボーナス中のループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "stage_bonus_reg",
-    "path": "video/stage/stage_bonus_reg.webm",
-    "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "REGボーナス中のループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "stage_at_main",
-    "path": "video/stage/stage_at_main.webm",
-    "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "AT本編のループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "AT 中背景のループ動画(2026-07-10 入稿。元 1280x720/24fps/15 秒)。小役・バトル両パートで共用(専用素材の入稿待ち)"
   },
   {
     "id": "stage_at_upper",
     "path": "video/stage/stage_at_upper.webm",
     "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/背景動画/上位AT背景1.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "上位ATのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "stage_at_extend",
-    "path": "video/stage/stage_at_extend.webm",
-    "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "継続バトルのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "stage_at_ending",
-    "path": "video/stage/stage_at_ending.webm",
-    "type": "video",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "エンディングのループ背景動画の仮素材(黒背景+白文字明滅)。実素材入稿で差し替え予定"
+    "note": "上位 AT 中背景のループ動画(2026-07-10 入稿。元 1280x720/24fps/10 秒)。小役・バトル両パートで共用(専用素材の入稿待ち)"
   },
   {
     "id": "effect_cutin_weak",
@@ -252,111 +216,84 @@
     "note": "ボーナス告知SE の仮素材(サイン波合成)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_normal_a",
-    "path": "audio/bgm/bgm_normal_a.ogg",
+    "id": "bgm_yoshitsune",
+    "path": "audio/bgm/bgm_yoshitsune.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "通常ステージAの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "義経背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_normal_b",
-    "path": "audio/bgm/bgm_normal_b.ogg",
+    "id": "bgm_shizuka",
+    "path": "audio/bgm/bgm_shizuka.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "通常ステージBの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "静背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_normal_c",
-    "path": "audio/bgm/bgm_normal_c.ogg",
+    "id": "bgm_benkei",
+    "path": "audio/bgm/bgm_benkei.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "通常ステージCの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "弁慶背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_cz_low",
-    "path": "audio/bgm/bgm_cz_low.ogg",
+    "id": "bgm_yugata",
+    "path": "audio/bgm/bgm_yugata.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "チャンスゾーン(低)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "夕方背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_cz_high",
-    "path": "audio/bgm/bgm_cz_high.ogg",
+    "id": "bgm_zencho",
+    "path": "audio/bgm/bgm_zencho.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "チャンスゾーン(高)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "前兆背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_omen",
-    "path": "audio/bgm/bgm_omen.ogg",
+    "id": "bgm_at_koyaku",
+    "path": "audio/bgm/bgm_at_koyaku.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "前兆ステージの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "AT(小役パート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_bonus_big",
-    "path": "audio/bgm/bgm_bonus_big.ogg",
+    "id": "bgm_at_battle",
+    "path": "audio/bgm/bgm_at_battle.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "BIGボーナス中の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "AT(バトルパート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_bonus_reg",
-    "path": "audio/bgm/bgm_bonus_reg.ogg",
+    "id": "bgm_at_upper_koyaku",
+    "path": "audio/bgm/bgm_at_upper_koyaku.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "REGボーナス中の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "上位AT(小役パート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_at_main",
-    "path": "audio/bgm/bgm_at_main.ogg",
+    "id": "bgm_at_upper_battle",
+    "path": "audio/bgm/bgm_at_upper_battle.ogg",
     "type": "audio",
     "origin": "generated",
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
-    "note": "AT本編の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_at_upper",
-    "path": "audio/bgm/bgm_at_upper.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "上位ATの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_at_extend",
-    "path": "audio/bgm/bgm_at_extend.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "継続バトルの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_at_ending",
-    "path": "audio/bgm/bgm_at_ending.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "エンディングの BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "上位AT(バトルパート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
   }
 ]
