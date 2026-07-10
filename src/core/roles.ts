@@ -1,33 +1,31 @@
 /**
- * 役(小役・ボーナス等)の定義。
- * 確率・払い出しの数値は docs/SPEC.md の叩き台に対応する。数値変更は SPEC.md とセットで行うこと。
+ * 役の定義。docs/SPEC.md「2. 役構成・確率」(= Excel 基本確率シート)準拠。
+ * 数値・役構成の変更は SPEC.md とセットで行うこと。
  */
 export const ROLES = [
-  'REPLAY',
-  'BELL',
-  'WATERMELON',
-  'CHERRY_WEAK',
-  'CHERRY_STRONG',
-  'CHANCE_ME',
-  'BONUS_BIG',
-  'BONUS_REG',
-  'NONE',
+  'REPLAY', // リプレイ
+  'BELL', // 押し順ベル
+  'CHERRY_CORNER', // 角チェリー
+  'CHERRY_CENTER', // 中段チェリー
+  'WATERMELON_WEAK', // 弱スイカ
+  'WATERMELON_STRONG', // 強スイカ
+  'CHANCE_ME', // チャンス目
+  'REACH_ME', // リーチ目
+  'NONE', // ハズレ
 ] as const;
 
 export type Role = (typeof ROLES)[number];
 
-/** レア役(状態遷移の契機になる役) */
+/** レア役(モード移行・前兆・V ストック抽せんの主契機) */
 export const RARE_ROLES: readonly Role[] = [
-  'WATERMELON',
-  'CHERRY_WEAK',
-  'CHERRY_STRONG',
+  'CHERRY_CORNER',
+  'CHERRY_CENTER',
+  'WATERMELON_WEAK',
+  'WATERMELON_STRONG',
   'CHANCE_ME',
+  'REACH_ME',
 ];
 
 export function isRareRole(role: Role): boolean {
   return RARE_ROLES.includes(role);
 }
-
-export type Setting = 1 | 2 | 3 | 4 | 5 | 6;
-
-export const SETTINGS: readonly Setting[] = [1, 2, 3, 4, 5, 6];
