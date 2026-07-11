@@ -48,25 +48,17 @@ import seReelStop from './audio/se/se_reel_stop.ogg';
 export const CABINET_FRAME_URL = cabinetFrame;
 export const LCD_BG_FALLBACK_URL = lcdBgFallback;
 
-/**
- * リール図柄 → 画像 URL(ユーザー入稿素材)。
- * 【暫定】reel.ts は旧叩き台の図柄 7 種(白7 あり・黒/白バー未分離)のままのため、
- * SEVEN_WHITE には白バー画像を、BAR には黒バー画像を仮に割り当てている。
- * reel.ts の Excel 配列本対応(赤7/黒バー/白バー/ブランクの 8 種化)時に
- * SYMBOL_BLANK_URL と合わせてマッピングを差し替えること。
- */
+/** リール図柄 8 種 → 画像 URL(ユーザー入稿素材。図柄 ID は SPEC「3.」の 8 種と 1:1 対応) */
 export const SYMBOL_IMAGES: Record<ReelSymbol, string> = {
   SEVEN_RED: symbolSevenRed,
-  SEVEN_WHITE: symbolBarWhite,
-  BAR: symbolBarBlack,
+  BAR_BLACK: symbolBarBlack,
+  BAR_WHITE: symbolBarWhite,
   BELL: symbolBell,
   WATERMELON: symbolWatermelon,
   CHERRY: symbolCherry,
   REPLAY: symbolReplay,
+  BLANK: symbolBlank,
 };
-
-/** ブランク図柄(入稿済み。reel.ts の 8 図柄化で SYMBOL_IMAGES へ組み込む) */
-export const SYMBOL_BLANK_URL = symbolBlank;
 
 /** 演出ステージ(背景)ID。docs/SPEC.md「5.」の背景 9 種と一致 */
 export const STAGE_IDS = [

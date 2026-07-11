@@ -1,31 +1,35 @@
 import type { Role } from './roles';
 
 /**
- * リール配列と停止制御(Phase 2 実装の暫定適合版)。
+ * リール配列と停止制御。
  *
- * 【注意・暫定】本モジュールは旧叩き台の配列(白7 あり)+ 中段 1 ラインのままで、
- * 役名のみ Excel 仕様(roles.ts)へ適合させた過渡期実装。
- * Excel 仕様への本対応(Excel 配列 20 コマ + 有効ライン横 3 + 斜め 2 +
- * タイミング目押し + DDT 黒バー制御。docs/SPEC.md「3.」確定事項)は
- * 網羅テストの再設計込みで書き直しが必要(docs/HANDOVER.md 参照)。
+ * 【STEP 1a 完了】図柄 8 種 + Excel 仕様の 20 コマ配列(docs/SPEC.md「3.」)へ差し替え済み。
+ *
+ * 【注意・暫定】停止制御(resolveStop / judgeDisplay)は旧叩き台の
+ * 中段 1 ライン方式のまま(STEP 1b〜1e で 5 ライン対応へ書き直す。docs/ROADMAP.md 参照)。
+ * このため新配列では以下が成立しない:
+ * - 左リールのリプレイは最大間隔 6 コマで、中段 1 ラインでは 100% 引き込み不可
+ *   (5 ライン(上下段・斜め)併用で 100% になる。SPEC「3.」確定事項)
+ * - 押し順ベルの停止形(左=上段 1 枚 / 正解=斜め 13 枚)は 5 ライン判定が前提
+ * 旧配列前提の停止制御網羅テストは reel.test.ts で一時 skip している(1c〜1e で置換)。
  *
  * - 停止制御は「引き込み優先度による探索方式」:
  *   押下位置から最大 4 コマ先まで(計 5 候補)を探索し、
  *   当選役を揃える > 蹴飛ばし(非当選役を揃えない)の優先度で停止位置を決める。
  * - チェリーは左リール限定で、角(上段・下段)=角チェリー / 中段=中段チェリー。
- * - 弱スイカ・強スイカは暫定的に同一停止形(中段スイカ揃い)。
- * - リーチ目は暫定的に赤7 の中段揃いで表現。
  * - 回転アニメーションは UI 層の責務。本モジュールは「押下位置 → 停止位置」の純関数のみ持つ。
  */
 
+/** リール図柄 8 種(SPEC「3.」: 赤7 / 黒バー / 白バー / ベル / スイカ / チェリー / リプレイ / ブランク) */
 export const REEL_SYMBOLS = [
   'SEVEN_RED',
-  'SEVEN_WHITE',
-  'BAR',
+  'BAR_BLACK',
+  'BAR_WHITE',
   'BELL',
   'WATERMELON',
   'CHERRY',
   'REPLAY',
+  'BLANK',
 ] as const;
 
 export type ReelSymbol = (typeof REEL_SYMBOLS)[number];
@@ -39,21 +43,31 @@ export type ReelIndex = 0 | 1 | 2;
 export const REEL_INDEXES: readonly ReelIndex[] = [0, 1, 2];
 
 const R7 = 'SEVEN_RED';
-const W7 = 'SEVEN_WHITE';
-const BAR = 'BAR';
+const BB = 'BAR_BLACK';
+const WB = 'BAR_WHITE';
 const BE = 'BELL';
 const WM = 'WATERMELON';
 const CH = 'CHERRY';
 const RP = 'REPLAY';
+const BL = 'BLANK';
 
 /**
- * リール配列(コマ番号 0〜19)。旧叩き台の配列(暫定。Excel 配列への差し替えは次タスク)。
- * [左, 中, 右]
+ * リール配列(Excel 仕様 docs/SPEC.md「3.」の 20 コマ配列)。[左, 中, 右]
+ *
+ * 【コマ番号と配列 index の対応規約】
+ * SPEC の表は「コマ番号 20 → 1 の降順」(リール帯を上から見た並び)で記載されている。
+ * 本配列は index 0 = コマ番号 1、index 19 = コマ番号 20 の昇順で持つ(index = コマ番号 - 1)。
+ * リールは下方向に回転し index 0 → 1 → 2 … の順に中段を通過するため、
+ * 停止位置 p の窓は「上段 = index p+1 / 中段 = index p / 下段 = index p-1」となり、
+ * SPEC の表の見た目(コマ番号が大きいほど上)と窓の並びが一致する。
  */
 export const REEL_LAYOUT: readonly (readonly ReelSymbol[])[] = [
-  [R7, RP, BE, CH, WM, RP, BE, BAR, WM, RP, BE, CH, W7, RP, BE, WM, RP, BE, BAR, WM],
-  [RP, BE, WM, R7, RP, BE, CH, BAR, RP, BE, WM, W7, RP, BE, CH, BAR, RP, BE, WM, CH],
-  [BE, RP, CH, WM, BE, RP, R7, WM, BE, RP, BAR, WM, BE, RP, W7, WM, BE, RP, BAR, WM],
+  // 左リール(コマ 1 → 20)
+  [BE, RP, RP, BL, WM, BE, RP, CH, WB, WM, BE, RP, CH, BL, WM, BE, R7, RP, BB, WM],
+  // 中リール(コマ 1 → 20)
+  [WM, BE, R7, RP, BE, WM, BE, WB, RP, BE, CH, BE, RP, RP, BE, CH, BE, BB, RP, BE],
+  // 右リール(コマ 1 → 20)
+  [CH, WB, BE, RP, RP, CH, BL, BE, WM, RP, CH, R7, BE, WM, RP, CH, BB, BE, RP, RP],
 ];
 
 /**
@@ -83,9 +97,13 @@ export const LINE_ROLE_SYMBOL = {
 type LineRole = keyof typeof LINE_ROLE_SYMBOL;
 
 /**
- * 100% 引き込みが保証されるライン役(配列側で全リール 4 コマ以内配置。テストで保証)。
+ * 100% 引き込みが保証されるライン役。
  * これらは必ず 3 つ揃うため、左リールで窓内にチェリーが同時に見える停止位置も許容する
  * (表示判定はライン役が優先されるため誤ってチェリー入賞にはならない)。
+ *
+ * TODO(STEP 1c): 新配列では左リプレイの最大間隔が 6 コマのため、中段 1 ラインでは
+ * リプレイの 100% 引き込みが成立しない(5 ライン併用が前提。SPEC「3.」確定事項)。
+ * 5 ライン対応の停止制御書き直し時に前提ごと再設計する。
  */
 const GUARANTEED_LINE_ROLES: readonly LineRole[] = ['BELL', 'REPLAY'];
 
@@ -175,7 +193,7 @@ function roleLineSymbol(role: Role): ReelSymbol | undefined {
 /**
  * この停止位置が、停止済みリールと合わせて中段 3 つ揃いを完成させてしまうか。
  * 未停止リールが残っていれば後続の蹴飛ばしで回避できるため false。
- * 当選役の図柄以外の 3 つ揃い(他役・白7/チェリー/バー等の禁止出目)は違法扱い。
+ * 当選役の図柄以外の 3 つ揃い(他役・チェリー/バー/ブランク等の禁止出目)は違法扱い。
  */
 function completesIllegalLine(
   reel: ReelIndex,
@@ -198,7 +216,7 @@ function completesIllegalLine(
  *
  * 優先度: 当選役を引き込める位置 > それ以外(蹴飛ばし後) > スベリ最小。
  * 蹴飛ばし(除外)ルール:
- * - 非当選のライン役・禁止出目(白7/チェリー/バー揃い)を完成させる位置
+ * - 非当選のライン役・禁止出目(チェリー/バー/ブランク揃い)を完成させる位置
  * - 左リール: チェリー非当選時にチェリーが窓内に見える位置
  *   (ただし 100% 引き込み役の当選図柄を引き込む場合は許容)
  * - 左リール: 角チェリー当選時の中段チェリー / 中段チェリー当選時の角チェリー
