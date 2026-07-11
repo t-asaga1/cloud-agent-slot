@@ -26,7 +26,9 @@ import {
   type ReelSymbol,
   type StopPositions,
 } from './reel';
+import { calcPayout } from './payout';
 import { ROLES, type Role } from './roles';
+import type { LineId } from './reel';
 
 const ALL_POSITIONS = Array.from({ length: KOMA_COUNT }, (_, i) => i);
 
@@ -365,6 +367,219 @@ describe('出目判定 judgeDisplay / judgeDisplayDetail(5 ライン。新配列
   });
 });
 
+// ---------------------------------------------------------------------------
+// 停止制御 I(STEP 1c: ハズレ / リプレイ / 押し順ベルの網羅検証)
+// ---------------------------------------------------------------------------
+
+/** positions の出目で 3 つ揃いになっている [ライン, 図柄] を全列挙する */
+function alignedLines(positions: StopPositions): [LineId, ReelSymbol][] {
+  const out: [LineId, ReelSymbol][] = [];
+  for (const line of LINE_IDS) {
+    const [a, b, c] = lineSymbols(positions, line);
+    if (a === b && b === c) out.push([line, a]);
+  }
+  return out;
+}
+
+/** 全リールのスベリが MAX_SLIP 以内であることを検証(超過時は詳細つきで throw) */
+function assertSlipWithinLimit(
+  wonRole: Role,
+  order: (typeof PUSH_ORDERS)[number],
+  pushes: readonly [number, number, number],
+  positions: StopPositions,
+): void {
+  for (const reel of REEL_INDEXES) {
+    const slip = (positions[reel] - pushes[reel] + KOMA_COUNT) % KOMA_COUNT;
+    if (slip > MAX_SLIP) {
+      throw new Error(
+        `スベリ超過: role=${wonRole} order=${order} pushes=${pushes} reel=${reel} slip=${slip}`,
+      );
+    }
+  }
+}
+
+describe('停止制御 I(STEP 1c: 基本役 × 全 20^3 押下位置 × 押し順 6 通りの網羅検証)', () => {
+  it('ハズレ: 全押下位置・全押し順で 5 ラインの蹴飛ばしが可能(何も揃わず左窓チェリーも出ない)', () => {
+    // ROADMAP 記載のリスク早期検証: 最大スベリ 4 コマで 5 ライン全ての蹴飛ばしが
+    // 全押下位置で可能かは配列依存。不可能な押下位置があればここで検出される。
+    for (const order of PUSH_ORDERS) {
+      for (let p0 = 0; p0 < KOMA_COUNT; p0++) {
+        for (let p1 = 0; p1 < KOMA_COUNT; p1++) {
+          for (let p2 = 0; p2 < KOMA_COUNT; p2++) {
+            const pushes: [number, number, number] = [p0, p1, p2];
+            const { positions, displayed } = resolveSpin('NONE', pushes, order);
+            assertSlipWithinLimit('NONE', order, pushes, positions);
+            const aligned = alignedLines(positions);
+            if (aligned.length > 0) {
+              throw new Error(
+                `ハズレで図柄が揃った: order=${order} pushes=${pushes} positions=${positions} aligned=${JSON.stringify(aligned)}`,
+              );
+            }
+            if (windowAt(0, positions[0]).includes('CHERRY')) {
+              throw new Error(
+                `ハズレで左窓にチェリー: order=${order} pushes=${pushes} positions=${positions}`,
+              );
+            }
+            if (displayed !== 'NONE') {
+              throw new Error(
+                `ハズレの表示役不一致: order=${order} pushes=${pushes} displayed=${displayed}`,
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 【配列上の理論限界(要ユーザー確認・docs/HANDOVER.md 参照)】
+  // 左リールのリプレイは最大間隔 6 コマのため、左リールを「最後に」止める押し順
+  // ([中→右→左]・[右→中→左])では、先に止まる 2 リールが左の押下位置を知らずに
+  // 段を確定させる必要があり、どの停止戦略でも全押下位置をカバーできない
+  // (例: 中リール中段リプレイ固定でも、右リールは中段(左中段用)/上段(左下段用)/
+  // 下段(左上段用)のどれか 1 つしか選べず、左押下位置 11〜13 のいずれかが必ず漏れる)。
+  // 全停止戦略を探索した因果最適でも取りこぼし最小値は 134([中→右→左])/
+  // 135([右→中→左])/ 8000 で、本エンジンはこの理論最小値と一致する。
+  const REPLAY_UNAVOIDABLE_MISSES: Record<string, number> = {
+    '0,1,2': 0,
+    '0,2,1': 0,
+    '1,0,2': 0,
+    '2,0,1': 0,
+    '1,2,0': 134,
+    '2,1,0': 135,
+  };
+
+  it('リプレイ: 横・斜め併用で 100% 引き込み(左リールが最後の押し順のみ理論限界の取りこぼしを許容)', () => {
+    for (const order of PUSH_ORDERS) {
+      const leftFirst = order[0] === 0;
+      const leftLast = order[2] === 0;
+      let misses = 0;
+      for (let p0 = 0; p0 < KOMA_COUNT; p0++) {
+        for (let p1 = 0; p1 < KOMA_COUNT; p1++) {
+          for (let p2 = 0; p2 < KOMA_COUNT; p2++) {
+            const pushes: [number, number, number] = [p0, p1, p2];
+            const result = resolveSpin('REPLAY', pushes, order);
+            assertSlipWithinLimit('REPLAY', order, pushes, result.positions);
+            // リプレイ以外の図柄が同時に揃う禁止出目がない
+            const others = alignedLines(result.positions).filter(([, s]) => s !== 'REPLAY');
+            if (others.length > 0) {
+              throw new Error(
+                `リプレイと同時に他図柄が揃った: order=${order} pushes=${pushes} positions=${result.positions} aligned=${JSON.stringify(others)}`,
+              );
+            }
+            expect(result.bellSuccess).toBe(false);
+            if (result.displayed === 'REPLAY' && result.lines.length > 0) {
+              // 左窓チェリーとの同時表示は、チェリーを出さずにリプレイを窓内へ
+              // 引き込める代替停止位置が無い押下位置に限る(左第一停止時のみ判定可能)
+              if (leftFirst && windowAt(0, result.positions[0]).includes('CHERRY')) {
+                for (let slip = 0; slip <= MAX_SLIP; slip++) {
+                  const pos = (p0 + slip) % KOMA_COUNT;
+                  const window = windowAt(0, pos);
+                  if (!window.includes('CHERRY') && window.includes('REPLAY')) {
+                    throw new Error(
+                      `不要なチェリー同時表示: order=${order} pushes=${pushes} positions=${result.positions}(代替停止 ${pos} あり)`,
+                    );
+                  }
+                }
+              }
+              continue;
+            }
+            // --- 引き込み失敗ケースの検証 ---
+            if (!leftLast) {
+              throw new Error(
+                `リプレイ引き込み失敗: order=${order} pushes=${pushes} positions=${result.positions} displayed=${result.displayed}`,
+              );
+            }
+            // 左リールが最後の場合のみ許容。左窓チェリーなしのクリーンなハズレ目で、
+            // かつ最終停止(左)時点でどのスベリでも揃えられなかったことを検証する
+            if (windowAt(0, result.positions[0]).includes('CHERRY')) {
+              throw new Error(
+                `リプレイ取りこぼし時に左窓チェリー: order=${order} pushes=${pushes} positions=${result.positions}`,
+              );
+            }
+            for (let slip = 0; slip <= MAX_SLIP; slip++) {
+              const pos = (p0 + slip) % KOMA_COUNT;
+              const candidate: StopPositions = [pos, result.positions[1], result.positions[2]];
+              if (linesWithSymbol(candidate, 'REPLAY').length > 0) {
+                throw new Error(
+                  `左リールで引き込めたのに取りこぼした: order=${order} pushes=${pushes} positions=${result.positions}(代替停止 ${pos})`,
+                );
+              }
+            }
+            misses++;
+          }
+        }
+      }
+      // 取りこぼし数が因果最適(全停止戦略を探索した理論最小値)と一致する
+      expect(misses, `order=${order} の取りこぼし数`).toBe(
+        REPLAY_UNAVOIDABLE_MISSES[order.join(',')],
+      );
+    }
+  });
+
+  it('押し順ベル: 左第一停止=上段揃い 1 枚 / 中・右第一停止=斜め揃い 13 枚(全押下位置・全押し順)', () => {
+    for (const order of PUSH_ORDERS) {
+      const leftFirst = order[0] === 0;
+      for (let p0 = 0; p0 < KOMA_COUNT; p0++) {
+        for (let p1 = 0; p1 < KOMA_COUNT; p1++) {
+          for (let p2 = 0; p2 < KOMA_COUNT; p2++) {
+            const pushes: [number, number, number] = [p0, p1, p2];
+            const result = resolveSpin('BELL', pushes, order);
+            assertSlipWithinLimit('BELL', order, pushes, result.positions);
+            if (result.displayed !== 'BELL') {
+              throw new Error(
+                `ベル引き込み失敗: order=${order} pushes=${pushes} positions=${result.positions} displayed=${result.displayed}`,
+              );
+            }
+            const others = alignedLines(result.positions).filter(([, s]) => s !== 'BELL');
+            if (others.length > 0) {
+              throw new Error(
+                `ベルと同時に他図柄が揃った: order=${order} pushes=${pushes} positions=${result.positions} aligned=${JSON.stringify(others)}`,
+              );
+            }
+            const shapeOk = leftFirst
+              ? result.lines.length === 1 && result.lines[0] === 'TOP' && !result.bellSuccess
+              : result.lines.length === 1 &&
+                DIAGONAL_LINES.includes(result.lines[0]) &&
+                result.bellSuccess;
+            if (!shapeOk) {
+              throw new Error(
+                `ベルの停止形不一致: order=${order}(${leftFirst ? '左第一' : '変則押し'}) pushes=${pushes} positions=${result.positions} lines=${result.lines} bellSuccess=${result.bellSuccess}`,
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('resolveSpin の bellSuccess は calcPayout へ配線でき、押し順で 1 枚 / 13 枚が決まる', () => {
+    // 左第一停止(順押し)= 上段ベル 1 枚
+    const fail = resolveSpin('BELL', [0, 0, 0], [0, 1, 2]);
+    expect(fail.bellSuccess).toBe(false);
+    expect(calcPayout(fail.displayed, true, fail.bellSuccess).payout).toBe(1);
+    // 中・右第一停止(変則押し)= 斜めベル 13 枚
+    for (const order of PUSH_ORDERS.filter((o) => o[0] !== 0)) {
+      const success = resolveSpin('BELL', [0, 0, 0], order);
+      expect(success.bellSuccess).toBe(true);
+      expect(calcPayout(success.displayed, true, success.bellSuccess).payout).toBe(13);
+    }
+  });
+
+  it('resolveSpin の lines / bellSuccess は judgeDisplayDetail と一致する', () => {
+    for (const wonRole of ['NONE', 'REPLAY', 'BELL'] as const) {
+      for (const order of PUSH_ORDERS) {
+        for (let p = 0; p < KOMA_COUNT; p++) {
+          const result = resolveSpin(wonRole, [p, (p + 7) % 20, (p + 13) % 20], order);
+          const detail = judgeDisplayDetail(result.positions, wonRole);
+          expect(result.displayed).toBe(detail.role);
+          expect(result.lines).toEqual(detail.lines);
+          expect(result.bellSuccess).toBe(detail.bellSuccess);
+        }
+      }
+    }
+  });
+});
+
 /** テスト側で独立に計算した「期待される表示役」(旧・中段 1 ライン前提) */
 function expectedDisplay(wonRole: Role, pushes: readonly [number, number, number]): Role {
   if (wonRole === 'BELL' || wonRole === 'REPLAY') return wonRole; // 100% 引き込み
@@ -385,11 +600,12 @@ function expectedDisplay(wonRole: Role, pushes: readonly [number, number, number
   return 'NONE'; // ハズレ・チャンス目は何も揃わない
 }
 
-// TODO(STEP 1c〜1e): 旧・中段 1 ライン前提の停止制御網羅テスト。
-// Excel の新配列では前提(左リプレイの中段 100% 引き込み等)が成立しないため一時 skip。
-// 5 ライン対応の停止制御書き直し(1c: 基本役 / 1d: レア役 / 1e: リーチ目 + DDT)で
-// 新しい網羅テストへ置換し、1e で skip 残ゼロにすること(docs/ROADMAP.md 参照)。
-describe.skip('停止制御(全役 × 全 20^3 押下位置 × 全押し順の網羅検証)【旧 1 ライン前提・1c〜1e で置換】', () => {
+// TODO(STEP 1d〜1e): 旧・中段 1 ライン前提の停止制御網羅テスト。
+// 基本役(ハズレ / リプレイ / 押し順ベル)は STEP 1c の新網羅テストで置換済み。
+// レア役(チェリー / スイカ / チャンス目 / リーチ目)の停止制御は暫定実装のため、
+// 1d(レア役)・1e(リーチ目 + DDT)で新しい網羅テストへ置換し、
+// 1e で skip 残ゼロにすること(docs/ROADMAP.md 参照)。
+describe.skip('停止制御(全役 × 全 20^3 押下位置 × 全押し順の網羅検証)【旧 1 ライン前提・1d〜1e で置換】', () => {
   for (const wonRole of ROLES) {
     it(`当選役 ${wonRole}: スベリ 4 コマ以内で、期待どおりの表示役に停止する`, () => {
       for (const order of PUSH_ORDERS) {

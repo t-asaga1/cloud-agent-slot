@@ -6,18 +6,31 @@ import type { Role } from './roles';
  * 【STEP 1a 完了】図柄 8 種 + Excel 仕様の 20 コマ配列(docs/SPEC.md「3.」)へ差し替え済み。
  * 【STEP 1b 完了】表示判定(judgeDisplay / judgeDisplayDetail)を有効ライン 5 本
  * (上段・中段・下段・右下がり・右上がり。SPEC「3.」確定事項)対応へ書き直し済み。
+ * 【STEP 1c 完了】停止制御(resolveStop)を 5 ライン対応の新エンジンへ書き直し済み。
  *
- * 【注意・暫定】停止制御(resolveStop)は旧叩き台の中段 1 ライン方式のまま
- * (STEP 1c〜1e で 5 ライン対応へ書き直す。docs/ROADMAP.md 参照)。
- * このため新配列では以下が成立しない:
- * - 左リールのリプレイは最大間隔 6 コマで、中段 1 ラインの引き込みでは 100% 揃えられない
- *   (5 ライン(上下段・斜め)併用で 100% になる。SPEC「3.」確定事項)
- * - 押し順ベルの停止形(左=上段 1 枚 / 正解=斜め 13 枚)の作り分け
- * 旧配列前提の停止制御網羅テストは reel.test.ts で一時 skip している(1c〜1e で置換)。
- *
- * - 停止制御は「引き込み優先度による探索方式」:
- *   押下位置から最大 4 コマ先まで(計 5 候補)を探索し、
- *   当選役を揃える > 蹴飛ばし(非当選役を揃えない)の優先度で停止位置を決める。
+ * 【停止制御の方式(STEP 1c で選定)】「探索方式」を採用(役別停止テーブル方式は不採用)。
+ * - 各リール停止時にスベリ 0〜4 の 5 候補を評価し、
+ *   「その位置に止めたとき、残りリールが【どの押下位置・どの停止順でも】
+ *    許容出目に到達できるか」を再帰的に判定して選ぶ(guaranteedQuality。メモ化済み)。
+ * - 許容出目の分類(classifyFinal): 当選役の停止形完成(WIN)> 取りこぼし(LOSS)>
+ *   禁止出目(ILLEGAL = 非当選図柄の 3 つ揃い / チェリー非当選時の左窓チェリー等)。
+ * - テーブル方式にしなかった理由: 20^3 × 役 × 押し順のテーブルは手作成・保守が非現実的で、
+ *   探索方式なら配列変更時も網羅テスト(reel.test.ts)の再実行だけで正しさを担保できる。
+ * - SPEC「3.」リール挙動表との対応(1c 実装分):
+ *   - ハズレ: 5 ラインのいずれにも図柄を揃えず、左リール窓内にチェリーも出さない
+ *   - リプレイ: 横・斜め 5 ライン併用で全押下位置から 100% 引き込み(網羅テストで検証)。
+ *     【配列上の理論限界・要ユーザー確認】左リールを「最後に」止める押し順
+ *     ([中→右→左]・[右→中→左])のみ、左リプレイ最大間隔 6 コマの制約により
+ *     どの停止戦略でも 100% にできない(取りこぼし 134〜135 / 8000 押下位置が理論最小。
+ *     全停止戦略の因果最適探索で確認済み。本エンジンはこの最小値に一致し、
+ *     取りこぼし時はクリーンなハズレ目で停止する。reel.test.ts 参照)
+ *   - 押し順ベル: 左第一停止=上段揃い 1 枚 / 中・右第一停止=斜め揃い 13 枚
+ *     (第一停止リールは pushOrder 引数の先頭で判定)
+ * - レア役(チェリー / スイカ / チャンス目 / リーチ目)は暫定実装
+ *   (引き込めれば任意ラインへ引き込み、不可なら取りこぼし。STEP 1d〜1e で挙動を確定)。
+ * - 例外として、100% 引き込み役(ベル・リプレイ)の完成形と同時に左窓へチェリーが
+ *   見える停止は許容する(代替停止が無い押下位置があるため。表示判定はライン役優先)。
+ *   同品質の候補が複数あればチェリー非表示 > スベリ最小で選ぶ。
  * - チェリーは左リール限定で、角(上段・下段)=角チェリー / 中段=中段チェリー。
  * - 回転アニメーションは UI 層の責務。本モジュールは「押下位置 → 停止位置」の純関数のみ持つ。
  */
@@ -148,17 +161,6 @@ export const LINE_ROLE_SYMBOL = {
 } as const satisfies Partial<Record<Role, ReelSymbol>>;
 
 type LineRole = keyof typeof LINE_ROLE_SYMBOL;
-
-/**
- * 100% 引き込みが保証されるライン役。
- * これらは必ず 3 つ揃うため、左リールで窓内にチェリーが同時に見える停止位置も許容する
- * (表示判定はライン役が優先されるため誤ってチェリー入賞にはならない)。
- *
- * TODO(STEP 1c): 新配列では左リプレイの最大間隔が 6 コマのため、中段 1 ラインでは
- * リプレイの 100% 引き込みが成立しない(5 ライン併用が前提。SPEC「3.」確定事項)。
- * 5 ライン対応の停止制御書き直し時に前提ごと再設計する。
- */
-const GUARANTEED_LINE_ROLES: readonly LineRole[] = ['BELL', 'REPLAY'];
 
 function isLineRole(role: Role): role is LineRole {
   return role in LINE_ROLE_SYMBOL;
@@ -291,44 +293,220 @@ function roleLineSymbol(role: Role): ReelSymbol | undefined {
   return isLineRole(role) ? LINE_ROLE_SYMBOL[role] : undefined;
 }
 
+// ---------------------------------------------------------------------------
+// 停止制御(STEP 1c: 探索方式 + 到達保証の再帰評価)
+// ---------------------------------------------------------------------------
+
 /**
- * この停止位置が、停止済みリールと合わせて中段 3 つ揃いを完成させてしまうか。
- * 未停止リールが残っていれば後続の蹴飛ばしで回避できるため false。
- * 当選役の図柄以外の 3 つ揃い(他役・チェリー/バー/ブランク等の禁止出目)は違法扱い。
+ * 押し順ベルの目標停止形。
+ * 左第一停止 = 'TOP'(上段揃い 1 枚)/ 中・右第一停止 = 'DIAGONAL'(斜め揃い 13 枚)。
+ * SPEC「3.」リール挙動表。
  */
-function completesIllegalLine(
-  reel: ReelIndex,
-  position: number,
-  wonRole: Role,
-  stopped: readonly (number | undefined)[],
-): boolean {
-  const symbol = komaAt(reel, position);
-  for (const other of REEL_INDEXES) {
-    if (other === reel) continue;
-    const pos = stopped[other];
-    if (pos === undefined) return false;
-    if (komaAt(other, pos) !== symbol) return false;
+type BellTarget = 'TOP' | 'DIAGONAL';
+
+/** 全停止形の評価ランク(小さいほど良い。RANK_ILLEGAL は禁止出目) */
+const RANK_WIN = 0;
+/** 当選形完成だが左窓に非当選チェリーが同時表示(100% 引き込み役のみ許容) */
+const RANK_WIN_WITH_CHERRY = 1;
+/** 取りこぼし(何も揃えず左窓チェリーなしのクリーンなハズレ目) */
+const RANK_LOSS = 50;
+const RANK_ILLEGAL = Number.POSITIVE_INFINITY;
+
+/**
+ * 全リール停止後の出目を当選役に照らして評価する。
+ * - 非当選図柄の 3 つ揃い(どの有効ラインでも)は常に禁止出目(RANK_ILLEGAL)。
+ * - チェリー非当選時の左窓チェリーは、100% 引き込み役(ベル・リプレイ)の
+ *   完成形と同時のときのみ許容(RANK_WIN_WITH_CHERRY。表示判定はライン役優先)。
+ * - 押し順ベルは bellTarget の停止形(上段 or 斜め)以外での揃いを禁止出目とする。
+ * - レア役(スイカ / リーチ目 / チェリー)は「引き込めれば任意の有効ラインで WIN /
+ *   不可なら RANK_LOSS(取りこぼし)」の暫定実装(STEP 1d〜1e で挙動を確定)。
+ * - チャンス目は特定の停止形を持たない暫定のため、ハズレと同じクリーンなハズレ目を要求する。
+ */
+function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: BellTarget): number {
+  const wonSymbol = roleLineSymbol(wonRole);
+  const cherry = leftCherryState(positions[0]);
+
+  const wonLines: LineId[] = [];
+  for (const line of LINE_IDS) {
+    const [a, b, c] = lineSymbols(positions, line);
+    if (a !== b || b !== c) continue;
+    if (a !== wonSymbol) return RANK_ILLEGAL;
+    wonLines.push(line);
   }
-  return symbol !== roleLineSymbol(wonRole);
+
+  if (wonSymbol !== undefined) {
+    if (wonLines.length === 0) {
+      // 取りこぼし: 何も揃えず左窓にチェリーも出さない
+      return cherry === 'none' ? RANK_LOSS : RANK_ILLEGAL;
+    }
+    if (wonRole === 'BELL') {
+      const ok =
+        bellTarget === 'DIAGONAL'
+          ? wonLines.every((line) => DIAGONAL_LINES.includes(line))
+          : wonLines.length === 1 && wonLines[0] === 'TOP';
+      if (!ok) return RANK_ILLEGAL;
+    }
+    if (cherry === 'none') return RANK_WIN;
+    return wonRole === 'BELL' || wonRole === 'REPLAY' ? RANK_WIN_WITH_CHERRY : RANK_ILLEGAL;
+  }
+
+  // ライン役以外(チェリー / ハズレ / チャンス目)。ライン揃いなしは確認済み
+  if (wonRole === 'CHERRY_CORNER') {
+    if (cherry === 'corner') return RANK_WIN;
+    return cherry === 'none' ? RANK_LOSS : RANK_ILLEGAL;
+  }
+  if (wonRole === 'CHERRY_CENTER') {
+    if (cherry === 'center') return RANK_WIN;
+    return cherry === 'none' ? RANK_LOSS : RANK_ILLEGAL;
+  }
+  // ハズレ / チャンス目(暫定): クリーンなハズレ目のみ許容
+  return cherry === 'none' ? RANK_WIN : RANK_ILLEGAL;
+}
+
+function memoKey(
+  stopped: readonly (number | undefined)[],
+  remaining: readonly ReelIndex[],
+  wonRole: Role,
+  bellTarget: BellTarget | undefined,
+): string {
+  return `${wonRole}|${bellTarget ?? '-'}|${stopped.map((p) => p ?? 'x').join(',')}|${remaining.join('')}`;
+}
+
+const guaranteedRankMemo = new Map<string, number>();
+
+/**
+ * 「残りリールがどの押下位置で押されても(最悪ケース)、スベリ 0〜4 の選択(最善ケース)で
+ * 到達できる出目ランク」を再帰的に求める。タイミング目押しありのため、
+ * 未停止リールの押下位置は制御できない前提で蹴飛ばし可能性を保証する。
+ *
+ * @param stopped 各リールの停止位置(未停止は undefined)
+ * @param remaining 未停止リールの停止順
+ */
+function guaranteedRank(
+  stopped: readonly (number | undefined)[],
+  remaining: readonly ReelIndex[],
+  wonRole: Role,
+  bellTarget: BellTarget | undefined,
+): number {
+  const key = memoKey(stopped, remaining, wonRole, bellTarget);
+  const cached = guaranteedRankMemo.get(key);
+  if (cached !== undefined) return cached;
+
+  let result: number;
+  if (remaining.length === 0) {
+    result = classifyFinal(stopped as StopPositions, wonRole, bellTarget);
+  } else {
+    const next = remaining[0];
+    const rest = remaining.slice(1);
+    let worst = 0;
+    for (let push = 0; push < KOMA_COUNT && worst !== RANK_ILLEGAL; push++) {
+      let best = RANK_ILLEGAL;
+      for (let slip = 0; slip <= MAX_SLIP && best !== RANK_WIN; slip++) {
+        const nextStopped = stopped.slice();
+        nextStopped[next] = (push + slip) % KOMA_COUNT;
+        best = Math.min(best, guaranteedRank(nextStopped, rest, wonRole, bellTarget));
+      }
+      worst = Math.max(worst, best);
+    }
+    result = worst;
+  }
+  guaranteedRankMemo.set(key, result);
+  return result;
+}
+
+const expectedRankMemo = new Map<string, number>();
+
+/**
+ * 「残りリールの押下位置が一様ランダムで、以降の停止も本エンジンの方策
+ * (pickBestPosition)で選ばれる」と仮定したときの最終出目ランクの期待値(方策評価)。
+ * 到達保証ランク(最悪ケース)が同値の候補の優先付けに使う。
+ * 例: 中→右→左 の停止順のリプレイは、左リール(最大間隔 6 コマ)が最後に残るため
+ * どの停止位置でも最悪ケースは取りこぼしだが、テンパイ形を作れる位置のほうが
+ * 期待ランクが小さくなり、実際の押下位置で揃えられる率が最大化される。
+ * 取りこぼし許容役(スイカ / リーチ目 / チェリー)の引き込み優先もこの評価が担う。
+ */
+function expectedRank(
+  stopped: readonly (number | undefined)[],
+  remaining: readonly ReelIndex[],
+  wonRole: Role,
+  bellTarget: BellTarget | undefined,
+): number {
+  const key = memoKey(stopped, remaining, wonRole, bellTarget);
+  const cached = expectedRankMemo.get(key);
+  if (cached !== undefined) return cached;
+
+  let result: number;
+  if (remaining.length === 0) {
+    result = classifyFinal(stopped as StopPositions, wonRole, bellTarget);
+  } else {
+    const next = remaining[0];
+    const rest = remaining.slice(1);
+    let sum = 0;
+    for (let push = 0; push < KOMA_COUNT; push++) {
+      const position = pickBestPosition(stopped, next, push, rest, wonRole, bellTarget);
+      const nextStopped = stopped.slice();
+      nextStopped[next] = position;
+      sum += expectedRank(nextStopped, rest, wonRole, bellTarget);
+    }
+    result = sum / KOMA_COUNT;
+  }
+  expectedRankMemo.set(key, result);
+  return result;
+}
+
+/**
+ * リール reel を押下位置 push で止めるときの停止位置を選ぶ(停止方策の本体)。
+ * スベリ 0〜4 の 5 候補を次の優先度で評価する(小さいほど良い辞書式比較):
+ * 1. 到達保証ランク(guaranteedRank): 残りリールがどの押下位置でも禁止出目を回避でき、
+ *    可能なら当選形を完成できることの保証(最悪ケース評価)
+ * 2. 期待ランク(expectedRank): 最悪ケースが同値なら、実際の押下位置で
+ *    当選形を完成できる率が高い位置(テンパイ形の維持・引き込み優先)
+ * 3. スベリコマ数最小
+ */
+function pickBestPosition(
+  stopped: readonly (number | undefined)[],
+  reel: ReelIndex,
+  push: number,
+  remaining: readonly ReelIndex[],
+  wonRole: Role,
+  bellTarget: BellTarget | undefined,
+): number {
+  let bestPosition = push;
+  let bestGuaranteed = Number.POSITIVE_INFINITY;
+  let bestExpected = Number.POSITIVE_INFINITY;
+  for (let slip = 0; slip <= MAX_SLIP; slip++) {
+    const position = (push + slip) % KOMA_COUNT;
+    const nextStopped = stopped.slice();
+    nextStopped[reel] = position;
+    const guaranteed = guaranteedRank(nextStopped, remaining, wonRole, bellTarget);
+    const expected = expectedRank(nextStopped, remaining, wonRole, bellTarget);
+    if (
+      guaranteed < bestGuaranteed ||
+      (guaranteed === bestGuaranteed && expected < bestExpected)
+    ) {
+      bestGuaranteed = guaranteed;
+      bestExpected = expected;
+      bestPosition = position;
+    }
+  }
+  return bestPosition;
+}
+
+function bellTargetFor(wonRole: Role, pushOrder: PushOrder): BellTarget | undefined {
+  if (wonRole !== 'BELL') return undefined;
+  return pushOrder[0] === 0 ? 'TOP' : 'DIAGONAL';
 }
 
 /**
  * 1 リール分の停止位置を決定する(引き込み優先度探索)。
- *
- * 優先度: 当選役を引き込める位置 > それ以外(蹴飛ばし後) > スベリ最小。
- * 蹴飛ばし(除外)ルール:
- * - 非当選のライン役・禁止出目(チェリー/バー/ブランク揃い)を完成させる位置
- * - 左リール: チェリー非当選時にチェリーが窓内に見える位置
- *   (ただし 100% 引き込み役の当選図柄を引き込む場合は許容)
- * - 左リール: 角チェリー当選時の中段チェリー / 中段チェリー当選時の角チェリー
- * - 中・右リール: 左リールが最後に残る場合、非当選図柄の中段テンパイを作る位置。
- *   左リールはチェリー排除と併用するため蹴飛ばしの自由度が低く、テンパイを許すと
- *   蹴飛ばせない押下位置が生じる(例: リプレイテンパイ + 左押下位置 1)
+ * 候補評価の優先度は pickBestPosition 参照
+ * (到達保証ランク > 期待ランク > スベリコマ数最小)。
  *
  * @param reel 停止するリール(0=左, 1=中, 2=右)
  * @param pushPosition 押下位置(押下瞬間に中段にあるコマ番号)
  * @param wonRole 内部当選役(取りこぼし判定は judgeDisplay で行う)
  * @param stopped 停止済みリールの停止位置([左, 中, 右]、未停止は undefined)
+ * @param pushOrder 押し順(押し順ベルの停止形と残りリールの停止順の決定に使う)
  * @returns 停止位置(中段のコマ番号)
  */
 export function resolveStop(
@@ -336,70 +514,13 @@ export function resolveStop(
   pushPosition: number,
   wonRole: Role,
   stopped: readonly (number | undefined)[] = [undefined, undefined, undefined],
+  pushOrder: PushOrder = PUSH_ORDERS[0],
 ): number {
   const push = ((pushPosition % KOMA_COUNT) + KOMA_COUNT) % KOMA_COUNT;
-  const lineSymbol = roleLineSymbol(wonRole);
-  const cherryWon = wonRole === 'CHERRY_CORNER' || wonRole === 'CHERRY_CENTER';
-
-  // 左リール停止前に中・右で非当選図柄の中段テンパイを作らない(上記コメント参照)
-  let tenpaiAvoid: ReelSymbol | undefined;
-  if (reel !== 0 && stopped[0] === undefined) {
-    const other: ReelIndex = reel === 1 ? 2 : 1;
-    const otherPos = stopped[other];
-    if (otherPos !== undefined) {
-      const otherSymbol = komaAt(other, otherPos);
-      if (otherSymbol !== lineSymbol) tenpaiAvoid = otherSymbol;
-    }
-  }
-
-  let bestPosition: number | undefined;
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  for (let slip = 0; slip <= MAX_SLIP; slip++) {
-    const position = (push + slip) % KOMA_COUNT;
-    const symbol = komaAt(reel, position);
-    const cherry = reel === 0 ? leftCherryState(position) : 'none';
-
-    // --- 当選役を引き込める候補か ---
-    let wins = false;
-    if (lineSymbol !== undefined) {
-      wins = symbol === lineSymbol;
-    } else if (reel === 0 && wonRole === 'CHERRY_CORNER') {
-      wins = cherry === 'corner';
-    } else if (reel === 0 && wonRole === 'CHERRY_CENTER') {
-      wins = cherry === 'center';
-    }
-
-    // --- 蹴飛ばし(除外)判定 ---
-    if (reel === 0 && cherry !== 'none') {
-      if (cherryWon) {
-        if (wonRole === 'CHERRY_CORNER' && cherry === 'center') continue;
-        if (wonRole === 'CHERRY_CENTER' && cherry === 'corner') continue;
-      } else if (
-        !(wins && GUARANTEED_LINE_ROLES.includes(wonRole as LineRole))
-      ) {
-        // チェリー非当選時は原則チェリーを窓内に出さない。
-        // 例外: ベル・リプレイ当選図柄の引き込み(ライン役が必ず完成し表示判定で優先される)
-        continue;
-      }
-    }
-    if (tenpaiAvoid !== undefined && symbol === tenpaiAvoid) continue;
-    // 当選ライン役の完成は合法なのでチェック不要。それ以外は違法完成を蹴飛ばす
-    if (!(wins && lineSymbol !== undefined) && completesIllegalLine(reel, position, wonRole, stopped)) {
-      continue;
-    }
-
-    // --- 優先度スコア(小さいほど良い): 当選引き込み > 余計なチェリー非表示 > スベリ最小 ---
-    const score = (wins ? 0 : 100) + (wins && cherry !== 'none' ? 10 : 0) + slip;
-    if (score < bestScore) {
-      bestScore = score;
-      bestPosition = position;
-    }
-  }
-
-  // 探索方式では全候補除外は起こらない設計(網羅テストで保証)だが、
-  // 万一に備えビタ止まり(スベリ 0)にフォールバックする
-  return bestPosition !== undefined ? bestPosition : push;
+  const remaining = pushOrder.filter(
+    (r): r is ReelIndex => r !== reel && stopped[r] === undefined,
+  );
+  return pickBestPosition(stopped, reel, push, remaining, wonRole, bellTargetFor(wonRole, pushOrder));
 }
 
 export type PushOrder = readonly [ReelIndex, ReelIndex, ReelIndex];
@@ -419,6 +540,14 @@ export interface SpinResult {
   positions: StopPositions;
   /** 停止後の表示役(取りこぼし時は NONE) */
   displayed: Role;
+  /** 表示役が揃った有効ライン(ライン役以外は空) */
+  lines: LineId[];
+  /**
+   * 押し順ベルの払出区分(displayed が BELL のときのみ意味を持つ)。
+   * 斜め揃い = 押し順正解 13 枚 / 上段(横)揃い = 不正解 1 枚。
+   * calcPayout(displayed, betPaid, bellSuccess) へそのまま渡す。
+   */
+  bellSuccess: boolean;
 }
 
 /**
@@ -435,8 +564,14 @@ export function resolveSpin(
 ): SpinResult {
   const stopped: (number | undefined)[] = [undefined, undefined, undefined];
   for (const reel of pushOrder) {
-    stopped[reel] = resolveStop(reel, pushPositions[reel], wonRole, stopped);
+    stopped[reel] = resolveStop(reel, pushPositions[reel], wonRole, stopped, pushOrder);
   }
   const positions = stopped as StopPositions;
-  return { positions, displayed: judgeDisplay(positions, wonRole) };
+  const detail = judgeDisplayDetail(positions, wonRole);
+  return {
+    positions,
+    displayed: detail.role,
+    lines: detail.lines,
+    bellSuccess: detail.bellSuccess,
+  };
 }
