@@ -25,8 +25,15 @@ import type { Role } from './roles';
  *     (最大間隔 6 → 5 コマ)、全押し順で 100% 引き込み可能となった
  *   - 押し順ベル: 左第一停止=上段揃い 1 枚 / 中・右第一停止=斜め揃い 13 枚
  *     (第一停止リールは pushOrder 引数の先頭で判定)
- * - レア役(チェリー / スイカ / チャンス目 / リーチ目)は暫定実装
- *   (引き込めれば任意ラインへ引き込み、不可なら取りこぼし。STEP 1d〜1e で挙動を確定)。
+ *
+ * 【STEP 1d 完了】レア役(チェリー / スイカ / チャンス目)の停止制御を確定。
+ * - 角チェリー: 左リール上段 or 下段のチェリー停止(中段は禁止出目)。引き込めなければ取りこぼし
+ * - 中段チェリー: 左リール中段のチェリー停止(角は禁止出目)。引き込めなければ取りこぼし
+ * - 弱スイカ: 斜め優先で揃える(困難時は平行=横ライン)。取りこぼし許容
+ * - 強スイカ: 平行(横)優先で揃える(困難時は斜め)。取りこぼし許容
+ * - チャンス目: スイカをテンパイさせた上で揃えない「テンパイはずし目」を作る
+ *   (スイカの 3 つ揃いは禁止出目。テンパイを作れない押下位置はクリーンなハズレ目 = 取りこぼし)
+ * - リーチ目(7 揃い)のみ暫定実装のまま(STEP 1e で DDT と合わせて確定)。
  * - 例外として、100% 引き込み役(ベル・リプレイ)の完成形と同時に左窓へチェリーが
  *   見える停止は許容する(代替停止が無い押下位置があるため。表示判定はライン役優先)。
  *   同品質の候補が複数あればチェリー非表示 > スベリ最小で選ぶ。
@@ -155,6 +162,17 @@ export function linesWithSymbol(positions: StopPositions, symbol: ReelSymbol): L
   return LINE_IDS.filter((line) => lineSymbols(positions, line).every((s) => s === symbol));
 }
 
+/**
+ * スイカがいずれかの有効ラインでテンパイしているか
+ * (ライン上の 3 コマ中ちょうど 2 コマがスイカ = あと 1 図柄で揃う形)。
+ * チャンス目の停止形(スイカテンパイはずし目。SPEC「3.」挙動表)の判定に使う。
+ */
+export function watermelonTenpai(positions: StopPositions): boolean {
+  return LINE_IDS.some(
+    (line) => lineSymbols(positions, line).filter((s) => s === 'WATERMELON').length === 2,
+  );
+}
+
 /** ライン揃いで成立を表現する役 → 構成図柄 */
 export const LINE_ROLE_SYMBOL = {
   REPLAY: 'REPLAY',
@@ -220,8 +238,9 @@ const LINE_JUDGE_PRIORITY = ['REACH_ME', 'REPLAY', 'BELL'] as const;
  *   スイカ非当選時のスイカ揃いは表示役にしない(蹴飛ばしで発生しない前提)。
  * - チェリーはライン非依存で、左リール窓内のチェリーを判定する
  *   (中段=中段チェリー / 上下段=角チェリー)。ライン役が揃っていればそちらが優先。
- * - チャンス目は特定の停止形を持たない(暫定)ため、本関数は返さない。
- *   成立役としてのチャンス目は内部当選(drawRole の結果)側で扱う。
+ * - チャンス目の停止形は「スイカテンパイはずし目」(SPEC「3.」挙動表)。同型の出目は
+ *   ハズレ等でも出現し得るため、内部当選がチャンス目のときのみ CHANCE_ME を返す
+ *   (テンパイを作れなかった場合は NONE = 取りこぼし)。
  */
 export function judgeDisplayDetail(positions: StopPositions, wonRole: Role = 'NONE'): DisplayJudge {
   // 内部当選役がライン役なら、その図柄の揃いを最優先で採用する(弱・強スイカもここで確定)
@@ -243,7 +262,11 @@ export function judgeDisplayDetail(positions: StopPositions, wonRole: Role = 'NO
       return { role, lines, bellSuccess: role === 'BELL' && bellSuccessFromLines(lines) };
     }
   }
-  // ライン役なし → 左リール窓内のチェリー(ライン非依存)
+  // ライン役なし → チャンス目(内部当選時のみ。スイカテンパイはずし目が停止形)
+  if (wonRole === 'CHANCE_ME' && watermelonTenpai(positions)) {
+    return { role: 'CHANCE_ME', lines: [], bellSuccess: false };
+  }
+  // 左リール窓内のチェリー(ライン非依存)
   const cherry = leftCherryState(positions[0]);
   if (cherry === 'center') return { role: 'CHERRY_CENTER', lines: [], bellSuccess: false };
   if (cherry === 'corner') return { role: 'CHERRY_CORNER', lines: [], bellSuccess: false };
@@ -312,6 +335,12 @@ type BellTarget = 'TOP' | 'DIAGONAL';
 const RANK_WIN = 0;
 /** 当選形完成だが左窓に非当選チェリーが同時表示(100% 引き込み役のみ許容) */
 const RANK_WIN_WITH_CHERRY = 1;
+/**
+ * 当選形完成だが優先方向でない揃い(スイカの弱=斜め優先 / 強=平行優先。SPEC「3.」挙動表)。
+ * 取りこぼし(RANK_LOSS)よりは十分良い値にして、
+ * 「優先方向にこだわって取りこぼす」選択が起きないようにする。
+ */
+const RANK_WIN_FALLBACK = 2;
 /** 取りこぼし(何も揃えず左窓チェリーなしのクリーンなハズレ目) */
 const RANK_LOSS = 50;
 const RANK_ILLEGAL = Number.POSITIVE_INFINITY;
@@ -322,9 +351,17 @@ const RANK_ILLEGAL = Number.POSITIVE_INFINITY;
  * - チェリー非当選時の左窓チェリーは、100% 引き込み役(ベル・リプレイ)の
  *   完成形と同時のときのみ許容(RANK_WIN_WITH_CHERRY。表示判定はライン役優先)。
  * - 押し順ベルは bellTarget の停止形(上段 or 斜め)以外での揃いを禁止出目とする。
- * - レア役(スイカ / リーチ目 / チェリー)は「引き込めれば任意の有効ラインで WIN /
- *   不可なら RANK_LOSS(取りこぼし)」の暫定実装(STEP 1d〜1e で挙動を確定)。
- * - チャンス目は特定の停止形を持たない暫定のため、ハズレと同じクリーンなハズレ目を要求する。
+ * - スイカは弱=斜め優先 / 強=平行(横)優先(SPEC「3.」挙動表)。優先方向でない揃いは
+ *   RANK_WIN_FALLBACK として「揃えられるなら方向不問で揃える(取りこぼしよりよい)」を表す。
+ *   引き込めない押下位置は RANK_LOSS(取りこぼし許容)。
+ * - チェリーは左リール窓内の停止段で角(上・下段)/ 中段を作り分ける。当選した方の
+ *   停止段のみ WIN(もう一方の段は禁止出目)。引き込めない押下位置は RANK_LOSS。
+ * - チャンス目は「スイカテンパイはずし目」(スイカがテンパイし、かつ 3 つ揃いしない。
+ *   SPEC「3.」挙動表)を WIN とする。スイカの 3 つ揃いは非当選図柄として常に禁止のため
+ *   「引き込める位置でも引き込まない」は自動的に満たされる。テンパイを作れない
+ *   押下位置はクリーンなハズレ目(RANK_LOSS = 取りこぼし)。
+ * - リーチ目は「引き込めれば任意の有効ラインで WIN / 不可なら RANK_LOSS(取りこぼし)」の
+ *   暫定実装(STEP 1e で DDT と合わせて挙動を確定)。
  */
 function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: BellTarget): number {
   const wonSymbol = roleLineSymbol(wonRole);
@@ -350,6 +387,14 @@ function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: Bel
           : wonLines.length === 1 && wonLines[0] === 'TOP';
       if (!ok) return RANK_ILLEGAL;
     }
+    if (wonRole === 'WATERMELON_WEAK' || wonRole === 'WATERMELON_STRONG') {
+      // スイカの複数ライン同時揃いは配列上あり得ない(各リールのスイカ間隔 ≥ 2 のため
+      // 窓内に 2 個表示されない)= wonLines は常に 1 本
+      if (cherry !== 'none') return RANK_ILLEGAL;
+      const diagonal = DIAGONAL_LINES.includes(wonLines[0]);
+      const preferred = wonRole === 'WATERMELON_WEAK' ? diagonal : !diagonal;
+      return preferred ? RANK_WIN : RANK_WIN_FALLBACK;
+    }
     if (cherry === 'none') return RANK_WIN;
     return wonRole === 'BELL' || wonRole === 'REPLAY' ? RANK_WIN_WITH_CHERRY : RANK_ILLEGAL;
   }
@@ -363,7 +408,12 @@ function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: Bel
     if (cherry === 'center') return RANK_WIN;
     return cherry === 'none' ? RANK_LOSS : RANK_ILLEGAL;
   }
-  // ハズレ / チャンス目(暫定): クリーンなハズレ目のみ許容
+  if (wonRole === 'CHANCE_ME') {
+    // スイカテンパイはずし目(揃いなしは確認済み)。テンパイ不可なら取りこぼし
+    if (cherry !== 'none') return RANK_ILLEGAL;
+    return watermelonTenpai(positions) ? RANK_WIN : RANK_LOSS;
+  }
+  // ハズレ: クリーンなハズレ目のみ許容
   return cherry === 'none' ? RANK_WIN : RANK_ILLEGAL;
 }
 
