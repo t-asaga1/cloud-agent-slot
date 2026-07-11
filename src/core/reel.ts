@@ -4,13 +4,15 @@ import type { Role } from './roles';
  * リール配列と停止制御。
  *
  * 【STEP 1a 完了】図柄 8 種 + Excel 仕様の 20 コマ配列(docs/SPEC.md「3.」)へ差し替え済み。
+ * 【STEP 1b 完了】表示判定(judgeDisplay / judgeDisplayDetail)を有効ライン 5 本
+ * (上段・中段・下段・右下がり・右上がり。SPEC「3.」確定事項)対応へ書き直し済み。
  *
- * 【注意・暫定】停止制御(resolveStop / judgeDisplay)は旧叩き台の
- * 中段 1 ライン方式のまま(STEP 1b〜1e で 5 ライン対応へ書き直す。docs/ROADMAP.md 参照)。
+ * 【注意・暫定】停止制御(resolveStop)は旧叩き台の中段 1 ライン方式のまま
+ * (STEP 1c〜1e で 5 ライン対応へ書き直す。docs/ROADMAP.md 参照)。
  * このため新配列では以下が成立しない:
- * - 左リールのリプレイは最大間隔 6 コマで、中段 1 ラインでは 100% 引き込み不可
+ * - 左リールのリプレイは最大間隔 6 コマで、中段 1 ラインの引き込みでは 100% 揃えられない
  *   (5 ライン(上下段・斜め)併用で 100% になる。SPEC「3.」確定事項)
- * - 押し順ベルの停止形(左=上段 1 枚 / 正解=斜め 13 枚)は 5 ライン判定が前提
+ * - 押し順ベルの停止形(左=上段 1 枚 / 正解=斜め 13 枚)の作り分け
  * 旧配列前提の停止制御網羅テストは reel.test.ts で一時 skip している(1c〜1e で置換)。
  *
  * - 停止制御は「引き込み優先度による探索方式」:
@@ -85,7 +87,58 @@ export function windowAt(reel: ReelIndex, position: number): [ReelSymbol, ReelSy
   return [komaAt(reel, position + 1), komaAt(reel, position), komaAt(reel, position - 1)];
 }
 
-/** ライン揃いで成立を表現する役 → 構成図柄(暫定: 中段 1 ライン) */
+// ---------------------------------------------------------------------------
+// 有効ライン(SPEC「3.」確定事項: 横 3 本 + 斜め 2 本の 5 ライン)
+// ---------------------------------------------------------------------------
+
+/** 窓の段を停止位置からの相対コマ数で表す(+1 = 上段 / 0 = 中段 / -1 = 下段) */
+export type RowOffset = -1 | 0 | 1;
+
+export const LINE_IDS = ['TOP', 'MIDDLE', 'BOTTOM', 'DOWN_RIGHT', 'UP_RIGHT'] as const;
+
+/** 有効ライン ID(上段 / 中段 / 下段 / 右下がり / 右上がり) */
+export type LineId = (typeof LINE_IDS)[number];
+
+/**
+ * 有効ライン定義: 各ラインの [左, 中, 右] リールの段(RowOffset)。
+ * 窓 3 段 × 3 リールの座標系で、停止位置 p の窓は上段 = p+1 / 中段 = p / 下段 = p-1
+ * (REEL_LAYOUT のコマ番号規約コメント参照)。
+ */
+export const LINES: Record<LineId, readonly [RowOffset, RowOffset, RowOffset]> = {
+  /** 上段(横) */
+  TOP: [1, 1, 1],
+  /** 中段(横) */
+  MIDDLE: [0, 0, 0],
+  /** 下段(横) */
+  BOTTOM: [-1, -1, -1],
+  /** 右下がり(左上段 → 中中段 → 右下段) */
+  DOWN_RIGHT: [1, 0, -1],
+  /** 右上がり(左下段 → 中中段 → 右上段) */
+  UP_RIGHT: [-1, 0, 1],
+};
+
+/** 斜めの有効ライン(押し順ベル正解時の停止形 = 13 枚。SPEC「3.」挙動表) */
+export const DIAGONAL_LINES: readonly LineId[] = ['DOWN_RIGHT', 'UP_RIGHT'];
+
+/** 停止位置 positions のときにライン line 上へ表示される図柄 [左, 中, 右] */
+export function lineSymbols(
+  positions: StopPositions,
+  line: LineId,
+): [ReelSymbol, ReelSymbol, ReelSymbol] {
+  const offsets = LINES[line];
+  return [
+    komaAt(0, positions[0] + offsets[0]),
+    komaAt(1, positions[1] + offsets[1]),
+    komaAt(2, positions[2] + offsets[2]),
+  ];
+}
+
+/** 図柄 symbol が 3 つ揃いで表示されている有効ライン(揃いなしなら空配列) */
+export function linesWithSymbol(positions: StopPositions, symbol: ReelSymbol): LineId[] {
+  return LINE_IDS.filter((line) => lineSymbols(positions, line).every((s) => s === symbol));
+}
+
+/** ライン揃いで成立を表現する役 → 構成図柄 */
 export const LINE_ROLE_SYMBOL = {
   REPLAY: 'REPLAY',
   BELL: 'BELL',
@@ -123,29 +176,77 @@ function leftCherryState(position: number): 'none' | 'corner' | 'center' {
 export type StopPositions = [number, number, number];
 
 /**
- * 全リール停止後の表示役の判定。
- * - 中段ラインの 3 つ揃いを最優先で判定する。
+ * 押し順ベルの払出区分(payout.ts の bellSuccess)との対応。
+ * - 押し順正解(中・右第一停止)= 斜めライン揃い = 13 枚(bellSuccess: true)
+ * - 押し順不正解(左第一停止)= 上段(横)揃い = 1 枚(bellSuccess: false)
+ * 停止形の作り分けと payout への実配線は STEP 1c(SPEC「3.」挙動表)。
+ */
+export function bellSuccessFromLines(lines: readonly LineId[]): boolean {
+  return lines.some((line) => DIAGONAL_LINES.includes(line));
+}
+
+/** 表示役の判定結果(揃ったラインつき) */
+export interface DisplayJudge {
+  /** 表示役(取りこぼし・ハズレは NONE) */
+  role: Role;
+  /** role がライン役のとき、その図柄が揃った有効ライン(複数同時揃いあり)。それ以外は空 */
+  lines: LineId[];
+  /**
+   * 押し順ベルの払出区分(role が BELL のときのみ意味を持つ)。
+   * 斜め揃い = 押し順正解 13 枚 / 横揃い(上段等)= 不正解 1 枚(bellSuccessFromLines 参照)
+   */
+  bellSuccess: boolean;
+}
+
+/**
+ * ライン役の判定優先順位(当選役の図柄を除く固定順)。
+ * 複数役が別ラインで同時に揃った場合も表示役は 1 役のみ(払出は 1 役分)で、
+ * 内部当選役の図柄 > リーチ目(7 揃い)> リプレイ > ベル の順に採用する。
+ * 停止制御(1c〜1e)は非当選役の揃いを蹴飛ばすため、通常この優先順位は
+ * 同一役の複数ライン揃いのみで働くが、判定の決定性のため順序を定義しておく。
+ */
+const LINE_JUDGE_PRIORITY = ['REACH_ME', 'REPLAY', 'BELL'] as const;
+
+/**
+ * 全リール停止後の表示役の判定(有効 5 ライン)。
+ * - 5 ラインを走査してリプレイ / ベル / スイカ / 赤7(リーチ目)の 3 つ揃いを判定する。
  * - スイカ揃いは弱・強で同一図柄のため、内部当選役(wonRole)で弱・強を区別する。
- * - ライン役がなければ左リールのチェリー(中段=中段チェリー / 角=角チェリー)を判定する。
+ *   スイカ非当選時のスイカ揃いは表示役にしない(蹴飛ばしで発生しない前提)。
+ * - チェリーはライン非依存で、左リール窓内のチェリーを判定する
+ *   (中段=中段チェリー / 上下段=角チェリー)。ライン役が揃っていればそちらが優先。
  * - チャンス目は特定の停止形を持たない(暫定)ため、本関数は返さない。
  *   成立役としてのチャンス目は内部当選(drawRole の結果)側で扱う。
  */
-export function judgeDisplay(positions: StopPositions, wonRole: Role = 'NONE'): Role {
-  const line = REEL_INDEXES.map((r) => komaAt(r, positions[r]));
-  if (line[0] === line[1] && line[1] === line[2]) {
-    const symbol = line[0];
-    if (symbol === 'REPLAY') return 'REPLAY';
-    if (symbol === 'BELL') return 'BELL';
-    if (symbol === 'SEVEN_RED') return 'REACH_ME';
-    if (symbol === 'WATERMELON') {
-      // 弱・強は同一図柄。当選役側で区別する(非当選時の揃いは蹴飛ばしで発生しない)
-      if (wonRole === 'WATERMELON_WEAK' || wonRole === 'WATERMELON_STRONG') return wonRole;
+export function judgeDisplayDetail(positions: StopPositions, wonRole: Role = 'NONE'): DisplayJudge {
+  // 内部当選役がライン役なら、その図柄の揃いを最優先で採用する(弱・強スイカもここで確定)
+  if (isLineRole(wonRole)) {
+    const lines = linesWithSymbol(positions, LINE_ROLE_SYMBOL[wonRole]);
+    if (lines.length > 0) {
+      return {
+        role: wonRole,
+        lines,
+        bellSuccess: wonRole === 'BELL' && bellSuccessFromLines(lines),
+      };
     }
   }
+  // 非当選図柄の揃い(固定優先順位。スイカは弱・強を区別できないため対象外)
+  for (const role of LINE_JUDGE_PRIORITY) {
+    if (role === wonRole) continue;
+    const lines = linesWithSymbol(positions, LINE_ROLE_SYMBOL[role]);
+    if (lines.length > 0) {
+      return { role, lines, bellSuccess: role === 'BELL' && bellSuccessFromLines(lines) };
+    }
+  }
+  // ライン役なし → 左リール窓内のチェリー(ライン非依存)
   const cherry = leftCherryState(positions[0]);
-  if (cherry === 'center') return 'CHERRY_CENTER';
-  if (cherry === 'corner') return 'CHERRY_CORNER';
-  return 'NONE';
+  if (cherry === 'center') return { role: 'CHERRY_CENTER', lines: [], bellSuccess: false };
+  if (cherry === 'corner') return { role: 'CHERRY_CORNER', lines: [], bellSuccess: false };
+  return { role: 'NONE', lines: [], bellSuccess: false };
+}
+
+/** 全リール停止後の表示役のみを返す(詳細は judgeDisplayDetail) */
+export function judgeDisplay(positions: StopPositions, wonRole: Role = 'NONE'): Role {
+  return judgeDisplayDetail(positions, wonRole).role;
 }
 
 /** 押下位置から MAX_SLIP コマ以内で図柄 symbol を中段に引き込めるか */
