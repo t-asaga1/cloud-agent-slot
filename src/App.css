@@ -55,6 +55,14 @@
   min-height: 0;
 }
 
+/* 揃った有効ライン上の図柄(判定結果 lines / チェリーの窓内表示)を強調 */
+.reel-window img.hit {
+  outline: 3px solid #facc15;
+  outline-offset: -3px;
+  background: rgba(250, 204, 21, 0.22);
+  border-radius: 6px;
+}
+
 /* --- 操作パネル --- */
 
 .side h2 {
