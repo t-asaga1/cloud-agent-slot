@@ -33,7 +33,22 @@ import type { Role } from './roles';
  * - 強スイカ: 平行(横)優先で揃える(困難時は斜め)。取りこぼし許容
  * - チャンス目: スイカをテンパイさせた上で揃えない「テンパイはずし目」を作る
  *   (スイカの 3 つ揃いは禁止出目。テンパイを作れない押下位置はクリーンなハズレ目 = 取りこぼし)
- * - リーチ目(7 揃い)のみ暫定実装のまま(STEP 1e で DDT と合わせて確定)。
+ * 【STEP 1e 完了】リーチ目(7 揃い)の停止制御と DDT(左リール黒バー狙い)を確定。
+ * - リーチ目: 「狙えば揃う」= 3 リールすべて赤7 を中段へ引き込める押下位置
+ *   (赤7 の 0〜4 コマ手前 = 各リール 5/20 箇所。isSevenAimedPush)で押せば、
+ *   必ずいずれかの有効ラインに 7 揃い(網羅テストで全 5^3 × 押し順 6 通りを検証)。
+ *   実現方法: 候補評価に「目押し保証ランク(aimedRank)」を追加(pickBestPosition 参照)。
+ *   残りリールが「狙って」押される前提での最悪ケースを評価し、先に止まるリールが
+ *   7 を後続リールとライン構成できない段へ置いてしまう選択を防ぐ。
+ * - 目押しを外した(引き込めない位置で押した)場合は取りこぼし
+ *   (代替リーチ目停止なし・払出なし = クリーンなハズレ目。SPEC 回答 14)。
+ * - DDT(左リール黒バー狙い。SPEC「3.」確定事項): 到達保証・目押し保証・期待ランクが
+ *   同値の候補間で「黒バーを窓内のできるだけ下段寄りに止める」選好(ddtScore)を追加。
+ *   ハズレ・リプレイ・取りこぼし時は黒バー狙い(押下位置 14〜19)で黒バーが下段付近に
+ *   停止し、スイカ成立時はスイカ(コマ 15・20 = 黒バー周辺)を引き込んで揃うため察知できる。
+ *   チェリー成立時は、チェリー(コマ 13)を窓内へ引き込める押下位置(≦ 13)なら
+ *   チェリー停止で察知できる。※ 押下位置 14〜19 では左チェリーが物理的に窓内へ
+ *   届かないため取りこぼし(= 黒バー停止のまま)になる(最大 4 コマスベリの制約)。
  * - 例外として、100% 引き込み役(ベル・リプレイ)の完成形と同時に左窓へチェリーが
  *   見える停止は許容する(代替停止が無い押下位置があるため。表示判定はライン役優先)。
  *   同品質の候補が複数あればチェリー非表示 > スベリ最小で選ぶ。
@@ -315,6 +330,23 @@ export function canReachCenterCherry(pushPosition: number): boolean {
   return false;
 }
 
+/**
+ * 各リールで赤7 を中段へ引き込める「狙った」押下位置(赤7 の 0〜4 コマ手前)。
+ * 赤7 は各リール 1 個のため各リールちょうど 5 箇所。
+ * リーチ目の「狙えば揃う」保証(SPEC「3.」挙動表・回答 14)の前提となる押下位置。
+ */
+const SEVEN_AIMED_PUSHES: readonly (readonly number[])[] = [0, 1, 2].map((reel) =>
+  Array.from({ length: KOMA_COUNT }, (_, p) => p).filter((p) =>
+    canReach(reel as ReelIndex, p, 'SEVEN_RED'),
+  ),
+);
+
+/** 押下位置が「赤7 を狙った」(目押し成功の)位置か。外れなら取りこぼし許容(SPEC 回答 14) */
+export function isSevenAimedPush(reel: ReelIndex, pushPosition: number): boolean {
+  const p = ((pushPosition % KOMA_COUNT) + KOMA_COUNT) % KOMA_COUNT;
+  return SEVEN_AIMED_PUSHES[reel].includes(p);
+}
+
 /** 当選役 role がライン揃いで使う図柄(ライン役でなければ undefined) */
 function roleLineSymbol(role: Role): ReelSymbol | undefined {
   return isLineRole(role) ? LINE_ROLE_SYMBOL[role] : undefined;
@@ -360,8 +392,9 @@ const RANK_ILLEGAL = Number.POSITIVE_INFINITY;
  *   SPEC「3.」挙動表)を WIN とする。スイカの 3 つ揃いは非当選図柄として常に禁止のため
  *   「引き込める位置でも引き込まない」は自動的に満たされる。テンパイを作れない
  *   押下位置はクリーンなハズレ目(RANK_LOSS = 取りこぼし)。
- * - リーチ目は「引き込めれば任意の有効ラインで WIN / 不可なら RANK_LOSS(取りこぼし)」の
- *   暫定実装(STEP 1e で DDT と合わせて挙動を確定)。
+ * - リーチ目は「引き込めればいずれかの有効ラインで 7 揃い = WIN / 不可なら
+ *   RANK_LOSS(取りこぼし = クリーンなハズレ目。代替リーチ目停止なし。SPEC 回答 14)」。
+ *   「狙えば揃う」の保証は aimedRank(目押し保証ランク)が担う(STEP 1e)。
  */
 function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: BellTarget): number {
   const wonSymbol = roleLineSymbol(wonRole);
@@ -468,6 +501,55 @@ function guaranteedRank(
   return result;
 }
 
+const aimedRankMemo = new Map<string, number>();
+
+/**
+ * リーチ目の「狙えば揃う」保証(STEP 1e。SPEC「3.」挙動表・回答 14)。
+ * guaranteedRank の亜種で、残りリールの押下位置を「全 20 箇所」ではなく
+ * 「赤7 を狙った位置(SEVEN_AIMED_PUSHES = 各リール 5 箇所)」に限った最悪ケース評価。
+ *
+ * リーチ目はどのリールも赤7 が 1 個しかなく全押下位置からの引き込みが不可能なため、
+ * guaranteedRank は候補間で差がつかない(常に取りこぼしが最悪ケース)。
+ * 一方で「プレイヤーが 3 リールとも赤7 を狙う」前提なら、先に止まるリールが
+ * 7 を適切な段へ置けば必ずいずれかの有効ラインで 7 揃いにできる。
+ * この保証を候補選択(pickBestPosition)の第 2 キーとして担うのが本関数。
+ *
+ * 再帰中の候補は、guaranteedRank が禁止出目(RANK_ILLEGAL)になる停止位置を除外する
+ * (実際の停止方策は guaranteedRank を最優先で選ぶため、その挙動と整合させる)。
+ */
+function aimedRank(
+  stopped: readonly (number | undefined)[],
+  remaining: readonly ReelIndex[],
+  wonRole: Role,
+): number {
+  const key = memoKey(stopped, remaining, wonRole, undefined);
+  const cached = aimedRankMemo.get(key);
+  if (cached !== undefined) return cached;
+
+  let result: number;
+  if (remaining.length === 0) {
+    result = classifyFinal(stopped as StopPositions, wonRole, undefined);
+  } else {
+    const next = remaining[0];
+    const rest = remaining.slice(1);
+    let worst = 0;
+    for (const push of SEVEN_AIMED_PUSHES[next]) {
+      if (worst === RANK_ILLEGAL) break;
+      let best = RANK_ILLEGAL;
+      for (let slip = 0; slip <= MAX_SLIP && best !== RANK_WIN; slip++) {
+        const nextStopped = stopped.slice();
+        nextStopped[next] = (push + slip) % KOMA_COUNT;
+        if (guaranteedRank(nextStopped, rest, wonRole, undefined) === RANK_ILLEGAL) continue;
+        best = Math.min(best, aimedRank(nextStopped, rest, wonRole));
+      }
+      worst = Math.max(worst, best);
+    }
+    result = worst;
+  }
+  aimedRankMemo.set(key, result);
+  return result;
+}
+
 const expectedRankMemo = new Map<string, number>();
 
 /**
@@ -508,13 +590,33 @@ function expectedRank(
 }
 
 /**
+ * DDT(左リール黒バー狙い。SPEC「3.」確定事項)の停止位置選好スコア(小さいほど良い)。
+ * 左リールの停止候補について「黒バーを窓内のできるだけ下段寄りに表示する」を表す:
+ * 下段 = 0 / 中段 = 1 / 上段 = 2 / 窓外 = 3。
+ * 黒バーは左リール 1 個(コマ 19)のため、黒バー狙い(押下位置がコマ 19 の手前付近)の
+ * ときだけ候補間で差がつき、それ以外の押下位置では全候補が同値(= 選好は働かない)。
+ * 上位の評価(到達保証・目押し保証・期待ランク)が同値の候補間でのみ働くため、
+ * 引き込み・蹴飛ばしの正しさには影響しない(網羅テストの固定値で回帰検証)。
+ */
+function ddtScore(reel: ReelIndex, position: number): number {
+  if (reel !== 0) return 0;
+  if (komaAt(0, position - 1) === 'BAR_BLACK') return 0; // 下段
+  if (komaAt(0, position) === 'BAR_BLACK') return 1; // 中段
+  if (komaAt(0, position + 1) === 'BAR_BLACK') return 2; // 上段
+  return 3;
+}
+
+/**
  * リール reel を押下位置 push で止めるときの停止位置を選ぶ(停止方策の本体)。
  * スベリ 0〜4 の 5 候補を次の優先度で評価する(小さいほど良い辞書式比較):
  * 1. 到達保証ランク(guaranteedRank): 残りリールがどの押下位置でも禁止出目を回避でき、
  *    可能なら当選形を完成できることの保証(最悪ケース評価)
- * 2. 期待ランク(expectedRank): 最悪ケースが同値なら、実際の押下位置で
+ * 2. 目押し保証ランク(aimedRank。リーチ目のみ): 残りリールが赤7 を狙って押される
+ *    前提での最悪ケース評価(「狙えば揃う」の保証。SPEC 回答 14)
+ * 3. 期待ランク(expectedRank): 上位が同値なら、実際の押下位置で
  *    当選形を完成できる率が高い位置(テンパイ形の維持・引き込み優先)
- * 3. スベリコマ数最小
+ * 4. DDT 選好(ddtScore): 左リールの黒バーをできるだけ下段寄りに表示
+ * 5. スベリコマ数最小
  */
 function pickBestPosition(
   stopped: readonly (number | undefined)[],
@@ -525,20 +627,33 @@ function pickBestPosition(
   bellTarget: BellTarget | undefined,
 ): number {
   let bestPosition = push;
-  let bestGuaranteed = Number.POSITIVE_INFINITY;
-  let bestExpected = Number.POSITIVE_INFINITY;
+  let bestKey: [number, number, number, number] = [
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+  ];
   for (let slip = 0; slip <= MAX_SLIP; slip++) {
     const position = (push + slip) % KOMA_COUNT;
     const nextStopped = stopped.slice();
     nextStopped[reel] = position;
     const guaranteed = guaranteedRank(nextStopped, remaining, wonRole, bellTarget);
-    const expected = expectedRank(nextStopped, remaining, wonRole, bellTarget);
+    const key: [number, number, number, number] = [
+      guaranteed,
+      wonRole === 'REACH_ME' && guaranteed !== RANK_ILLEGAL
+        ? aimedRank(nextStopped, remaining, wonRole)
+        : 0,
+      expectedRank(nextStopped, remaining, wonRole, bellTarget),
+      ddtScore(reel, position),
+    ];
     if (
-      guaranteed < bestGuaranteed ||
-      (guaranteed === bestGuaranteed && expected < bestExpected)
+      key[0] < bestKey[0] ||
+      (key[0] === bestKey[0] &&
+        (key[1] < bestKey[1] ||
+          (key[1] === bestKey[1] &&
+            (key[2] < bestKey[2] || (key[2] === bestKey[2] && key[3] < bestKey[3])))))
     ) {
-      bestGuaranteed = guaranteed;
-      bestExpected = expected;
+      bestKey = key;
       bestPosition = position;
     }
   }
