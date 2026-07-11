@@ -60,13 +60,15 @@ interface LeverAction {
   won: Role;
   positions: StopPositions;
   displayed: Role;
+  /** 押し順ベルの払出区分(斜め揃い = 13 枚 / 上段揃い = 1 枚)。resolveSpin の判定結果 */
+  bellSuccess: boolean;
 }
 
 type Action = LeverAction | { type: 'RESET' };
 
 function reducer(prev: PlayState, action: Action): PlayState {
   if (action.type === 'RESET') return INITIAL_STATE;
-  const result = calcPayout(action.displayed, !prev.nextBetFree);
+  const result = calcPayout(action.displayed, !prev.nextBetFree, action.bellSuccess);
   const game = prev.game + 1;
   const medals = prev.medals + result.net;
   const log: GameLog = {
@@ -102,12 +104,12 @@ function App() {
       rng.nextInt(20),
       rng.nextInt(20),
     ];
-    const { positions, displayed } = resolveSpin(won, pushes);
+    const { positions, displayed, bellSuccess } = resolveSpin(won, pushes);
     if (won === 'REACH_ME') playSe(SE.bonus);
     else if (isRareRole(won)) playSe(SE.rare);
-    else if (calcPayout(displayed, true).payout > 0) playSe(SE.payout);
+    else if (calcPayout(displayed, true, bellSuccess).payout > 0) playSe(SE.payout);
     else playSe(SE.reelStop);
-    dispatch({ type: 'LEVER', won, positions, displayed });
+    dispatch({ type: 'LEVER', won, positions, displayed, bellSuccess });
   };
 
   const onStageChange = (next: StageId) => {
