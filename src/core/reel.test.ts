@@ -1,18 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DIAGONAL_LINES,
   KOMA_COUNT,
+  LINES,
+  LINE_IDS,
   LINE_ROLE_SYMBOL,
   MAX_SLIP,
   PUSH_ORDERS,
   REEL_INDEXES,
   REEL_LAYOUT,
   REEL_SYMBOLS,
+  bellSuccessFromLines,
   canReach,
   canReachCenterCherry,
   canReachCleanOnLeft,
   canReachCornerCherry,
   judgeDisplay,
+  judgeDisplayDetail,
   komaAt,
+  lineSymbols,
+  linesWithSymbol,
   resolveSpin,
   windowAt,
   type ReelIndex,
@@ -167,7 +174,7 @@ describe('リール配列(Excel 仕様 SPEC「3.」の 20 コマ配列の検算)
   });
 });
 
-describe('表示窓と出目判定(中段 1 ライン。5 ライン化は STEP 1b)', () => {
+describe('表示窓と有効ライン定義(横 3 + 斜め 2 の 5 ライン。SPEC「3.」確定事項)', () => {
   it('windowAt は上段・中段・下段の順で返す(停止位置=中段、index p+1 が上段)', () => {
     // 左リール停止位置 3(コマ4=ブランク): 上段=コマ5(スイカ)、中段=コマ4(ブランク)、下段=コマ3(リプレイ)
     expect(windowAt(0, 3)).toEqual(['WATERMELON', 'BLANK', 'REPLAY']);
@@ -182,23 +189,179 @@ describe('表示窓と出目判定(中段 1 ライン。5 ライン化は STEP 1
     expect(komaAt(2, 11)).toBe('SEVEN_RED'); // 右コマ 12
   });
 
-  it('中段 3 つ揃いのライン役を判定する', () => {
-    // 左コマ1=ベル, 中コマ2=ベル, 右コマ3=ベル
-    expect(judgeDisplay([0, 1, 2])).toBe('BELL');
-    // 左コマ2=リプレイ, 中コマ4=リプレイ, 右コマ4=リプレイ
-    expect(judgeDisplay([1, 3, 3])).toBe('REPLAY');
-    // 左コマ17=赤7, 中コマ3=赤7, 右コマ12=赤7 → リーチ目(暫定表現)
-    expect(judgeDisplay([16, 2, 11])).toBe('REACH_ME');
-    // スイカ揃いは当選役で弱・強を区別: 左コマ5, 中コマ1, 右コマ9
-    expect(judgeDisplay([4, 0, 8], 'WATERMELON_WEAK')).toBe('WATERMELON_WEAK');
-    expect(judgeDisplay([4, 0, 8], 'WATERMELON_STRONG')).toBe('WATERMELON_STRONG');
+  it('有効ラインは 5 本(上段・中段・下段・右下がり・右上がり)で座標定義が正しい', () => {
+    expect(LINE_IDS).toHaveLength(5);
+    expect(LINES.TOP).toEqual([1, 1, 1]);
+    expect(LINES.MIDDLE).toEqual([0, 0, 0]);
+    expect(LINES.BOTTOM).toEqual([-1, -1, -1]);
+    expect(LINES.DOWN_RIGHT).toEqual([1, 0, -1]); // 左上段 → 中中段 → 右下段
+    expect(LINES.UP_RIGHT).toEqual([-1, 0, 1]); // 左下段 → 中中段 → 右上段
+    expect(DIAGONAL_LINES).toEqual(['DOWN_RIGHT', 'UP_RIGHT']);
   });
 
-  it('左リールのチェリーを角・中段で判定する', () => {
+  it('lineSymbols は各ライン上の図柄 [左, 中, 右] を返す', () => {
+    // 停止位置 [4, 3, 1]: 窓は 左[BE/WM/BL] 中[BE/RP/R7] 右[BE/WB/CH](上段/中段/下段)
+    const positions: StopPositions = [4, 3, 1];
+    expect(lineSymbols(positions, 'TOP')).toEqual(['BELL', 'BELL', 'BELL']);
+    expect(lineSymbols(positions, 'MIDDLE')).toEqual(['WATERMELON', 'REPLAY', 'BAR_WHITE']);
+    expect(lineSymbols(positions, 'BOTTOM')).toEqual(['BLANK', 'SEVEN_RED', 'CHERRY']);
+    expect(lineSymbols(positions, 'DOWN_RIGHT')).toEqual(['BELL', 'REPLAY', 'CHERRY']);
+    expect(lineSymbols(positions, 'UP_RIGHT')).toEqual(['BLANK', 'REPLAY', 'BELL']);
+    // 位置は mod 20 で循環する(下段 = 停止位置 0 の index 19)
+    expect(lineSymbols([0, 0, 0], 'BOTTOM')).toEqual([komaAt(0, 19), komaAt(1, 19), komaAt(2, 19)]);
+  });
+
+  it('linesWithSymbol は図柄が 3 つ揃いになっている有効ラインを列挙する', () => {
+    expect(linesWithSymbol([4, 3, 1], 'BELL')).toEqual(['TOP']);
+    expect(linesWithSymbol([4, 3, 1], 'REPLAY')).toEqual([]);
+    // 停止位置 [1, 12, 3]: リプレイが上段 + 中段の 2 ライン同時揃い
+    expect(linesWithSymbol([1, 12, 3], 'REPLAY')).toEqual(['TOP', 'MIDDLE']);
+  });
+});
+
+describe('出目判定 judgeDisplay / judgeDisplayDetail(5 ライン。新配列の実座標)', () => {
+  it('横ライン(上段・中段・下段)の 3 つ揃いを判定する', () => {
+    // 上段ベル: 左コマ6・中コマ5・右コマ3 が上段(停止位置 = 中段のコマ番号 - 1)
+    expect(judgeDisplayDetail([4, 3, 1], 'BELL')).toEqual({
+      role: 'BELL',
+      lines: ['TOP'],
+      bellSuccess: false, // 上段(横)揃い = 押し順不正解 1 枚
+    });
+    // 中段ベル: 左コマ1・中コマ2・右コマ3
+    expect(judgeDisplayDetail([0, 1, 2], 'BELL')).toEqual({
+      role: 'BELL',
+      lines: ['MIDDLE'],
+      bellSuccess: false,
+    });
+    // 中段リプレイ: 左コマ2・中コマ4・右コマ4
+    expect(judgeDisplay([1, 3, 3])).toBe('REPLAY');
+    // 下段リプレイ: 左コマ2・中コマ4・右コマ5 が下段(停止位置 index = 下段のコマ番号)
+    expect(judgeDisplayDetail([2, 4, 5], 'REPLAY')).toEqual({
+      role: 'REPLAY',
+      lines: ['BOTTOM'],
+      bellSuccess: false,
+    });
+  });
+
+  it('斜めライン(右下がり・右上がり)の 3 つ揃いを判定する', () => {
+    // 右下がりベル: 左上段コマ11・中中段コマ7・右下段コマ8
+    expect(judgeDisplayDetail([9, 6, 8], 'BELL')).toEqual({
+      role: 'BELL',
+      lines: ['DOWN_RIGHT'],
+      bellSuccess: true, // 斜め揃い = 押し順正解 13 枚
+    });
+    // 右上がりベル: 左下段コマ1・中中段コマ5・右上段コマ3
+    expect(judgeDisplayDetail([1, 4, 1], 'BELL')).toEqual({
+      role: 'BELL',
+      lines: ['UP_RIGHT'],
+      bellSuccess: true,
+    });
+    // 右上がりスイカ: 左下段コマ5・中中段コマ1・右上段コマ9(弱・強は当選役で区別)
+    expect(judgeDisplay([5, 0, 7], 'WATERMELON_WEAK')).toBe('WATERMELON_WEAK');
+    expect(judgeDisplay([5, 0, 7], 'WATERMELON_STRONG')).toBe('WATERMELON_STRONG');
+    // 右下がり 7 揃い: 左上段コマ17・中中段コマ3・右下段コマ12 → リーチ目
+    expect(judgeDisplayDetail([15, 2, 12], 'REACH_ME')).toEqual({
+      role: 'REACH_ME',
+      lines: ['DOWN_RIGHT'],
+      bellSuccess: false,
+    });
+  });
+
+  it('中段 7 揃い(左コマ17・中コマ3・右コマ12)はリーチ目', () => {
+    expect(judgeDisplay([16, 2, 11], 'REACH_ME')).toBe('REACH_ME');
+    // 非当選でも 7 揃いはリーチ目扱い(停止制御が非当選時の 7 揃いを蹴飛ばす前提)
+    expect(judgeDisplay([16, 2, 11])).toBe('REACH_ME');
+  });
+
+  it('中段スイカ揃い(左コマ5・中コマ1・右コマ9)は当選役で弱・強を区別する', () => {
+    expect(judgeDisplay([4, 0, 8], 'WATERMELON_WEAK')).toBe('WATERMELON_WEAK');
+    expect(judgeDisplay([4, 0, 8], 'WATERMELON_STRONG')).toBe('WATERMELON_STRONG');
+    // スイカ非当選時のスイカ揃いは表示役にしない(蹴飛ばしで発生しない前提)
+    expect(judgeDisplay([4, 0, 8])).toBe('NONE');
+  });
+
+  it('同一役の複数ライン同時揃いは全ラインを列挙する(表示役・払出は 1 役分)', () => {
+    // 停止位置 [1, 12, 3]: リプレイが上段 + 中段の 2 ライン同時揃い(下段にはベルも揃う)
+    expect(judgeDisplayDetail([1, 12, 3], 'REPLAY')).toEqual({
+      role: 'REPLAY',
+      lines: ['TOP', 'MIDDLE'],
+      bellSuccess: false,
+    });
+  });
+
+  it('複数役が別ラインで同時に揃った場合は 当選役 > リーチ目 > リプレイ > ベル の優先順位', () => {
+    // 停止位置 [16, 2, 3]: 上段リプレイ + 下段ベルの同時揃い(実配列で構成可能な出目)
+    expect(lineSymbols([16, 2, 3], 'TOP')).toEqual(['REPLAY', 'REPLAY', 'REPLAY']);
+    expect(lineSymbols([16, 2, 3], 'BOTTOM')).toEqual(['BELL', 'BELL', 'BELL']);
+    // 当選役の図柄を最優先で採用する
+    expect(judgeDisplay([16, 2, 3], 'REPLAY')).toBe('REPLAY');
+    expect(judgeDisplayDetail([16, 2, 3], 'BELL')).toEqual({
+      role: 'BELL',
+      lines: ['BOTTOM'],
+      bellSuccess: false,
+    });
+    // 当選役の図柄がなければ固定優先順位(リプレイ > ベル)
+    expect(judgeDisplay([16, 2, 3])).toBe('REPLAY');
+    expect(judgeDisplay([16, 2, 3], 'CHANCE_ME')).toBe('REPLAY');
+  });
+
+  it('左リールのチェリーはライン非依存で判定する(中段=中段チェリー / 上下段=角チェリー)', () => {
     // 左コマ8=チェリーが中段 → 中段チェリー(他リールはライン不成立の位置)
-    expect(judgeDisplay([7, 0, 2] as StopPositions)).toBe('CHERRY_CENTER');
+    expect(judgeDisplayDetail([7, 0, 2], 'CHERRY_CENTER')).toEqual({
+      role: 'CHERRY_CENTER',
+      lines: [],
+      bellSuccess: false,
+    });
     // 左停止位置 8(中段=コマ9 白バー)の下段=コマ8(チェリー)→ 角チェリー
     expect(judgeDisplay([8, 0, 2] as StopPositions)).toBe('CHERRY_CORNER');
+    // 左停止位置 6(中段=コマ7 リプレイ)の上段=コマ8(チェリー)→ 角チェリー
+    expect(judgeDisplay([6, 0, 2] as StopPositions)).toBe('CHERRY_CORNER');
+  });
+
+  it('ライン役が揃っていれば左リール窓内のチェリーより優先する', () => {
+    // 停止位置 [6, 3, 4]: 中段リプレイ揃い + 左リール上段にチェリー(コマ8)
+    expect(windowAt(0, 6)[0]).toBe('CHERRY');
+    expect(judgeDisplayDetail([6, 3, 4], 'REPLAY')).toEqual({
+      role: 'REPLAY',
+      lines: ['MIDDLE'],
+      bellSuccess: false,
+    });
+    expect(judgeDisplay([6, 3, 4])).toBe('REPLAY');
+  });
+
+  it('どのラインにも揃いがなく左リールにチェリーもなければ NONE', () => {
+    // 停止位置 [3, 6, 6]: 窓は 左[WM/BL/RP] 中[WB/BE/WM] 右[BE/BL/CH]で全ライン不揃い
+    expect(judgeDisplayDetail([3, 6, 6])).toEqual({ role: 'NONE', lines: [], bellSuccess: false });
+  });
+
+  it('bellSuccessFromLines: 斜め揃い = 13 枚(true)/ 横のみ = 1 枚(false)', () => {
+    expect(bellSuccessFromLines(['DOWN_RIGHT'])).toBe(true);
+    expect(bellSuccessFromLines(['UP_RIGHT'])).toBe(true);
+    expect(bellSuccessFromLines(['TOP'])).toBe(false);
+    expect(bellSuccessFromLines(['MIDDLE'])).toBe(false);
+    expect(bellSuccessFromLines(['BOTTOM'])).toBe(false);
+    expect(bellSuccessFromLines(['TOP', 'UP_RIGHT'])).toBe(true);
+    expect(bellSuccessFromLines([])).toBe(false);
+  });
+
+  it('全停止位置で judgeDisplay と judgeDisplayDetail の役が一致する(整合性)', () => {
+    for (const wonRole of ['NONE', 'REPLAY', 'BELL', 'WATERMELON_WEAK'] as const) {
+      for (const p0 of ALL_POSITIONS) {
+        for (const p1 of ALL_POSITIONS) {
+          for (const p2 of ALL_POSITIONS) {
+            const positions: StopPositions = [p0, p1, p2];
+            const detail = judgeDisplayDetail(positions, wonRole);
+            expect(judgeDisplay(positions, wonRole)).toBe(detail.role);
+            // ライン役なら lines が空でない・チェリー/NONE なら空
+            const isLineRole =
+              detail.role !== 'NONE' &&
+              detail.role !== 'CHERRY_CORNER' &&
+              detail.role !== 'CHERRY_CENTER';
+            expect(detail.lines.length > 0).toBe(isLineRole);
+          }
+        }
+      }
+    }
   });
 });
 
