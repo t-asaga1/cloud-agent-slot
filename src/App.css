@@ -49,9 +49,24 @@
 
 .reel-window {
   position: absolute;
-  display: grid;
-  grid-template-rows: 1fr 1fr 1fr;
+  overflow: hidden;
   background: #111;
+}
+
+/*
+ * コマ帯(STEP 3b): 窓 3 コマ + 上下はみ出し各 1 コマの計 5 コマを縦に並べ、
+ * translateY(連続位置の小数部 × 1 コマ)で下方向へ連続スクロールさせる。
+ * 高さ 5/3 = 166.667%、上へ 1 コマ(33.333%)はみ出して配置する。
+ */
+.reel-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -33.3333%;
+  height: 166.6667%;
+  display: grid;
+  grid-template-rows: repeat(5, 1fr);
+  will-change: transform;
 }
 
 .reel-window img {
@@ -69,10 +84,10 @@
   border-radius: 6px;
 }
 
-/* 回転中のリール窓(簡易表示 = コマ送り + ぼかし。滑らかなスクロールは STEP 3b) */
+/* 回転中・スベリ中のリール窓(縦方向のモーションブラー風ぼかし) */
 .reel-window.reel-spinning img {
-  filter: blur(2px);
-  opacity: 0.8;
+  filter: blur(1px);
+  opacity: 0.85;
 }
 
 /* 押し順ナビの仮表示(リール窓上。本表示は STEP 3c) */

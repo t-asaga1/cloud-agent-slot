@@ -46,11 +46,18 @@ import {
   finishSpin,
   isAllStopped,
   pressStop,
-  spinningPosition,
   startSpin,
-  SPIN_MS_PER_KOMA,
   type SpinCycle,
 } from './ui/gameCycle';
+import {
+  continuousPosition,
+  isSlipDone,
+  planSlip,
+  reelStrip,
+  slipPosition,
+  STRIP_KOMA,
+  type SlipAnim,
+} from './ui/reelAnimation';
 
 const ROLE_LABELS: Record<Role, string> = {
   REPLAY: 'リプレイ',
@@ -301,15 +308,30 @@ function reducer(prev: PlayState, action: Action): PlayState {
   };
 }
 
+/** 停止ボタン押下後のスベリアニメーション(押下時刻 + 計画。表示専用) */
+interface ReelSlip {
+  anim: SlipAnim;
+  pressAt: number;
+}
+
 /**
- * 遊技サイクル(STEP 3a)の UI 状態。
+ * 遊技サイクル(STEP 3a・3b)の UI 状態。
  * IDLE = レバー待ち(前ゲームの出目を表示)/ SPINNING = 回転中(停止ボタン受付)。
- * 回転中の各リールの表示位置は「回転開始位置 + 経過時間」から求める
- * (`spinningPosition`。開始位置 = 前ゲームの停止位置で連続性を保つ)。
+ * 回転中の各リールの表示位置は「回転開始位置 + 経過時間」の連続位置
+ * (`continuousPosition`。開始位置 = 前ゲームの停止位置で連続性を保つ)。
+ * 停止ボタン押下後は `slips[reel]` のスベリアニメーション(押下瞬間の連続位置 →
+ * 停止位置。最大 4 コマ ≤ 150ms)で停止し、押下位置の判定はその floor
+ * (= `spinningPosition` と同値)を使うため見た目とロジックのコマが一致する。
  */
 type SpinUi =
   | { mode: 'IDLE' }
-  | { mode: 'SPINNING'; cycle: SpinCycle; startPositions: StopPositions; startAt: number };
+  | {
+      mode: 'SPINNING';
+      cycle: SpinCycle;
+      startPositions: StopPositions;
+      startAt: number;
+      slips: readonly (ReelSlip | undefined)[];
+    };
 
 /** オート消化の押し順セレクト: AUTO = 打ち方ポリシー連動(通常 = 左第一 / ナビ中のベル = ナビ) */
 type PushOrderSelect = 'AUTO' | number;
@@ -336,13 +358,20 @@ function App() {
   const navi = isNaviActive(play.gameState);
   const spinning = spinUi.mode === 'SPINNING';
 
-  // 回転中はコマ送り表示のため一定間隔で再描画する(滑らかなスクロールは 3b)
+  // 回転中は requestAnimationFrame で毎フレーム再描画する(連続スクロール描画 = STEP 3b)
   const [, forceTick] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     if (!spinning) return;
-    const id = setInterval(forceTick, SPIN_MS_PER_KOMA);
-    return () => clearInterval(id);
+    let raf = requestAnimationFrame(function loop() {
+      forceTick();
+      raf = requestAnimationFrame(loop);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [spinning]);
+
+  // 最終リールのスベリ完了を待って 1G を締めるタイマー(リセット時に破棄)
+  const finishTimerRef = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(finishTimerRef.current), []);
 
   /** 全停止 → 表示判定 → advanceGame → レバー待ちへ(1G の締め) */
   const finishGame = (cycle: SpinCycle) => {
@@ -372,22 +401,28 @@ function App() {
       cycle: startSpin(won),
       startPositions: play.positions,
       startAt: performance.now(),
+      slips: [undefined, undefined, undefined],
     });
   };
 
-  /** 停止ボタン: 押下瞬間に中段にあるコマ = 押下位置で 1 リール停止。押した順 = 押し順 */
+  /**
+   * 停止ボタン: 押下瞬間に中段にあるコマ = 押下位置で 1 リール停止。押した順 = 押し順。
+   * 押下位置は描画と同じ連続位置の floor(= `spinningPosition` と同値)で取得し、
+   * 停止位置までのスベリをアニメーション(`planSlip`)で見せる。
+   * 全リール停止後は最終リールのスベリ完了を待ってから 1G を締める。
+   */
   const onStop = (reel: ReelIndex) => {
     if (spinUi.mode !== 'SPINNING' || spinUi.cycle.stopped[reel] !== undefined) return;
     playSe(SE.reelStop);
-    const pushPosition = spinningPosition(
-      spinUi.startPositions[reel],
-      performance.now() - spinUi.startAt,
-    );
-    const cycle = pressStop(spinUi.cycle, reel, pushPosition);
+    const pressAt = performance.now();
+    const fromPosition = continuousPosition(spinUi.startPositions[reel], pressAt - spinUi.startAt);
+    const cycle = pressStop(spinUi.cycle, reel, Math.floor(fromPosition));
+    const anim = planSlip(fromPosition, cycle.stopped[reel] ?? 0);
+    const slips = spinUi.slips.slice();
+    slips[reel] = { anim, pressAt };
+    setSpinUi({ ...spinUi, cycle, slips });
     if (isAllStopped(cycle)) {
-      finishGame(cycle);
-    } else {
-      setSpinUi({ ...spinUi, cycle });
+      finishTimerRef.current = window.setTimeout(() => finishGame(cycle), anim.durationMs);
     }
   };
 
@@ -455,16 +490,31 @@ function App() {
 
   const onReset = () => {
     setAutoPlay(false);
+    window.clearTimeout(finishTimerRef.current);
     setSpinUi({ mode: 'IDLE' });
     dispatch({ type: 'RESET', gameState: initGameState(rng) });
   };
 
-  /** 現在の表示位置(停止中 = 前ゲームの出目 / 回転中 = 経過時間から算出) */
+  // 描画に使う現在時刻(回転中は rAF で毎フレーム再レンダーされる)
+  const now = performance.now();
+
+  /**
+   * 現在の表示位置(連続位置。小数コマ)。
+   * 停止中 = 前ゲームの出目 / 回転中 = 経過時間から算出 /
+   * 停止ボタン押下後 = スベリアニメーション(完了後は停止位置に固定)
+   */
   const displayPosition = (reel: ReelIndex): number => {
     if (spinUi.mode === 'IDLE') return play.positions[reel];
-    const stopped = spinUi.cycle.stopped[reel];
-    if (stopped !== undefined) return stopped;
-    return spinningPosition(spinUi.startPositions[reel], performance.now() - spinUi.startAt);
+    const slip = spinUi.slips[reel];
+    if (slip) return slipPosition(slip.anim, now - slip.pressAt);
+    return continuousPosition(spinUi.startPositions[reel], now - spinUi.startAt);
+  };
+
+  /** リールが視覚的に動いているか(回転中 or スベリ中。ぼかし表示に使う) */
+  const isReelMoving = (reel: ReelIndex): boolean => {
+    if (spinUi.mode !== 'SPINNING') return false;
+    const slip = spinUi.slips[reel];
+    return slip === undefined || !isSlipDone(slip.anim, now - slip.pressAt);
   };
 
   // 出目ハイライトは全停止中のみ(回転中は消す)
@@ -481,12 +531,12 @@ function App() {
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3a)</h1>
+      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3b)</h1>
       <p className="note">
         レバーオン(Space)で役抽せん + 全リール回転、停止ボタン(Z・X・C)で 1 リールずつ停止
         (押下瞬間に中段にあるコマ = 押下位置、押した順 = 押し順)。全停止で表示判定・払出を行い、
-        ステートマシン(<code>advanceGame</code>)が 1G 進む。回転表示はコマ送りの簡易版
-        (滑らかなスクロールとスベリの視覚化は STEP 3b)。
+        ステートマシン(<code>advanceGame</code>)が 1G 進む。リールは連続スクロール描画
+        (750ms/周)で、停止ボタン押下から停止位置までのスベリ(最大 4 コマ)も回転が継続して見える。
       </p>
 
       <div className="layout">
@@ -508,22 +558,30 @@ function App() {
             />
             {REEL_WINDOW_RECTS.map((rect, reel) => {
               const reelIndex = reel as ReelIndex;
-              const isReelSpinning =
-                spinUi.mode === 'SPINNING' && spinUi.cycle.stopped[reelIndex] === undefined;
+              const moving = isReelMoving(reelIndex);
+              // コマ帯(窓 3 コマ + 上下 1 コマ)を連続位置ぶんだけ下へずらして描画する。
+              // offset 1 コマ = 帯高さの 1/5(STRIP_KOMA)。key を floor 位置にすることで
+              // コマ境界ごとに帯が入れ替わり、translateY は常に 0〜1 コマ分に収まる
+              const strip = reelStrip(reelIndex, displayPosition(reelIndex));
               return (
                 <div
                   key={reel}
-                  className={isReelSpinning ? 'reel-window reel-spinning' : 'reel-window'}
+                  className={moving ? 'reel-window reel-spinning' : 'reel-window'}
                   style={rectToPercent(rect)}
                 >
-                  {windowAt(reelIndex, displayPosition(reelIndex)).map((symbol, row) => (
-                    <img
-                      key={row}
-                      className={hitRows[reel].has(row) ? 'hit' : undefined}
-                      src={SYMBOL_IMAGES[symbol]}
-                      alt={symbol}
-                    />
-                  ))}
+                  <div
+                    className="reel-strip"
+                    style={{ transform: `translateY(${(strip.offset * 100) / STRIP_KOMA}%)` }}
+                  >
+                    {strip.symbols.map((symbol, i) => (
+                      <img
+                        key={i}
+                        className={!moving && hitRows[reel].has(i - 1) ? 'hit' : undefined}
+                        src={SYMBOL_IMAGES[symbol]}
+                        alt={symbol}
+                      />
+                    ))}
+                  </div>
                 </div>
               );
             })}
