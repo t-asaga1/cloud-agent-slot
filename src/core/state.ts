@@ -1,4 +1,10 @@
-import { drawInitialBackground, type Background, type BackgroundTrigger } from './background';
+import {
+  BACKGROUND_ELAPSED_GAMES,
+  drawBackgroundTransition,
+  drawInitialBackground,
+  type Background,
+  type BackgroundTrigger,
+} from './background';
 import { drawFakeOmen, drawInitialMode, drawModeTransition, type Mode } from './mode';
 import {
   drawOmenGames,
@@ -40,9 +46,8 @@ import type { Role } from './roles';
  *    2c が発火する = 確定 19・21(d)。優先順位・30G カウンタは確定 24・25)
  * 6. ゲーム数・差枚・背景経過 G の集計(本ファイル)
  *
- * 2b 時点の実装範囲: 1〜4・6(前兆管理 = 偽前兆突入・前兆スケジュール・連続演出・偽→本書き換え・解決)。
- * 5(背景移行)は 2c、AT の進行(スロット 4 の AT 部分)は 2d。連続演出成功時の AT 突入は
- * スタブ(`atStubPhase`。継続率抽せん・セット進行は 2d)。
+ * 2c 時点の実装範囲: 1〜6(2b = 前兆管理、2c = 背景移行)。AT の進行(スロット 4 の AT 部分)は 2d。
+ * 連続演出成功時の AT 突入はスタブ(`atStubPhase`。継続率抽せん・セット進行は 2d)。
  *
  * # 前兆タイムラインの実装規約(2b で確定。確定 18〜23 準拠)
  *
@@ -66,6 +71,33 @@ import type { Role } from './roles';
  * - `initGameState` で初期モードが本前兆(0.0132)の場合はその場で本前兆スケジュールを抽せんし、
  *   最初のゲームが前兆 1G 目になる(「当せん」= 初期抽せんと解釈。背景は HONZENCHO 用の
  *   初期テーブルで抽せん済みのため契機 4 の予約はしない)。
+ *
+ * # 背景移行の実装規約(2c で確定。確定 24・25 準拠)
+ *
+ * - スロット 5 で発火するのは「ゲーム開始時点の予約」= `state.pendingBackgroundTrigger`
+ *   (契機 2/3/4)。発火と同時に消化し、スロット 3・4 がこのゲームで設定した新予約が
+ *   次ゲームの発火対象になる(例: 連続演出失敗(FAKE_OMEN_FAIL 予約)の次ゲームで新たに
+ *   偽前兆へ当せんした場合、このゲームで FAKE_OMEN_FAIL を発火しつつ FAKE_OMEN_NEXT を
+ *   次ゲームへ予約する)。
+ * - 優先順位: 予約契機(2/3/4)> 30G 経過(契機 1 = ELAPSED)(確定 25)。同一ゲームで
+ *   重なった場合は予約契機のみ抽せんし、カウンタリセットで 30G 側も消化される。
+ *   予約契機同士の衝突は構造上起こらない(予約スロットは 1 つで、同一ゲームに 2 つの
+ *   予約を設定する分岐が存在しない)。
+ * - 契機 1(ELAPSED)は「このゲームが通常時(ゲーム開始・終了ともフェーズ NORMAL)」の
+ *   ときのみ有効: 前兆中(偽・本・連続演出。当せんゲーム・解決ゲームを含む)は停止 =
+ *   確定 25、AT・エンディング中は背景移行自体が停止 = 確定 11。判定は
+ *   `backgroundGames + 1 >= BACKGROUND_ELAPSED_GAMES`(このゲームが同一背景 30G 目以降。
+ *   停止期間中にカウンタが 30 を超えて持ち越された場合も次の通常ゲームで発火する)。
+ * - 背景移行抽せんを実施したら、結果が自背景(= 維持)でもカウンタをリセット(確定 24)。
+ *   `BACKGROUND_CHANGE` イベントは背景が実際に変わったときのみ発行する。
+ * - 抽せんに使う滞在モードは当ゲームのモード移行(スロット 2)後の値。偽→本書き換えと
+ *   契機 2 の発火が同一ゲームで重なった稀ケース(偽前兆当せんの次ゲームで本前兆へ移行)は、
+ *   モード HONZENCHO に契機 2 のテーブルが存在しないため背景維持(乱数消費なし)で
+ *   カウンタのみリセットする(実装解釈。背景の前兆感は契機 2 発火予定だった演出上の穴に
+ *   なるが、極めて稀なうえ確定 21(d) の「書き換えで背景を動かさない」とも整合)。
+ * - AT 中(上位含む)・エンディング中に予約契機は存在し得ない(予約の設定元はすべて
+ *   通常フェーズか連続演出の解決で、いずれも次ゲームに消化されるため)。AT 終了時の
+ *   モード・背景再抽せん(2d)では `backgroundGames` を 0 へリセットすること。
  */
 
 /** AT の階層(通常 AT / 上位 AT)。確定 12 */
@@ -144,16 +176,16 @@ export interface GameState {
   background: Background;
   /**
    * 同一背景の経過ゲーム数(30G 契機 = `BACKGROUND_ELAPSED_GAMES` 用)。
-   * 背景移行抽せんの実施時にリセット(自背景維持でもリセット = 確定 24)。
-   * 発火・リセットの配線は 2c(2a では毎 G インクリメントのみ)。
+   * 背景移行抽せんの実施ゲームで 0 へリセット(自背景維持でもリセット = 確定 24)、
+   * それ以外は毎 G インクリメント。AT 終了時の背景再抽せん(2d)でもリセットすること。
    */
   backgroundGames: number;
   /** 現在のフェーズ(通常 / 前兆 / 連続演出 / AT / エンディング) */
   phase: Phase;
   /**
    * 「次ゲーム」で効く背景移行契機の予約(確定 19)。
-   * 2b が偽前兆当せん(FAKE_OMEN_NEXT)・本前兆移行(HONZENCHO_NEXT)・
-   * 連続演出失敗(FAKE_OMEN_FAIL)で設定し、2c が次ゲーム冒頭で発火・クリアする。
+   * スロット 3・4 が偽前兆当せん(FAKE_OMEN_NEXT)・本前兆移行(HONZENCHO_NEXT)・
+   * 連続演出失敗(FAKE_OMEN_FAIL)で設定し、次ゲームのスロット 5 が発火・消化する。
    * 偽→本書き換え時は HONZENCHO_NEXT を予約しない(確定 21(d))。
    */
   pendingBackgroundTrigger: BackgroundTrigger | null;
@@ -180,9 +212,8 @@ export interface GameInput {
 /**
  * 発生イベント(UI の演出表示・テスト検証用)。
  * 2a: MODE_CHANGE / HONZENCHO_ENTER。2b: FAKE_OMEN_ENTER / OMEN_REWRITE /
- * RENZOKU_START / RENZOKU_RESULT。
+ * RENZOKU_START / RENZOKU_RESULT。2c: BACKGROUND_CHANGE。
  * 以後のサブステップでユニオンへ追加予定(骨格は変えない):
- * - 2c: BACKGROUND_CHANGE(背景移行。契機付き)
  * - 2d: AT_START / AT_SET_CONTINUE / V_STOCK_GAIN / UPPER_AT_ENTER / ENDING_START / AT_END
  */
 export type GameEvent =
@@ -218,6 +249,16 @@ export type GameEvent =
       kind: OmenKind;
       renzoku: RenzokuKind;
       success: boolean;
+    }
+  | {
+      /**
+       * 背景移行(確定 24・25)。抽せんで背景が実際に変わったときのみ発行
+       * (自背景維持のときはイベントなし。カウンタリセットは維持でも行う)。
+       */
+      type: 'BACKGROUND_CHANGE';
+      trigger: BackgroundTrigger;
+      from: Background;
+      to: Background;
     };
 
 /** `advanceGame` の結果。`state` + `events` + このゲームのエコー(演出層・集計用) */
@@ -290,8 +331,8 @@ function modeLotteryActive(phase: Phase): boolean {
 
 /**
  * 1 ゲームを進める(レバーオン 1 回分)。ヘッダーコメントの処理順序に従う。
- * 2b 時点では「払出 → モード移行抽せん → 偽前兆突入・前兆スケジュール → 前兆/連続演出の
- * 進行・解決 → 集計」。背景移行(2c)・AT の進行(2d)は該当サブステップで順序スロットへ挿入する。
+ * 2c 時点では「払出 → モード移行抽せん → 偽前兆突入・前兆スケジュール → 前兆/連続演出の
+ * 進行・解決 → 背景移行 → 集計」。AT の進行(2d)はスロット 4 の AT 部分へ挿入する。
  */
 export function advanceGame(state: GameState, input: GameInput, rng: Rng): AdvanceResult {
   const events: GameEvent[] = [];
@@ -316,14 +357,19 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
 
   // 3. 偽前兆突入抽せん + 前兆スケジュール開始(偽→本書き換え含む)
   let phase = state.phase;
-  let pendingBackgroundTrigger = state.pendingBackgroundTrigger;
+  /**
+   * このゲームで新規に設定する「次ゲーム」契機の予約(発火は次ゲームのスロット 5)。
+   * ゲーム開始時点の予約(state.pendingBackgroundTrigger)はこのゲームのスロット 5 で
+   * 発火・消化するため、別変数で持つ。
+   */
+  let reservedTrigger: BackgroundTrigger | null = null;
   /** このゲームで前兆スケジュールを新規開始したか(同一ゲーム内でスロット 4 の進行はしない) */
   let scheduledThisGame = false;
   if (movedToHonzencho) {
     if (phase.type === 'NORMAL') {
       // 本前兆へのモード移行: 前兆スケジュール開始 + 次ゲームの背景移行(契機 4)を予約
       phase = scheduleOmen(rng, 'REAL');
-      pendingBackgroundTrigger = 'HONZENCHO_NEXT';
+      reservedTrigger = 'HONZENCHO_NEXT';
       scheduledThisGame = true;
     } else if ((phase.type === 'OMEN' || phase.type === 'RENZOKU') && phase.kind === 'FAKE') {
       // 偽→本書き換え(確定 21): kind のみ書き換え、G 数・連続演出種別は引継ぎ(a・b)。
@@ -340,7 +386,7 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
     // (確定 9。本前兆に偽前兆を重ねない)。
     if (drawFakeOmen(rng, input.wonRole, false)) {
       phase = scheduleOmen(rng, 'FAKE');
-      pendingBackgroundTrigger = 'FAKE_OMEN_NEXT';
+      reservedTrigger = 'FAKE_OMEN_NEXT';
       scheduledThisGame = true;
       events.push({
         type: 'FAKE_OMEN_ENTER',
@@ -382,25 +428,45 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
         } else {
           // 偽前兆の演出失敗 → 通常へ戻り、次ゲームの背景移行(契機 3)を予約
           phase = { type: 'NORMAL' };
-          pendingBackgroundTrigger = 'FAKE_OMEN_FAIL';
+          reservedTrigger = 'FAKE_OMEN_FAIL';
         }
       }
     }
   }
 
-  // 5. 背景移行(予約契機の発火・30G 契機・カウンタリセット。2c で実装)
-  //    注意(2c 向け): 発火するのは「ゲーム開始時点の予約」= state.pendingBackgroundTrigger。
-  //    スロット 3 がこのゲームで設定した新しい予約(ローカル変数の値)は次ゲームで発火する。
-  //    例: 連続演出失敗(FAKE_OMEN_FAIL 予約)の次ゲームで新たに偽前兆へ当せんした場合、
-  //    このゲームで FAKE_OMEN_FAIL を発火しつつ FAKE_OMEN_NEXT を次ゲームへ予約する。
+  // 5. 背景移行(ヘッダー「背景移行の実装規約」参照。確定 24・25)
+  //    優先順位: ゲーム開始時点の予約契機(2/3/4)> 30G 経過(契機 1)。
+  //    契機 1 はこのゲームが通常時(開始・終了ともフェーズ NORMAL)のときのみ有効
+  //    (前兆中は停止 = 確定 25 / AT・エンディング中は背景移行自体が停止 = 確定 11。
+  //    AT 中に予約契機は構造上存在し得ない)。
+  const backgroundTrigger: BackgroundTrigger | null =
+    state.pendingBackgroundTrigger ??
+    (state.phase.type === 'NORMAL' &&
+    phase.type === 'NORMAL' &&
+    state.backgroundGames + 1 >= BACKGROUND_ELAPSED_GAMES
+      ? 'ELAPSED'
+      : null);
+  let background = state.background;
+  if (backgroundTrigger !== null) {
+    background = drawBackgroundTransition(rng, mode, backgroundTrigger, state.background);
+    if (background !== state.background) {
+      events.push({
+        type: 'BACKGROUND_CHANGE',
+        trigger: backgroundTrigger,
+        from: state.background,
+        to: background,
+      });
+    }
+  }
 
-  // 6. 集計
+  // 6. 集計(背景カウンタは抽せん実施ゲームでリセット。自背景維持でもリセット = 確定 24)
   const nextState: GameState = {
     ...state,
     mode,
+    background,
     phase,
-    pendingBackgroundTrigger,
-    backgroundGames: state.backgroundGames + 1,
+    pendingBackgroundTrigger: reservedTrigger,
+    backgroundGames: backgroundTrigger !== null ? 0 : state.backgroundGames + 1,
     totalGames: state.totalGames + 1,
     netCoins: state.netCoins + payout.net,
     replayCarry: payout.isReplay,
