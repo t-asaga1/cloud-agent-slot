@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import './App.css';
 import {
   CABINET_FRAME_URL,
@@ -11,8 +11,12 @@ import {
   type StageId,
 } from './assets';
 import { CABINET_SIZE, LCD_RECT, REEL_WINDOW_RECTS, rectToPercent } from './assets/layout';
+import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from './core/at';
+import type { Background, BackgroundTrigger } from './core/background';
 import { drawRole } from './core/lottery';
-import { calcPayout } from './core/payout';
+import type { Mode } from './core/mode';
+import { RENZOKU_GAMES } from './core/omen';
+import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER } from './core/play';
 import {
   KOMA_COUNT,
   LINES,
@@ -23,10 +27,21 @@ import {
   type LineId,
   type PushOrder,
   type ReelIndex,
+  type SpinResult,
   type StopPositions,
 } from './core/reel';
 import { createRng, randomSeed, type Rng } from './core/rng';
 import { isRareRole, ROLES, type Role } from './core/roles';
+import {
+  advanceGame,
+  ENDING_GAMES,
+  initGameState,
+  isNaviActive,
+  type AdvanceResult,
+  type GameEvent,
+  type GameState,
+  type Phase,
+} from './core/state';
 import { isBgmPlaying, playBgm, playSe, stopBgm } from './platform/audio';
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -49,13 +64,116 @@ const LINE_LABELS: Record<LineId, string> = {
   UP_RIGHT: '右上がり',
 };
 
+const MODE_LABELS: Record<Mode, string> = {
+  HELL: '地獄',
+  NORMAL: '通常',
+  HEAVEN: '天国',
+  HONZENCHO: '本前兆',
+};
+
+const BACKGROUND_LABELS: Record<Background, string> = {
+  YOSHITSUNE: '義経',
+  SHIZUKA: '静',
+  BENKEI: '弁慶',
+  YUGATA: '夕方',
+  ZENCHO: '前兆',
+};
+
+const TRIGGER_LABELS: Record<BackgroundTrigger, string> = {
+  ELAPSED: '30G経過',
+  FAKE_OMEN_NEXT: '偽前兆当せん',
+  FAKE_OMEN_FAIL: '演出失敗後',
+  HONZENCHO_NEXT: '本前兆移行',
+};
+
 const REEL_NAMES = ['左', '中', '右'] as const;
 
 const PUSH_ORDER_LABELS = PUSH_ORDERS.map((order) =>
   order.map((reel) => REEL_NAMES[reel]).join('→'),
 );
 
-/** 目押しモード(押下位置の決め方)。タイミング目押しの停止ボタン化は Phase 4 */
+/** 通常時の背景 → 表示ステージの対応(AT・エンディング中はフェーズから導出) */
+const STAGE_FOR_BACKGROUND: Record<Background, StageId> = {
+  YOSHITSUNE: 'STAGE_YOSHITSUNE',
+  SHIZUKA: 'STAGE_SHIZUKA',
+  BENKEI: 'STAGE_BENKEI',
+  YUGATA: 'STAGE_YUGATA',
+  ZENCHO: 'STAGE_ZENCHO',
+};
+
+/**
+ * ゲーム状態 → 表示ステージ(背景動画)の自動切替(STEP 2f)。
+ * AT 中はパート別の AT ステージ、エンディングは専用素材未入稿のため暫定で
+ * 「直前の AT 階層のバトルステージ」を継続表示(after = UPPER_AT なら通常 AT 10 連 =
+ * AT バトル / AT_END なら上位 AT 10 連 = 上位バトル)。エンディング演出は STEP 4。
+ */
+function stageForState(state: GameState): StageId {
+  const { phase } = state;
+  if (phase.type === 'AT') {
+    if (phase.tier === 'UPPER') {
+      return phase.part === 'KOYAKU' ? 'STAGE_AT_UPPER_KOYAKU' : 'STAGE_AT_UPPER_BATTLE';
+    }
+    return phase.part === 'KOYAKU' ? 'STAGE_AT_KOYAKU' : 'STAGE_AT_BATTLE';
+  }
+  if (phase.type === 'ENDING') {
+    return phase.after === 'UPPER_AT' ? 'STAGE_AT_BATTLE' : 'STAGE_AT_UPPER_BATTLE';
+  }
+  return STAGE_FOR_BACKGROUND[state.background];
+}
+
+/** フェーズの 1 行表示(デバッグパネル・履歴用) */
+function phaseLabel(phase: Phase): string {
+  switch (phase.type) {
+    case 'NORMAL':
+      return '通常';
+    case 'OMEN':
+      return `${phase.kind === 'REAL' ? '本' : '偽'}前兆 ${phase.game}/${phase.totalGames}G(演出${phase.renzoku}へ)`;
+    case 'RENZOKU':
+      return `連続演出${phase.renzoku} ${phase.game}/${RENZOKU_GAMES}G(${phase.kind === 'REAL' ? '本' : '偽'})`;
+    case 'AT': {
+      const partGames = phase.part === 'KOYAKU' ? KOYAKU_PART_GAMES : BATTLE_PART_GAMES;
+      return `${phase.tier === 'UPPER' ? '上位AT' : 'AT'} ${phase.part === 'KOYAKU' ? '小役' : 'バトル'} ${phase.partGame}/${partGames}G`;
+    }
+    case 'ENDING':
+      return `エンディング ${phase.game}/${ENDING_GAMES}G(→${phase.after === 'UPPER_AT' ? '上位AT' : 'AT終了'})`;
+  }
+}
+
+/** 発生イベントの 1 行表示(`GameEvent` は確定 28 の演出層向け情報) */
+function formatEvent(event: GameEvent): string {
+  switch (event.type) {
+    case 'MODE_CHANGE':
+      return `モード移行 ${MODE_LABELS[event.from]}→${MODE_LABELS[event.to]}(${ROLE_LABELS[event.trigger]})`;
+    case 'HONZENCHO_ENTER':
+      return `本前兆へ移行(${ROLE_LABELS[event.trigger]})`;
+    case 'FAKE_OMEN_ENTER':
+      return `偽前兆突入(${event.totalGames}G→演出${event.renzoku}。${ROLE_LABELS[event.trigger]})`;
+    case 'OMEN_REWRITE':
+      return `偽→本前兆 書き換え(${ROLE_LABELS[event.trigger]})`;
+    case 'RENZOKU_START':
+      return `連続演出${event.renzoku} 開始(${event.kind === 'REAL' ? '本' : '偽'})`;
+    case 'RENZOKU_RESULT':
+      return `連続演出${event.renzoku} ${event.success ? '成功!' : '失敗…'}`;
+    case 'BACKGROUND_CHANGE':
+      return `背景移行 ${BACKGROUND_LABELS[event.from]}→${BACKGROUND_LABELS[event.to]}(${TRIGGER_LABELS[event.trigger]})`;
+    case 'AT_START':
+      return `AT 突入!(継続率 ${Math.round(event.continueRate * 100)}%)`;
+    case 'V_STOCK_GAIN':
+      return `Vストック獲得(${ROLE_LABELS[event.trigger]}。計${event.vStock}個)`;
+    case 'V_STOCK_USE':
+      return `Vストック消費→継続確定(残${event.vStock}個)`;
+    case 'AT_SET_CONTINUE':
+      return `セット継続(${event.renchan}連目)`;
+    case 'ENDING_START':
+      return `エンディング開始(消化後: ${event.after === 'UPPER_AT' ? '上位AT' : 'AT終了'})`;
+    case 'UPPER_AT_ENTER':
+      return '上位AT 突入!(継続率 93%)';
+    case 'AT_END':
+      return `AT終了(${event.reason === 'DEFEAT' ? 'バトル敗北' : 'エンディング完走'}→${MODE_LABELS[event.mode]}モード・${BACKGROUND_LABELS[event.background]}背景)`;
+  }
+}
+
+/** 目押しモード(押下位置の決め方)。タイミング目押しの停止ボタン化は STEP 3 */
 type AimMode = 'RANDOM' | 'SEVEN' | 'DDT';
 
 const AIM_LABELS: Record<AimMode, string> = {
@@ -108,96 +226,132 @@ interface GameLog {
   displayed: Role;
   lines: LineId[];
   payout: number;
-  medals: number;
+  net: number;
+  phase: string;
+}
+
+interface EventLogEntry {
+  game: number;
+  text: string;
 }
 
 interface PlayState {
-  game: number;
-  medals: number;
-  nextBetFree: boolean;
+  /** ステートマシンの状態(`advanceGame` の返り state) */
+  gameState: GameState;
   positions: StopPositions;
   lines: LineId[];
   displayed: Role;
   lastLog?: GameLog;
   logs: GameLog[];
+  /** 発生イベントの履歴(新しい順) */
+  eventLog: EventLogEntry[];
 }
 
-const INITIAL_STATE: PlayState = {
-  game: 0,
-  medals: 0,
-  nextBetFree: false,
-  positions: [18, 19, 1],
-  lines: [],
-  displayed: 'NONE',
-  logs: [],
-};
-
-interface LeverAction {
-  type: 'LEVER';
-  won: Role;
-  positions: StopPositions;
-  displayed: Role;
-  /** 表示役が揃った有効ライン(resolveSpin の判定結果) */
-  lines: LineId[];
-  /** 押し順ベルの払出区分(斜め揃い = 13 枚 / 上段揃い = 1 枚)。resolveSpin の判定結果 */
-  bellSuccess: boolean;
+function makePlayState(gameState: GameState): PlayState {
+  return {
+    gameState,
+    positions: [18, 19, 1],
+    lines: [],
+    displayed: 'NONE',
+    logs: [],
+    eventLog: [],
+  };
 }
 
-type Action = LeverAction | { type: 'RESET' };
+type Action =
+  | { type: 'LEVER'; spin: SpinResult; result: AdvanceResult }
+  | { type: 'RESET'; gameState: GameState };
 
 function reducer(prev: PlayState, action: Action): PlayState {
-  if (action.type === 'RESET') return INITIAL_STATE;
-  const result = calcPayout(action.displayed, !prev.nextBetFree, action.bellSuccess);
-  const game = prev.game + 1;
-  const medals = prev.medals + result.net;
+  if (action.type === 'RESET') return makePlayState(action.gameState);
+  const { spin, result } = action;
+  const game = result.state.totalGames;
   const log: GameLog = {
     game,
-    won: action.won,
-    displayed: action.displayed,
-    lines: action.lines,
-    payout: result.payout,
-    medals,
+    won: result.wonRole,
+    displayed: spin.displayed,
+    lines: spin.lines,
+    payout: result.payout.payout,
+    net: result.state.netCoins,
+    phase: phaseLabel(result.state.phase),
   };
+  const newEvents = result.events
+    .map((event) => ({ game, text: formatEvent(event) }))
+    .reverse();
   return {
-    game,
-    medals,
-    nextBetFree: result.isReplay,
-    positions: action.positions,
-    lines: action.lines,
-    displayed: action.displayed,
+    gameState: result.state,
+    positions: spin.positions,
+    lines: spin.lines,
+    displayed: spin.displayed,
     lastLog: log,
     logs: [log, ...prev.logs].slice(0, 8),
+    eventLog: [...newEvents, ...prev.eventLog].slice(0, 14),
   };
 }
 
+/** 押し順セレクト: AUTO = ステートマシン連動(通常 = 左第一 / AT・エンディング中のベル = ナビ) */
+type PushOrderSelect = 'AUTO' | number;
+
 function App() {
-  const [stage, setStage] = useState<StageId>('STAGE_YOSHITSUNE');
-  const [bgmOn, setBgmOn] = useState(false);
   const [seed] = useState(randomSeed);
-  const rng = useMemo(() => createRng(seed), [seed]);
-  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
-  const [pushOrderIndex, setPushOrderIndex] = useState(0);
+  // rng と初期状態はペアで生成する(initGameState が rng を消費するため)
+  const session = useMemo(() => {
+    const rng = createRng(seed);
+    return { rng, initialState: initGameState(rng) };
+  }, [seed]);
+  const rng = session.rng;
+  const [play, dispatch] = useReducer(reducer, session.initialState, makePlayState);
+
+  const [stageSelect, setStageSelect] = useState<'AUTO' | StageId>('AUTO');
+  const [bgmOn, setBgmOn] = useState(false);
+  const [pushOrderSelect, setPushOrderSelect] = useState<PushOrderSelect>('AUTO');
   const [aim, setAim] = useState<AimMode>('RANDOM');
   const [forcedRole, setForcedRole] = useState<'DRAW' | Role>('DRAW');
+  const [autoPlay, setAutoPlay] = useState(false);
+
+  const stage = stageSelect === 'AUTO' ? stageForState(play.gameState) : stageSelect;
+  const navi = isNaviActive(play.gameState);
 
   const onLever = () => {
     playSe(SE.leverOn);
+    const state = play.gameState;
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
-    // 押下位置は目押しモードに従う(タイミング目押しの停止ボタン化は Phase 4)
+    // 押下位置は目押しモードに従う(タイミング目押しの停止ボタン化は STEP 3)
     const pushes = pickPushes(aim, rng);
-    const pushOrder: PushOrder = PUSH_ORDERS[pushOrderIndex];
-    const { positions, displayed, lines, bellSuccess } = resolveSpin(won, pushes, pushOrder);
-    if (won === 'REACH_ME') playSe(SE.bonus);
+    const pushOrder: PushOrder =
+      pushOrderSelect === 'AUTO'
+        ? isNaviActive(state) && won === 'BELL'
+          ? NAVI_PUSH_ORDER
+          : NORMAL_PUSH_ORDER
+        : PUSH_ORDERS[pushOrderSelect];
+    const spin = resolveSpin(won, pushes, pushOrder);
+    const result = advanceGame(
+      state,
+      { wonRole: won, displayedRole: spin.displayed, bellSuccess: spin.bellSuccess },
+      rng,
+    );
+    if (result.events.some((e) => e.type === 'AT_START' || e.type === 'UPPER_AT_ENTER')) {
+      playSe(SE.bonus);
+    } else if (won === 'REACH_ME') playSe(SE.bonus);
     else if (isRareRole(won)) playSe(SE.rare);
-    else if (calcPayout(displayed, true, bellSuccess).payout > 0) playSe(SE.payout);
+    else if (result.payout.payout > 0) playSe(SE.payout);
     else playSe(SE.reelStop);
-    dispatch({ type: 'LEVER', won, positions, displayed, lines, bellSuccess });
+    dispatch({ type: 'LEVER', spin, result });
   };
 
-  const onStageChange = (next: StageId) => {
-    setStage(next);
-    if (bgmOn) playBgm(STAGE_BGMS[next]);
-  };
+  // オート消化(30G 背景移行・AT の通し確認用)
+  const onLeverRef = useRef(onLever);
+  onLeverRef.current = onLever;
+  useEffect(() => {
+    if (!autoPlay) return;
+    const id = setInterval(() => onLeverRef.current(), 160);
+    return () => clearInterval(id);
+  }, [autoPlay]);
+
+  // ステージ(状態連動 or 手動)に合わせて BGM を自動切替
+  useEffect(() => {
+    if (bgmOn) playBgm(STAGE_BGMS[stage]);
+  }, [bgmOn, stage]);
 
   const onToggleBgm = () => {
     if (isBgmPlaying()) {
@@ -209,16 +363,23 @@ function App() {
     }
   };
 
-  const hitRows = highlightRows(state.lines, state.displayed, state.positions);
+  const onReset = () => {
+    setAutoPlay(false);
+    dispatch({ type: 'RESET', gameState: initGameState(rng) });
+  };
+
+  const hitRows = highlightRows(play.lines, play.displayed, play.positions);
+  const { gameState } = play;
+  const { phase } = gameState;
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — 素材確認 + リール制御デモ(STEP 1 完了版)</h1>
+      <h1>パチスロアプリ — 通しフローデモ(STEP 2 完了版)</h1>
       <p className="note">
-        筐体・背景動画・リール図柄はユーザー入稿素材。BGM/SE
-        は仮素材で、実素材の入稿後に差し替える(AT/上位ATの背景は小役・バトル共用)。リールの出目は
-        <code>core/reel</code> の停止制御(5 ライン対応の引き込み優先度探索)の実出力。
-        揃った有効ラインは金枠でハイライト表示。成立役の強制指定は停止形確認のデモ用。
+        レバーオン 1 回でステートマシン(<code>core/state</code> の <code>advanceGame</code>)が 1G
+        進み、モード・背景・前兆・AT の状態に応じてステージ動画が自動切替。出目は
+        <code>core/reel</code> の停止制御の実出力。成立役の強制指定で「レア役 → 前兆 → AT
+        突入」を再現できる(本格 UI・演出は STEP 3〜4)。
       </p>
 
       <div className="layout">
@@ -239,7 +400,7 @@ function App() {
           />
           {REEL_WINDOW_RECTS.map((rect, reel) => (
             <div key={reel} className="reel-window" style={rectToPercent(rect)}>
-              {windowAt(reel as ReelIndex, state.positions[reel]).map((symbol, row) => (
+              {windowAt(reel as ReelIndex, play.positions[reel]).map((symbol, row) => (
                 <img
                   key={row}
                   className={hitRows[reel].has(row) ? 'hit' : undefined}
@@ -252,29 +413,125 @@ function App() {
         </section>
 
         <section className="side">
+          <div className="panel status state-panel">
+            <div className="state-grid">
+              <div>
+                モード: <strong>{MODE_LABELS[gameState.mode]}</strong>
+              </div>
+              <div>
+                背景: <strong>{BACKGROUND_LABELS[gameState.background]}</strong>
+                <span className="miss">
+                  ({gameState.backgroundGames}G{phase.type === 'NORMAL' ? '/30G' : ''})
+                </span>
+              </div>
+              <div>
+                フェーズ: <strong className={phase.type !== 'NORMAL' ? 'accent' : undefined}>{phaseLabel(phase)}</strong>
+              </div>
+              <div>
+                総ゲーム数: <strong>{gameState.totalGames}</strong> G
+              </div>
+              <div>
+                差枚:{' '}
+                <strong className={gameState.netCoins >= 0 ? 'plus' : 'minus'}>
+                  {gameState.netCoins >= 0 ? '+' : ''}
+                  {gameState.netCoins}
+                </strong>{' '}
+                枚
+              </div>
+              <div>
+                ナビ:{' '}
+                {navi ? <strong className="accent">押し順ナビ中(ベル = 中第一)</strong> : 'なし'}
+              </div>
+            </div>
+            {phase.type === 'AT' && (
+              <div className="at-detail">
+                <span>
+                  連チャン: <strong>{phase.renchan}</strong> 連目
+                </span>
+                <span>
+                  継続率: <strong>{Math.round(phase.continueRate * 100)}%</strong>
+                </span>
+                <span>
+                  Vストック: <strong>{phase.vStock}</strong> 個
+                </span>
+                <span>
+                  継続:{' '}
+                  <strong className={phase.continueConfirmed ? 'plus' : undefined}>
+                    {phase.continueConfirmed ? '確定' : '未確定'}
+                  </strong>
+                </span>
+              </div>
+            )}
+            {phase.type === 'ENDING' && (
+              <div className="at-detail">
+                <span>
+                  消化後: <strong>{phase.after === 'UPPER_AT' ? '上位AT へ' : 'AT 終了'}</strong>
+                </span>
+                <span>
+                  Vストック持越し: <strong>{phase.vStock}</strong> 個
+                </span>
+              </div>
+            )}
+            {play.lastLog && (
+              <div>
+                成立役: <strong>{ROLE_LABELS[play.lastLog.won]}</strong>
+                {play.lastLog.displayed !== play.lastLog.won && (
+                  <span className="miss">
+                    (出目: {ROLE_LABELS[play.lastLog.displayed]}
+                    {play.lastLog.displayed === 'NONE' ? ' = 取りこぼし/未成立' : ''})
+                  </span>
+                )}
+                {play.lastLog.lines.length > 0 && (
+                  <span className="miss">
+                    ライン: {play.lastLog.lines.map((line) => LINE_LABELS[line]).join('・')}
+                    {play.lastLog.displayed === 'BELL' &&
+                      `(押し順${play.lastLog.payout >= 13 ? '正解 13 枚' : '不正解 1 枚'})`}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="panel">
-            <label>
-              ステージ:
-              <select value={stage} onChange={(e) => onStageChange(e.target.value as StageId)}>
-                {STAGE_IDS.map((id) => (
-                  <option key={id} value={id}>
-                    {STAGE_LABELS[id]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" onClick={onToggleBgm}>
-              BGM {bgmOn ? '停止' : '再生'}
+            <button type="button" className="lever" onClick={onLever}>
+              レバーオン(1G 消化)
+            </button>
+            <button
+              type="button"
+              className={autoPlay ? 'auto-on' : undefined}
+              onClick={() => setAutoPlay((v) => !v)}
+            >
+              オート消化 {autoPlay ? '停止' : '開始'}
+            </button>
+            <button type="button" onClick={onReset}>
+              リセット
             </button>
           </div>
 
           <div className="panel">
             <label>
+              成立役:
+              <select
+                value={forcedRole}
+                onChange={(e) => setForcedRole(e.target.value as 'DRAW' | Role)}
+              >
+                <option value="DRAW">抽せん(通常)</option>
+                {ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}(強制)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               押し順:
               <select
-                value={pushOrderIndex}
-                onChange={(e) => setPushOrderIndex(Number(e.target.value))}
+                value={pushOrderSelect}
+                onChange={(e) =>
+                  setPushOrderSelect(e.target.value === 'AUTO' ? 'AUTO' : Number(e.target.value))
+                }
               >
+                <option value="AUTO">自動(通常 = 左第一 / ナビ遵守)</option>
                 {PUSH_ORDER_LABELS.map((label, i) => (
                   <option key={label} value={i}>
                     {label}
@@ -292,66 +549,37 @@ function App() {
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className="panel">
             <label>
-              成立役:
+              ステージ:
               <select
-                value={forcedRole}
-                onChange={(e) => setForcedRole(e.target.value as 'DRAW' | Role)}
+                value={stageSelect}
+                onChange={(e) => setStageSelect(e.target.value as 'AUTO' | StageId)}
               >
-                <option value="DRAW">抽せん(通常)</option>
-                {ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {ROLE_LABELS[role]}(強制)
+                <option value="AUTO">自動(状態連動)</option>
+                {STAGE_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {STAGE_LABELS[id]}(手動)
                   </option>
                 ))}
               </select>
             </label>
-          </div>
-
-          <div className="panel">
-            <button type="button" className="lever" onClick={onLever}>
-              レバーオン(1G 消化)
-            </button>
-            <button type="button" onClick={() => dispatch({ type: 'RESET' })}>
-              リセット
+            <button type="button" onClick={onToggleBgm}>
+              BGM {bgmOn ? '停止' : '再生'}
             </button>
           </div>
 
-          <div className="panel status">
-            <div>
-              総ゲーム数: <strong>{state.game}</strong> G
-            </div>
-            <div>
-              収支:{' '}
-              <strong className={state.medals >= 0 ? 'plus' : 'minus'}>
-                {state.medals >= 0 ? '+' : ''}
-                {state.medals}
-              </strong>{' '}
-              枚
-            </div>
-            {state.lastLog && (
-              <div>
-                成立役: <strong>{ROLE_LABELS[state.lastLog.won]}</strong>
-                {state.lastLog.displayed !== state.lastLog.won && (
-                  <span className="miss">
-                    (出目: {ROLE_LABELS[state.lastLog.displayed]}
-                    {state.lastLog.displayed === 'NONE' ? ' = 取りこぼし/未成立' : ''})
-                  </span>
-                )}
-              </div>
-            )}
-            {state.lastLog && state.lastLog.lines.length > 0 && (
-              <div>
-                揃ったライン:{' '}
-                <strong>{state.lastLog.lines.map((line) => LINE_LABELS[line]).join('・')}</strong>
-                {state.lastLog.displayed === 'BELL' && (
-                  <span className="miss">
-                    (押し順{state.lastLog.payout >= 13 ? '正解 13 枚' : '不正解 1 枚'})
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          <h2>発生イベント(新しい順)</h2>
+          <ul className="event-log">
+            {play.eventLog.map((entry, i) => (
+              <li key={`${entry.game}-${i}`}>
+                <span className="event-game">{entry.game}G</span> {entry.text}
+              </li>
+            ))}
+            {play.eventLog.length === 0 && <li className="miss">まだイベントなし</li>}
+          </ul>
 
           <h2>ゲーム履歴(直近 8G)</h2>
           <table>
@@ -360,23 +588,23 @@ function App() {
                 <th>G数</th>
                 <th>成立役</th>
                 <th>出目</th>
-                <th>ライン</th>
                 <th>払出</th>
-                <th>収支</th>
+                <th>差枚</th>
+                <th>フェーズ</th>
               </tr>
             </thead>
             <tbody>
-              {state.logs.map((log) => (
+              {play.logs.map((log) => (
                 <tr key={log.game}>
                   <td>{log.game}</td>
                   <td>{ROLE_LABELS[log.won]}</td>
                   <td>{ROLE_LABELS[log.displayed]}</td>
-                  <td>{log.lines.map((line) => LINE_LABELS[line]).join('・') || '—'}</td>
                   <td>{log.payout}</td>
-                  <td>{log.medals}</td>
+                  <td>{log.net}</td>
+                  <td>{log.phase}</td>
                 </tr>
               ))}
-              {state.logs.length === 0 && (
+              {play.logs.length === 0 && (
                 <tr>
                   <td colSpan={6}>レバーオンでゲーム開始</td>
                 </tr>
