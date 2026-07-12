@@ -25,6 +25,13 @@ interface QueuedCutin {
   key: number;
 }
 
+/**
+ * カットインキューの上限。オート消化(160ms/G)ではゲーム進行が表示時間より速く、
+ * 無制限に積むと古い演出が何分も再生され続けるため、超過したら「表示中の先頭を残して
+ * 古い待機分から間引き」、直近の演出を優先する(手動プレイでは実質無制限と同じ)。
+ */
+export const MAX_CUTIN_QUEUE = 4;
+
 interface Props {
   overlay: StateOverlay | undefined;
   cutinFrame: CutinFrame;
@@ -41,7 +48,11 @@ export function DirectionLayer({ overlay, cutinFrame }: Props) {
     seenSeqRef.current = cutinFrame.seq;
     if (cutinFrame.cutins.length === 0) return;
     const queued = cutinFrame.cutins.map((cutin) => ({ cutin, key: keyRef.current++ }));
-    setQueue((prev) => [...prev, ...queued]);
+    setQueue((prev) => {
+      const merged = [...prev, ...queued];
+      if (merged.length <= MAX_CUTIN_QUEUE) return merged;
+      return [merged[0], ...merged.slice(merged.length - (MAX_CUTIN_QUEUE - 1))];
+    });
   }, [cutinFrame]);
 
   // キュー先頭のカットインを durationMs 表示し、表示開始時に SE を鳴らす
