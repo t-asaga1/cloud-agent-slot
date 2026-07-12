@@ -22,7 +22,6 @@ import {
   LINES,
   PUSH_ORDERS,
   REEL_LAYOUT,
-  resolveSpin,
   windowAt,
   type LineId,
   type PushOrder,
@@ -43,6 +42,15 @@ import {
   type Phase,
 } from './core/state';
 import { isBgmPlaying, playBgm, playSe, stopBgm } from './platform/audio';
+import {
+  finishSpin,
+  isAllStopped,
+  pressStop,
+  spinningPosition,
+  startSpin,
+  SPIN_MS_PER_KOMA,
+  type SpinCycle,
+} from './ui/gameCycle';
 
 const ROLE_LABELS: Record<Role, string> = {
   REPLAY: 'リプレイ',
@@ -87,6 +95,7 @@ const TRIGGER_LABELS: Record<BackgroundTrigger, string> = {
 };
 
 const REEL_NAMES = ['左', '中', '右'] as const;
+const STOP_KEY_NAMES = ['Z', 'X', 'C'] as const;
 
 const PUSH_ORDER_LABELS = PUSH_ORDERS.map((order) =>
   order.map((reel) => REEL_NAMES[reel]).join('→'),
@@ -173,7 +182,7 @@ function formatEvent(event: GameEvent): string {
   }
 }
 
-/** 目押しモード(押下位置の決め方)。タイミング目押しの停止ボタン化は STEP 3 */
+/** オート消化時の目押しモード(押下位置の決め方)。手動時はタイミング押しが正 */
 type AimMode = 'RANDOM' | 'SEVEN' | 'DDT';
 
 const AIM_LABELS: Record<AimMode, string> = {
@@ -228,6 +237,8 @@ interface GameLog {
   payout: number;
   net: number;
   phase: string;
+  /** 停止ボタンを押した順(このゲームの実際の押し順) */
+  pushOrder: string;
 }
 
 interface EventLogEntry {
@@ -259,7 +270,7 @@ function makePlayState(gameState: GameState): PlayState {
 }
 
 type Action =
-  | { type: 'LEVER'; spin: SpinResult; result: AdvanceResult }
+  | { type: 'FINISH'; spin: SpinResult; result: AdvanceResult; pushOrder: string }
   | { type: 'RESET'; gameState: GameState };
 
 function reducer(prev: PlayState, action: Action): PlayState {
@@ -274,6 +285,7 @@ function reducer(prev: PlayState, action: Action): PlayState {
     payout: result.payout.payout,
     net: result.state.netCoins,
     phase: phaseLabel(result.state.phase),
+    pushOrder: action.pushOrder,
   };
   const newEvents = result.events
     .map((event) => ({ game, text: formatEvent(event) }))
@@ -289,7 +301,17 @@ function reducer(prev: PlayState, action: Action): PlayState {
   };
 }
 
-/** 押し順セレクト: AUTO = ステートマシン連動(通常 = 左第一 / AT・エンディング中のベル = ナビ) */
+/**
+ * 遊技サイクル(STEP 3a)の UI 状態。
+ * IDLE = レバー待ち(前ゲームの出目を表示)/ SPINNING = 回転中(停止ボタン受付)。
+ * 回転中の各リールの表示位置は「回転開始位置 + 経過時間」から求める
+ * (`spinningPosition`。開始位置 = 前ゲームの停止位置で連続性を保つ)。
+ */
+type SpinUi =
+  | { mode: 'IDLE' }
+  | { mode: 'SPINNING'; cycle: SpinCycle; startPositions: StopPositions; startAt: number };
+
+/** オート消化の押し順セレクト: AUTO = 打ち方ポリシー連動(通常 = 左第一 / ナビ中のベル = ナビ) */
 type PushOrderSelect = 'AUTO' | number;
 
 function App() {
@@ -301,6 +323,7 @@ function App() {
   }, [seed]);
   const rng = session.rng;
   const [play, dispatch] = useReducer(reducer, session.initialState, makePlayState);
+  const [spinUi, setSpinUi] = useState<SpinUi>({ mode: 'IDLE' });
 
   const [stageSelect, setStageSelect] = useState<'AUTO' | StageId>('AUTO');
   const [bgmOn, setBgmOn] = useState(false);
@@ -311,42 +334,109 @@ function App() {
 
   const stage = stageSelect === 'AUTO' ? stageForState(play.gameState) : stageSelect;
   const navi = isNaviActive(play.gameState);
+  const spinning = spinUi.mode === 'SPINNING';
 
-  const onLever = () => {
-    playSe(SE.leverOn);
-    const state = play.gameState;
-    const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
-    // 押下位置は目押しモードに従う(タイミング目押しの停止ボタン化は STEP 3)
-    const pushes = pickPushes(aim, rng);
-    const pushOrder: PushOrder =
-      pushOrderSelect === 'AUTO'
-        ? isNaviActive(state) && won === 'BELL'
-          ? NAVI_PUSH_ORDER
-          : NORMAL_PUSH_ORDER
-        : PUSH_ORDERS[pushOrderSelect];
-    const spin = resolveSpin(won, pushes, pushOrder);
+  // 回転中はコマ送り表示のため一定間隔で再描画する(滑らかなスクロールは 3b)
+  const [, forceTick] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!spinning) return;
+    const id = setInterval(forceTick, SPIN_MS_PER_KOMA);
+    return () => clearInterval(id);
+  }, [spinning]);
+
+  /** 全停止 → 表示判定 → advanceGame → レバー待ちへ(1G の締め) */
+  const finishGame = (cycle: SpinCycle) => {
+    const spin = finishSpin(cycle);
     const result = advanceGame(
-      state,
-      { wonRole: won, displayedRole: spin.displayed, bellSuccess: spin.bellSuccess },
+      play.gameState,
+      { wonRole: cycle.wonRole, displayedRole: spin.displayed, bellSuccess: spin.bellSuccess },
       rng,
     );
     if (result.events.some((e) => e.type === 'AT_START' || e.type === 'UPPER_AT_ENTER')) {
       playSe(SE.bonus);
-    } else if (won === 'REACH_ME') playSe(SE.bonus);
-    else if (isRareRole(won)) playSe(SE.rare);
+    } else if (cycle.wonRole === 'REACH_ME') playSe(SE.bonus);
+    else if (isRareRole(cycle.wonRole)) playSe(SE.rare);
     else if (result.payout.payout > 0) playSe(SE.payout);
-    else playSe(SE.reelStop);
-    dispatch({ type: 'LEVER', spin, result });
+    const pushOrder = cycle.pressed.map((reel) => REEL_NAMES[reel]).join('→');
+    dispatch({ type: 'FINISH', spin, result, pushOrder });
+    setSpinUi({ mode: 'IDLE' });
+  };
+
+  /** レバーオン: 役抽せん + 全リール回転開始(回転中は無視) */
+  const onLever = () => {
+    if (spinUi.mode !== 'IDLE') return;
+    playSe(SE.leverOn);
+    const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
+    setSpinUi({
+      mode: 'SPINNING',
+      cycle: startSpin(won),
+      startPositions: play.positions,
+      startAt: performance.now(),
+    });
+  };
+
+  /** 停止ボタン: 押下瞬間に中段にあるコマ = 押下位置で 1 リール停止。押した順 = 押し順 */
+  const onStop = (reel: ReelIndex) => {
+    if (spinUi.mode !== 'SPINNING' || spinUi.cycle.stopped[reel] !== undefined) return;
+    playSe(SE.reelStop);
+    const pushPosition = spinningPosition(
+      spinUi.startPositions[reel],
+      performance.now() - spinUi.startAt,
+    );
+    const cycle = pressStop(spinUi.cycle, reel, pushPosition);
+    if (isAllStopped(cycle)) {
+      finishGame(cycle);
+    } else {
+      setSpinUi({ ...spinUi, cycle });
+    }
+  };
+
+  /** オート消化 1G: レバー〜全停止を即時実行(適当押し or 目押しセレクト + 押し順セレクト) */
+  const autoGame = () => {
+    if (spinUi.mode !== 'IDLE') return;
+    playSe(SE.leverOn);
+    const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
+    const pushes = pickPushes(aim, rng);
+    const order: PushOrder =
+      pushOrderSelect === 'AUTO'
+        ? isNaviActive(play.gameState) && won === 'BELL'
+          ? NAVI_PUSH_ORDER
+          : NORMAL_PUSH_ORDER
+        : PUSH_ORDERS[pushOrderSelect];
+    let cycle = startSpin(won);
+    for (const reel of order) cycle = pressStop(cycle, reel, pushes[reel]);
+    finishGame(cycle);
   };
 
   // オート消化(30G 背景移行・AT の通し確認用)
-  const onLeverRef = useRef(onLever);
-  onLeverRef.current = onLever;
+  const autoGameRef = useRef(autoGame);
+  autoGameRef.current = autoGame;
   useEffect(() => {
     if (!autoPlay) return;
-    const id = setInterval(() => onLeverRef.current(), 160);
+    const id = setInterval(() => autoGameRef.current(), 160);
     return () => clearInterval(id);
   }, [autoPlay]);
+
+  // キーボード操作: Space = レバーオン / Z・X・C = 左・中・右停止(ROADMAP 実装デフォルト 2)
+  const onLeverRef = useRef(onLever);
+  onLeverRef.current = onLever;
+  const onStopRef = useRef(onStop);
+  onStopRef.current = onStop;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'SELECT' || target.tagName === 'INPUT')) return;
+      if (event.code === 'Space') {
+        event.preventDefault(); // ボタンのスペース押下・スクロールと二重発火させない
+        onLeverRef.current();
+      } else if (event.code === 'KeyZ') onStopRef.current(0);
+      else if (event.code === 'KeyX') onStopRef.current(1);
+      else if (event.code === 'KeyC') onStopRef.current(2);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // ステージ(状態連動 or 手動)に合わせて BGM を自動切替
   useEffect(() => {
@@ -365,51 +455,98 @@ function App() {
 
   const onReset = () => {
     setAutoPlay(false);
+    setSpinUi({ mode: 'IDLE' });
     dispatch({ type: 'RESET', gameState: initGameState(rng) });
   };
 
-  const hitRows = highlightRows(play.lines, play.displayed, play.positions);
+  /** 現在の表示位置(停止中 = 前ゲームの出目 / 回転中 = 経過時間から算出) */
+  const displayPosition = (reel: ReelIndex): number => {
+    if (spinUi.mode === 'IDLE') return play.positions[reel];
+    const stopped = spinUi.cycle.stopped[reel];
+    if (stopped !== undefined) return stopped;
+    return spinningPosition(spinUi.startPositions[reel], performance.now() - spinUi.startAt);
+  };
+
+  // 出目ハイライトは全停止中のみ(回転中は消す)
+  const hitRows = spinning
+    ? ([new Set<number>(), new Set<number>(), new Set<number>()] as const)
+    : highlightRows(play.lines, play.displayed, play.positions);
   const { gameState } = play;
   const { phase } = gameState;
+  // ナビ表示(仮): AT・エンディング中のベル当選時、回転中に押し順ナビを出す(本表示は 3c)
+  const naviText =
+    spinning && navi && spinUi.cycle.wonRole === 'BELL'
+      ? NAVI_PUSH_ORDER.map((reel) => REEL_NAMES[reel]).join('→')
+      : undefined;
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — 通しフローデモ(STEP 2 完了版)</h1>
+      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3a)</h1>
       <p className="note">
-        レバーオン 1 回でステートマシン(<code>core/state</code> の <code>advanceGame</code>)が 1G
-        進み、モード・背景・前兆・AT の状態に応じてステージ動画が自動切替。出目は
-        <code>core/reel</code> の停止制御の実出力。成立役の強制指定で「レア役 → 前兆 → AT
-        突入」を再現できる(本格 UI・演出は STEP 3〜4)。
+        レバーオン(Space)で役抽せん + 全リール回転、停止ボタン(Z・X・C)で 1 リールずつ停止
+        (押下瞬間に中段にあるコマ = 押下位置、押した順 = 押し順)。全停止で表示判定・払出を行い、
+        ステートマシン(<code>advanceGame</code>)が 1G 進む。回転表示はコマ送りの簡易版
+        (滑らかなスクロールとスベリの視覚化は STEP 3b)。
       </p>
 
       <div className="layout">
-        <section
-          className="cabinet"
-          style={{ aspectRatio: `${CABINET_SIZE.w} / ${CABINET_SIZE.h}` }}
-        >
-          <img className="cabinet-frame" src={CABINET_FRAME_URL} alt="筐体" />
-          <video
-            key={stage}
-            className="lcd"
-            style={rectToPercent(LCD_RECT)}
-            src={STAGE_VIDEOS[stage]}
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-          {REEL_WINDOW_RECTS.map((rect, reel) => (
-            <div key={reel} className="reel-window" style={rectToPercent(rect)}>
-              {windowAt(reel as ReelIndex, play.positions[reel]).map((symbol, row) => (
-                <img
-                  key={row}
-                  className={hitRows[reel].has(row) ? 'hit' : undefined}
-                  src={SYMBOL_IMAGES[symbol]}
-                  alt={symbol}
-                />
-              ))}
-            </div>
-          ))}
+        <section className="cabinet-column">
+          <div
+            className="cabinet"
+            style={{ aspectRatio: `${CABINET_SIZE.w} / ${CABINET_SIZE.h}` }}
+          >
+            <img className="cabinet-frame" src={CABINET_FRAME_URL} alt="筐体" />
+            <video
+              key={stage}
+              className="lcd"
+              style={rectToPercent(LCD_RECT)}
+              src={STAGE_VIDEOS[stage]}
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+            {REEL_WINDOW_RECTS.map((rect, reel) => {
+              const reelIndex = reel as ReelIndex;
+              const isReelSpinning =
+                spinUi.mode === 'SPINNING' && spinUi.cycle.stopped[reelIndex] === undefined;
+              return (
+                <div
+                  key={reel}
+                  className={isReelSpinning ? 'reel-window reel-spinning' : 'reel-window'}
+                  style={rectToPercent(rect)}
+                >
+                  {windowAt(reelIndex, displayPosition(reelIndex)).map((symbol, row) => (
+                    <img
+                      key={row}
+                      className={hitRows[reel].has(row) ? 'hit' : undefined}
+                      src={SYMBOL_IMAGES[symbol]}
+                      alt={symbol}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+            {naviText && <div className="navi-overlay">ナビ: {naviText}</div>}
+          </div>
+          <div className="stop-buttons">
+            {REEL_NAMES.map((name, reel) => {
+              const reelIndex = reel as ReelIndex;
+              const enabled = spinning && spinUi.cycle.stopped[reelIndex] === undefined;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  className="stop-button"
+                  disabled={!enabled}
+                  onClick={() => onStop(reelIndex)}
+                >
+                  {name}停止
+                  <span className="key-hint">{STOP_KEY_NAMES[reel]}</span>
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         <section className="side">
@@ -472,29 +609,42 @@ function App() {
                 </span>
               </div>
             )}
-            {play.lastLog && (
+            {spinning ? (
               <div>
-                成立役: <strong>{ROLE_LABELS[play.lastLog.won]}</strong>
-                {play.lastLog.displayed !== play.lastLog.won && (
-                  <span className="miss">
-                    (出目: {ROLE_LABELS[play.lastLog.displayed]}
-                    {play.lastLog.displayed === 'NONE' ? ' = 取りこぼし/未成立' : ''})
-                  </span>
-                )}
-                {play.lastLog.lines.length > 0 && (
-                  <span className="miss">
-                    ライン: {play.lastLog.lines.map((line) => LINE_LABELS[line]).join('・')}
-                    {play.lastLog.displayed === 'BELL' &&
-                      `(押し順${play.lastLog.payout >= 13 ? '正解 13 枚' : '不正解 1 枚'})`}
-                  </span>
-                )}
+                <strong className="accent">回転中</strong>
+                <span className="miss">
+                  停止ボタン(Z・X・C)で {REEL_NAMES.filter(
+                    (_, reel) => spinUi.cycle.stopped[reel as ReelIndex] === undefined,
+                  ).join('・')}{' '}
+                  リールを停止
+                </span>
               </div>
+            ) : (
+              play.lastLog && (
+                <div>
+                  成立役: <strong>{ROLE_LABELS[play.lastLog.won]}</strong>
+                  {play.lastLog.displayed !== play.lastLog.won && (
+                    <span className="miss">
+                      (出目: {ROLE_LABELS[play.lastLog.displayed]}
+                      {play.lastLog.displayed === 'NONE' ? ' = 取りこぼし/未成立' : ''})
+                    </span>
+                  )}
+                  {play.lastLog.lines.length > 0 && (
+                    <span className="miss">
+                      ライン: {play.lastLog.lines.map((line) => LINE_LABELS[line]).join('・')}
+                      {play.lastLog.displayed === 'BELL' &&
+                        `(押し順${play.lastLog.payout >= 13 ? '正解 13 枚' : '不正解 1 枚'})`}
+                    </span>
+                  )}
+                  <span className="miss">押し順: {play.lastLog.pushOrder}</span>
+                </div>
+              )
             )}
           </div>
 
           <div className="panel">
-            <button type="button" className="lever" onClick={onLever}>
-              レバーオン(1G 消化)
+            <button type="button" className="lever" onClick={onLever} disabled={spinning}>
+              レバーオン <span className="key-hint">Space</span>
             </button>
             <button
               type="button"
@@ -524,7 +674,7 @@ function App() {
               </select>
             </label>
             <label>
-              押し順:
+              オート時の押し順:
               <select
                 value={pushOrderSelect}
                 onChange={(e) =>
@@ -540,7 +690,7 @@ function App() {
               </select>
             </label>
             <label>
-              目押し:
+              オート時の目押し:
               <select value={aim} onChange={(e) => setAim(e.target.value as AimMode)}>
                 {(Object.keys(AIM_LABELS) as AimMode[]).map((mode) => (
                   <option key={mode} value={mode}>
@@ -588,6 +738,7 @@ function App() {
                 <th>G数</th>
                 <th>成立役</th>
                 <th>出目</th>
+                <th>押し順</th>
                 <th>払出</th>
                 <th>差枚</th>
                 <th>フェーズ</th>
@@ -599,6 +750,7 @@ function App() {
                   <td>{log.game}</td>
                   <td>{ROLE_LABELS[log.won]}</td>
                   <td>{ROLE_LABELS[log.displayed]}</td>
+                  <td>{log.pushOrder}</td>
                   <td>{log.payout}</td>
                   <td>{log.net}</td>
                   <td>{log.phase}</td>
@@ -606,7 +758,7 @@ function App() {
               ))}
               {play.logs.length === 0 && (
                 <tr>
-                  <td colSpan={6}>レバーオンでゲーム開始</td>
+                  <td colSpan={7}>レバーオンでゲーム開始</td>
                 </tr>
               )}
             </tbody>
