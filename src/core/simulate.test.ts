@@ -18,15 +18,16 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   const stats = simulate(GAMES, SEED);
 
   it('固定値: 投入・払出・初当り・セット・上位 AT・エンディング(回帰検出)', () => {
-    expect(stats.coinsIn).toBe(259098);
-    expect(stats.coinsOut).toBe(401215);
-    expect(stats.normal.games).toBe(59937);
-    expect(stats.at.games).toBe(GAMES - 59937);
-    expect(stats.atCount).toBe(271);
-    expect(stats.totalSets).toBe(2222);
-    expect(stats.upperAtCount).toBe(80);
-    expect(stats.endingCount).toBe(71);
-    expect(stats.vStockGains).toBe(371);
+    expect(stats.coinsIn).toBe(259518);
+    expect(stats.coinsOut).toBe(358395);
+    expect(stats.normal.games).toBe(65234);
+    expect(stats.at.games).toBe(GAMES - 65234);
+    expect(stats.atCount).toBe(306);
+    expect(stats.totalSets).toBe(1887);
+    expect(stats.upperAtCount).toBe(50);
+    expect(stats.endingCount).toBe(80);
+    expect(stats.endingCompleteCount).toBe(30);
+    expect(stats.vStockGains).toBe(326);
   });
 
   it('通常時純増 ≒ -1.8 枚/G(SPEC 想定)', () => {
@@ -45,9 +46,9 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   });
 
   it('機械割・初当りは計測値基準の回帰範囲(設計想定値なし = 確定 26)', () => {
-    // 2026-07-12 計測(docs/SIMULATION_REPORT.md): 機械割 ≒ 155% / 初当り ≒ 1/220
-    expect(stats.payoutRate).toBeGreaterThan(1.4);
-    expect(stats.payoutRate).toBeLessThan(1.7);
+    // 2026-07-12 計測(docs/SIMULATION_REPORT.md。確定 29〜31 反映後): 機械割 ≒ 138% / 初当り ≒ 1/215
+    expect(stats.payoutRate).toBeGreaterThan(1.25);
+    expect(stats.payoutRate).toBeLessThan(1.55);
     expect(stats.hitDenominator).toBeGreaterThan(180);
     expect(stats.hitDenominator).toBeLessThan(280);
   });
