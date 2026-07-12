@@ -2,7 +2,6 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import './App.css';
 import {
   CABINET_FRAME_URL,
-  SE,
   STAGE_BGMS,
   STAGE_IDS,
   STAGE_LABELS,
@@ -30,7 +29,7 @@ import {
   type StopPositions,
 } from './core/reel';
 import { createRng, randomSeed, type Rng } from './core/rng';
-import { isRareRole, ROLES, type Role } from './core/roles';
+import { ROLES, type Role } from './core/roles';
 import {
   advanceGame,
   ENDING_GAMES,
@@ -41,8 +40,11 @@ import {
   type GameState,
   type Phase,
 } from './core/state';
-import { isBgmPlaying, playBgm, playSe, stopBgm } from './platform/audio';
+import { isBgmPlaying, playBgm, stopBgm } from './platform/audio';
 import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
+import { cutinsForEvents, overlayForState, resultSoundCue } from './ui/direction';
+import { DirectionLayer, type CutinFrame } from './ui/DirectionLayer';
+import { playCue } from './ui/sound';
 import {
   finishSpin,
   isAllStopped,
@@ -266,6 +268,8 @@ interface PlayState {
   eventLog: EventLogEntry[];
   /** クレジット・払出・AT 獲得枚数のメーター(STEP 3c) */
   meter: MeterState;
+  /** 直近ゲームのカットイン演出列(STEP 3d。DirectionLayer がキューへ積む) */
+  cutinFrame: CutinFrame;
 }
 
 function makePlayState(gameState: GameState): PlayState {
@@ -277,6 +281,7 @@ function makePlayState(gameState: GameState): PlayState {
     logs: [],
     eventLog: [],
     meter: initMeter(),
+    cutinFrame: { seq: 0, cutins: [] },
   };
 }
 
@@ -317,6 +322,7 @@ function reducer(prev: PlayState, action: Action): PlayState {
     logs: [log, ...prev.logs].slice(0, 8),
     eventLog: [...newEvents, ...prev.eventLog].slice(0, 14),
     meter: meterOnFinish(prev.meter, wasAtGame, result),
+    cutinFrame: { seq: game, cutins: cutinsForEvents(result.events) },
   };
 }
 
@@ -365,6 +371,7 @@ function App() {
   const [aim, setAim] = useState<AimMode>('RANDOM');
   const [forcedRole, setForcedRole] = useState<'DRAW' | Role>('DRAW');
   const [autoPlay, setAutoPlay] = useState(false);
+  const [resetCount, setResetCount] = useState(0);
 
   const stage = stageSelect === 'AUTO' ? stageForState(play.gameState) : stageSelect;
   const navi = isNaviActive(play.gameState);
@@ -393,11 +400,9 @@ function App() {
       { wonRole: cycle.wonRole, displayedRole: spin.displayed, bellSuccess: spin.bellSuccess },
       rng,
     );
-    if (result.events.some((e) => e.type === 'AT_START' || e.type === 'UPPER_AT_ENTER')) {
-      playSe(SE.bonus);
-    } else if (cycle.wonRole === 'REACH_ME') playSe(SE.bonus);
-    else if (isRareRole(cycle.wonRole)) playSe(SE.rare);
-    else if (result.payout.payout > 0) playSe(SE.payout);
+    // 基本 SE(レア役 > 払出)。告知系の SE はカットイン表示時に DirectionLayer が鳴らす
+    const cue = resultSoundCue(cycle.wonRole, result.payout.payout);
+    if (cue !== undefined) playCue(cue);
     const pushOrder = cycle.pressed.map((reel) => REEL_NAMES[reel]).join('→');
     dispatch({ type: 'FINISH', spin, result, pushOrder });
     setSpinUi({ mode: 'IDLE' });
@@ -406,7 +411,7 @@ function App() {
   /** レバーオン: BET 徴収(メーター)+ 役抽せん + 全リール回転開始(回転中は無視) */
   const onLever = () => {
     if (spinUi.mode !== 'IDLE') return;
-    playSe(SE.leverOn);
+    playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
     setSpinUi({
@@ -426,7 +431,7 @@ function App() {
    */
   const onStop = (reel: ReelIndex) => {
     if (spinUi.mode !== 'SPINNING' || spinUi.cycle.stopped[reel] !== undefined) return;
-    playSe(SE.reelStop);
+    playCue('REEL_STOP');
     const pressAt = performance.now();
     const fromPosition = continuousPosition(spinUi.startPositions[reel], pressAt - spinUi.startAt);
     const cycle = pressStop(spinUi.cycle, reel, Math.floor(fromPosition));
@@ -442,7 +447,7 @@ function App() {
   /** オート消化 1G: レバー〜全停止を即時実行(適当押し or 目押しセレクト + 押し順セレクト) */
   const autoGame = () => {
     if (spinUi.mode !== 'IDLE') return;
-    playSe(SE.leverOn);
+    playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
     const pushes = pickPushes(aim, rng);
@@ -506,6 +511,7 @@ function App() {
     setAutoPlay(false);
     window.clearTimeout(finishTimerRef.current);
     setSpinUi({ mode: 'IDLE' });
+    setResetCount((n) => n + 1); // DirectionLayer を再マウントして演出キューを破棄
     dispatch({ type: 'RESET', gameState: initGameState(rng) });
   };
 
@@ -550,13 +556,15 @@ function App() {
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3c)</h1>
+      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3d)</h1>
       <p className="note">
         レバーオン(Space)で BET(3 枚掛け固定。リプレイは自動 BET)+ 役抽せん + 全リール回転、
         停止ボタン(Z・X・C)で 1 リールずつ停止(押下瞬間に中段にあるコマ = 押下位置、押した順 =
         押し順)。全停止で表示判定・払出(CREDIT / WIN メーターへ反映)を行い、ステートマシン
-        (<code>advanceGame</code>)が 1G 進む。AT・エンディング中のベル当選時はリール窓上に
-        押し順ナビ数字が出る(停止で消灯)。AT 中は獲得枚数(AT 開始からの純増)も表示。
+        (<code>advanceGame</code>)が 1G 進む。液晶には仮演出(前兆テロップ / 連続演出 4G /
+        AT・エンディングのカットイン)が状態・イベントに連動して表示される(STEP 4 で
+        シナリオテーブルへ差し替え予定)。BGM はステージ切替時にクロスフェード、SE は
+        サウンドキュー(<code>src/ui/sound.ts</code>)経由で後から差し替え可能。
       </p>
 
       <div className="layout">
@@ -576,6 +584,13 @@ function App() {
               loop
               playsInline
             />
+            <div className="direction-layer-wrap" style={rectToPercent(LCD_RECT)}>
+              <DirectionLayer
+                key={resetCount}
+                overlay={overlayForState(gameState)}
+                cutinFrame={play.cutinFrame}
+              />
+            </div>
             {REEL_WINDOW_RECTS.map((rect, reel) => {
               const reelIndex = reel as ReelIndex;
               const moving = isReelMoving(reelIndex);

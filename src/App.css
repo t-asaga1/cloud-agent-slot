@@ -113,6 +113,200 @@
   box-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
 }
 
+/*
+ * --- 演出表示レイヤー(STEP 3d。液晶へ重ねる仮演出) ---
+ * direction-layer-wrap は LCD_RECT と同じ位置に絶対配置され、その中で
+ * テロップ / 連続演出画面 / エンディングバナー / カットインを描く。
+ * 見た目はすべて仮(STEP 4 のシナリオテーブル + 実素材で差し替え)。
+ */
+
+.direction-layer-wrap {
+  position: absolute;
+  pointer-events: none;
+}
+
+.direction-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* 前兆中のテロップ(画面下部の帯) */
+.telop {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 5%;
+  padding: 2% 3%;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  color: #fef3c7;
+  font-size: clamp(0.7rem, 1.6vw, 1.05rem);
+  text-align: center;
+  letter-spacing: 0.12em;
+  animation: telop-in 0.4s ease-out;
+}
+
+@keyframes telop-in {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 連続演出 4G の全画面表示 */
+.renzoku-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  background:
+    radial-gradient(ellipse at center, rgba(127, 29, 29, 0.55), rgba(0, 0, 0, 0.82));
+  border: 2px solid rgba(220, 38, 38, 0.7);
+}
+
+.renzoku-title {
+  color: #fca5a5;
+  font-weight: 800;
+  font-size: clamp(0.8rem, 1.9vw, 1.3rem);
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 12px rgba(220, 38, 38, 0.9);
+}
+
+.renzoku-text {
+  color: #fef2f2;
+  font-size: clamp(0.7rem, 1.5vw, 1rem);
+  letter-spacing: 0.14em;
+}
+
+.renzoku-count {
+  color: #fbbf24;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-weight: 700;
+  font-size: clamp(0.75rem, 1.7vw, 1.15rem);
+}
+
+/* エンディング中のバナー(画面上部) */
+.ending-banner {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 1.5% 4%;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #facc15;
+  color: #fef3c7;
+  font-size: clamp(0.7rem, 1.5vw, 1rem);
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.6);
+}
+
+.ending-title {
+  color: #facc15;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+}
+
+/* ワンショットのカットイン(キュー先頭を durationMs 表示) */
+.cutin {
+  position: absolute;
+  inset: 8% 6%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.78);
+  animation: cutin-in 0.25s ease-out;
+}
+
+@keyframes cutin-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cutin-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+}
+
+.cutin-body {
+  position: relative;
+  text-align: center;
+  padding: 3%;
+}
+
+.cutin-title {
+  font-weight: 900;
+  font-size: clamp(1.1rem, 3vw, 2rem);
+  letter-spacing: 0.12em;
+}
+
+.cutin-sub {
+  margin-top: 2%;
+  font-size: clamp(0.7rem, 1.6vw, 1.05rem);
+  color: #e5e7eb;
+  letter-spacing: 0.1em;
+}
+
+.cutin-win {
+  border: 3px solid #facc15;
+}
+
+.cutin-win .cutin-title {
+  color: #facc15;
+  text-shadow: 0 0 14px rgba(250, 204, 21, 0.9);
+}
+
+.cutin-lose {
+  border: 3px solid #475569;
+}
+
+.cutin-lose .cutin-title {
+  color: #94a3b8;
+}
+
+.cutin-special {
+  border: 3px solid #f0abfc;
+  box-shadow: 0 0 22px rgba(240, 171, 252, 0.7);
+}
+
+.cutin-special .cutin-title {
+  color: #f0abfc;
+  text-shadow: 0 0 16px rgba(240, 171, 252, 0.95);
+}
+
+.cutin-info {
+  border: 2px solid #38bdf8;
+  inset: 30% 22%;
+}
+
+.cutin-info .cutin-title {
+  color: #7dd3fc;
+  font-size: clamp(0.85rem, 2vw, 1.3rem);
+}
+
 /* --- クレジット・払出メーター(STEP 3c。7seg 風の仮デザイン) --- */
 
 .meter-panel {

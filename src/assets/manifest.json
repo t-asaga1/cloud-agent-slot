@@ -216,6 +216,24 @@
     "note": "ボーナス告知SE の仮素材(サイン波合成)。実素材入稿で差し替え予定"
   },
   {
+    "id": "se_telop",
+    "path": "audio/se/se_telop.ogg",
+    "type": "audio",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "前兆テロップ表示SE の仮素材(サイン波合成)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "se_fail",
+    "path": "audio/se/se_fail.ogg",
+    "type": "audio",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出失敗SE の仮素材(サイン波合成・下降 2 音)。実素材入稿で差し替え予定"
+  },
+  {
     "id": "bgm_yoshitsune",
     "path": "audio/bgm/bgm_yoshitsune.ogg",
     "type": "audio",
