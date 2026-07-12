@@ -40,10 +40,12 @@ import bgmYugata from './audio/bgm/bgm_yugata.ogg';
 import bgmZencho from './audio/bgm/bgm_zencho.ogg';
 
 import seBonus from './audio/se/se_bonus.ogg';
+import seFail from './audio/se/se_fail.ogg';
 import seLeverOn from './audio/se/se_lever_on.ogg';
 import sePayout from './audio/se/se_payout.ogg';
 import seRare from './audio/se/se_rare.ogg';
 import seReelStop from './audio/se/se_reel_stop.ogg';
+import seTelop from './audio/se/se_telop.ogg';
 
 export const CABINET_FRAME_URL = cabinetFrame;
 export const LCD_BG_FALLBACK_URL = lcdBgFallback;
@@ -122,11 +124,18 @@ export const EFFECT_VIDEOS = {
   cutinStrong: effectCutinStrong,
 } as const;
 
-/** 効果音 URL */
+/**
+ * 効果音 URL(仮素材)。
+ * ゲーム中の SE 再生は本テーブルを直接参照せず、`src/ui/sound.ts` の
+ * サウンドキュー(用途 ID → SE ファイル)を経由すること。実素材の差し替えは
+ * (1) 同名ファイルの置き換え、または (2) sound.ts のキュー表の張り替え、のどちらかで済む。
+ */
 export const SE = {
   leverOn: seLeverOn,
   reelStop: seReelStop,
   payout: sePayout,
   rare: seRare,
   bonus: seBonus,
+  telop: seTelop,
+  fail: seFail,
 } as const;
