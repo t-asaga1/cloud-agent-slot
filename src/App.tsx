@@ -556,18 +556,14 @@ function App() {
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3d)</h1>
+      <h1>義経物語 — 遊技デモ(STEP 3 完了版)</h1>
       <p className="note">
-        レバーオン(Space)で BET(3 枚掛け固定。リプレイは自動 BET)+ 役抽せん + 全リール回転、
-        停止ボタン(Z・X・C)で 1 リールずつ停止(押下瞬間に中段にあるコマ = 押下位置、押した順 =
-        押し順)。全停止で表示判定・払出(CREDIT / WIN メーターへ反映)を行い、ステートマシン
-        (<code>advanceGame</code>)が 1G 進む。液晶には仮演出(前兆テロップ / 連続演出 4G /
-        AT・エンディングのカットイン)が状態・イベントに連動して表示される(STEP 4 で
-        シナリオテーブルへ差し替え予定)。BGM はステージ切替時にクロスフェード、SE は
-        サウンドキュー(<code>src/ui/sound.ts</code>)経由で後から差し替え可能。
+        Space = レバーオン(BET 3 枚掛け固定。リプレイは自動 BET)/ Z・X・C = 左・中・右停止
+        (押下瞬間に中段にあるコマで停止 = タイミング目押し。押した順 = 押し順)。
+        開発用の情報・操作は下部の「デバッグ(開発用)」を開く。
       </p>
 
-      <div className="layout">
+      <div className="play-area">
         <section className="cabinet-column">
           <div
             className="cabinet"
@@ -677,9 +673,27 @@ function App() {
               );
             })}
           </div>
+          <div className="main-controls">
+            <button type="button" className="lever" onClick={onLever} disabled={spinning}>
+              レバーオン <span className="key-hint">Space</span>
+            </button>
+            <button
+              type="button"
+              className={autoPlay ? 'auto-on' : undefined}
+              onClick={() => setAutoPlay((v) => !v)}
+            >
+              オート消化 {autoPlay ? '停止' : '開始'}
+            </button>
+            <button type="button" onClick={onToggleBgm}>
+              BGM {bgmOn ? '停止' : '再生'}
+            </button>
+          </div>
         </section>
+      </div>
 
-        <section className="side">
+      <details className="debug">
+        <summary>デバッグ(開発用)</summary>
+        <section className="debug-body">
           <div className="panel status state-panel">
             <div className="state-grid">
               <div>
@@ -773,22 +787,6 @@ function App() {
           </div>
 
           <div className="panel">
-            <button type="button" className="lever" onClick={onLever} disabled={spinning}>
-              レバーオン <span className="key-hint">Space</span>
-            </button>
-            <button
-              type="button"
-              className={autoPlay ? 'auto-on' : undefined}
-              onClick={() => setAutoPlay((v) => !v)}
-            >
-              オート消化 {autoPlay ? '停止' : '開始'}
-            </button>
-            <button type="button" onClick={onReset}>
-              リセット
-            </button>
-          </div>
-
-          <div className="panel">
             <label>
               成立役:
               <select
@@ -846,8 +844,8 @@ function App() {
                 ))}
               </select>
             </label>
-            <button type="button" onClick={onToggleBgm}>
-              BGM {bgmOn ? '停止' : '再生'}
+            <button type="button" onClick={onReset}>
+              リセット
             </button>
           </div>
 
@@ -894,7 +892,7 @@ function App() {
             </tbody>
           </table>
         </section>
-      </div>
+      </details>
     </main>
   );
 }
