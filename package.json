@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "sim": "vite-node scripts/run_simulation.ts --",
     "preview": "vite preview"
   },
   "dependencies": {
