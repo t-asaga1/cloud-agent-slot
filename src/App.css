@@ -24,6 +24,12 @@
 
 /* --- 筐体ビュー --- */
 
+.cabinet-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .cabinet {
   position: relative;
   width: 100%;
@@ -61,6 +67,78 @@
   outline-offset: -3px;
   background: rgba(250, 204, 21, 0.22);
   border-radius: 6px;
+}
+
+/* 回転中のリール窓(簡易表示 = コマ送り + ぼかし。滑らかなスクロールは STEP 3b) */
+.reel-window.reel-spinning img {
+  filter: blur(2px);
+  opacity: 0.8;
+}
+
+/* 押し順ナビの仮表示(リール窓上。本表示は STEP 3c) */
+.navi-overlay {
+  position: absolute;
+  left: 50%;
+  top: 33%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 8px;
+  background: rgba(250, 204, 21, 0.92);
+  color: #1c1917;
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* --- 停止ボタン(STEP 3a) --- */
+
+.stop-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stop-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 2px solid #dc2626;
+  background: #7f1d1d;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stop-button:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.stop-button:disabled {
+  border-color: #3b4252;
+  background: #1f2430;
+  color: #6b7280;
+  cursor: default;
+}
+
+.key-hint {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #9aa4b2;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 0 6px;
+}
+
+.panel button.lever:disabled {
+  background: #4b1113;
+  border-color: #6b7280;
+  color: #9aa4b2;
+  cursor: default;
 }
 
 /* --- 操作パネル --- */
