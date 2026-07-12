@@ -42,6 +42,7 @@ import {
   type Phase,
 } from './core/state';
 import { isBgmPlaying, playBgm, playSe, stopBgm } from './platform/audio';
+import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
 import {
   finishSpin,
   isAllStopped,
@@ -263,6 +264,8 @@ interface PlayState {
   logs: GameLog[];
   /** 発生イベントの履歴(新しい順) */
   eventLog: EventLogEntry[];
+  /** クレジット・払出・AT 獲得枚数のメーター(STEP 3c) */
+  meter: MeterState;
 }
 
 function makePlayState(gameState: GameState): PlayState {
@@ -273,16 +276,24 @@ function makePlayState(gameState: GameState): PlayState {
     displayed: 'NONE',
     logs: [],
     eventLog: [],
+    meter: initMeter(),
   };
 }
 
 type Action =
+  | { type: 'LEVER' }
   | { type: 'FINISH'; spin: SpinResult; result: AdvanceResult; pushOrder: string }
   | { type: 'RESET'; gameState: GameState };
 
 function reducer(prev: PlayState, action: Action): PlayState {
   if (action.type === 'RESET') return makePlayState(action.gameState);
+  if (action.type === 'LEVER') {
+    // レバーオン = BET 徴収(リプレイ持越しなら自動 BET)+ 払出枚数表示のリセット
+    return { ...prev, meter: meterOnLever(prev.meter, prev.gameState.replayCarry) };
+  }
   const { spin, result } = action;
+  // AT 獲得枚数の加算対象か = ゲーム開始時点(advanceGame 前)のフェーズが AT / エンディング
+  const wasAtGame = prev.gameState.phase.type === 'AT' || prev.gameState.phase.type === 'ENDING';
   const game = result.state.totalGames;
   const log: GameLog = {
     game,
@@ -305,6 +316,7 @@ function reducer(prev: PlayState, action: Action): PlayState {
     lastLog: log,
     logs: [log, ...prev.logs].slice(0, 8),
     eventLog: [...newEvents, ...prev.eventLog].slice(0, 14),
+    meter: meterOnFinish(prev.meter, wasAtGame, result),
   };
 }
 
@@ -391,10 +403,11 @@ function App() {
     setSpinUi({ mode: 'IDLE' });
   };
 
-  /** レバーオン: 役抽せん + 全リール回転開始(回転中は無視) */
+  /** レバーオン: BET 徴収(メーター)+ 役抽せん + 全リール回転開始(回転中は無視) */
   const onLever = () => {
     if (spinUi.mode !== 'IDLE') return;
     playSe(SE.leverOn);
+    dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
     setSpinUi({
       mode: 'SPINNING',
@@ -430,6 +443,7 @@ function App() {
   const autoGame = () => {
     if (spinUi.mode !== 'IDLE') return;
     playSe(SE.leverOn);
+    dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
     const pushes = pickPushes(aim, rng);
     const order: PushOrder =
@@ -521,22 +535,28 @@ function App() {
   const hitRows = spinning
     ? ([new Set<number>(), new Set<number>(), new Set<number>()] as const)
     : highlightRows(play.lines, play.displayed, play.positions);
-  const { gameState } = play;
+  const { gameState, meter } = play;
   const { phase } = gameState;
-  // ナビ表示(仮): AT・エンディング中のベル当選時、回転中に押し順ナビを出す(本表示は 3c)
-  const naviText =
-    spinning && navi && spinUi.cycle.wonRole === 'BELL'
-      ? NAVI_PUSH_ORDER.map((reel) => REEL_NAMES[reel]).join('→')
-      : undefined;
+  // 押し順ナビの本表示(STEP 3c): AT・エンディング中のベル当選時、レバーオンで
+  // リール窓上へナビ数字(何番目に押すか)を出し、リールが停止するごとに消す
+  const naviShown = spinning && navi && spinUi.cycle.wonRole === 'BELL';
+  const naviDigit = (reel: ReelIndex): number | undefined => {
+    if (!naviShown || spinUi.cycle.stopped[reel] !== undefined) return undefined;
+    return NAVI_PUSH_ORDER.indexOf(reel) + 1;
+  };
+  // AT 獲得枚数はゲーム開始時点が AT / エンディングのゲームで加算される(counters.ts)。
+  // メーター表示は AT 中(エンディング含む)のみ(終了後は非表示。値は次の AT_START まで凍結)
+  const atGainVisible = phase.type === 'AT' || phase.type === 'ENDING';
 
   return (
     <main className="app">
-      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3b)</h1>
+      <h1>パチスロアプリ — 遊技サイクルデモ(STEP 3c)</h1>
       <p className="note">
-        レバーオン(Space)で役抽せん + 全リール回転、停止ボタン(Z・X・C)で 1 リールずつ停止
-        (押下瞬間に中段にあるコマ = 押下位置、押した順 = 押し順)。全停止で表示判定・払出を行い、
-        ステートマシン(<code>advanceGame</code>)が 1G 進む。リールは連続スクロール描画
-        (750ms/周)で、停止ボタン押下から停止位置までのスベリ(最大 4 コマ)も回転が継続して見える。
+        レバーオン(Space)で BET(3 枚掛け固定。リプレイは自動 BET)+ 役抽せん + 全リール回転、
+        停止ボタン(Z・X・C)で 1 リールずつ停止(押下瞬間に中段にあるコマ = 押下位置、押した順 =
+        押し順)。全停止で表示判定・払出(CREDIT / WIN メーターへ反映)を行い、ステートマシン
+        (<code>advanceGame</code>)が 1G 進む。AT・エンディング中のベル当選時はリール窓上に
+        押し順ナビ数字が出る(停止で消灯)。AT 中は獲得枚数(AT 開始からの純増)も表示。
       </p>
 
       <div className="layout">
@@ -559,6 +579,7 @@ function App() {
             {REEL_WINDOW_RECTS.map((rect, reel) => {
               const reelIndex = reel as ReelIndex;
               const moving = isReelMoving(reelIndex);
+              const digit = naviDigit(reelIndex);
               // コマ帯(窓 3 コマ + 上下 1 コマ)を連続位置ぶんだけ下へずらして描画する。
               // offset 1 コマ = 帯高さの 1/5(STRIP_KOMA)。key を floor 位置にすることで
               // コマ境界ごとに帯が入れ替わり、translateY は常に 0〜1 コマ分に収まる
@@ -582,10 +603,46 @@ function App() {
                       />
                     ))}
                   </div>
+                  {digit !== undefined && <div className="navi-digit">{digit}</div>}
                 </div>
               );
             })}
-            {naviText && <div className="navi-overlay">ナビ: {naviText}</div>}
+          </div>
+          <div className="meter-panel">
+            <div className="meter">
+              <span className="meter-label">CREDIT</span>
+              <span className="seg">
+                <span className="seg-ghost">8888</span>
+                <span className="seg-value">{meter.credit}</span>
+              </span>
+            </div>
+            <div className="meter">
+              <span className="meter-label">BET</span>
+              <span className="seg">
+                <span className="seg-ghost">8</span>
+                <span className="seg-value">{spinning ? 3 : 0}</span>
+              </span>
+              <span className={meter.autoBet && spinning ? 'lamp lamp-on' : 'lamp'}>REPLAY</span>
+            </div>
+            <div className="meter">
+              <span className="meter-label">WIN</span>
+              <span className="seg">
+                <span className="seg-ghost">88</span>
+                <span className="seg-value">{meter.payout}</span>
+              </span>
+            </div>
+            {atGainVisible && (
+              <div className="meter meter-at">
+                <span className="meter-label">AT獲得</span>
+                <span className="seg seg-at">
+                  <span className="seg-ghost">8888</span>
+                  <span className="seg-value">
+                    {meter.atGained > 0 ? `+${meter.atGained}` : meter.atGained}
+                  </span>
+                </span>
+                <span className="meter-unit">枚</span>
+              </div>
+            )}
           </div>
           <div className="stop-buttons">
             {REEL_NAMES.map((name, reel) => {

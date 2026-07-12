@@ -90,20 +90,114 @@
   opacity: 0.85;
 }
 
-/* 押し順ナビの仮表示(リール窓上。本表示は STEP 3c) */
-.navi-overlay {
+/*
+ * 押し順ナビの本表示(STEP 3c): AT・エンディング中のベル当選時、各リール窓の上部に
+ * 「何番目に押すか」の数字を表示する(リール停止で消灯)。仮デザイン(STEP 4 で差し替え可)
+ */
+.navi-digit {
   position: absolute;
+  top: 4%;
   left: 50%;
-  top: 33%;
   transform: translateX(-50%);
-  padding: 4px 14px;
-  border-radius: 8px;
-  background: rgba(250, 204, 21, 0.92);
+  min-width: 34%;
+  text-align: center;
+  padding: 1px 0;
+  border-radius: 6px;
+  background: rgba(250, 204, 21, 0.95);
+  border: 2px solid #fef3c7;
   color: #1c1917;
-  font-weight: 700;
-  font-size: 0.95rem;
-  white-space: nowrap;
+  font-weight: 800;
+  font-size: clamp(1rem, 2.4vw, 1.6rem);
+  line-height: 1.2;
   pointer-events: none;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+}
+
+/* --- クレジット・払出メーター(STEP 3c。7seg 風の仮デザイン) --- */
+
+.meter-panel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #3b4252;
+  background: #14100c;
+}
+
+.meter {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.meter-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #9aa4b2;
+}
+
+.meter-unit {
+  font-size: 0.65rem;
+  color: #9aa4b2;
+}
+
+/* 7seg 風表示: 消灯セグメント(ghost の 8)を薄く敷き、右詰めで実値を重ねる */
+.seg {
+  position: relative;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #1c0f08;
+  border: 1px solid #3a2418;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+}
+
+.seg-ghost {
+  color: rgba(251, 146, 60, 0.14);
+  user-select: none;
+}
+
+.seg-value {
+  position: absolute;
+  right: 6px;
+  top: 2px;
+  color: #fb923c;
+  text-shadow: 0 0 6px rgba(251, 146, 60, 0.75);
+}
+
+/* リプレイ自動 BET ランプ */
+.lamp {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #3b4252;
+  color: #4b5563;
+}
+
+.lamp-on {
+  color: #1c1917;
+  background: #4ade80;
+  border-color: #86efac;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
+}
+
+/* AT 獲得枚数(AT 中のみ表示。AT_START でリセット) */
+.meter-at .meter-label {
+  color: #facc15;
+}
+
+.seg-at .seg-value {
+  color: #facc15;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.75);
 }
 
 /* --- 停止ボタン(STEP 3a) --- */
