@@ -61,9 +61,13 @@ export interface SimulationStats {
   avgSets: number;
   /** AT 1 回(初当り)あたりの平均純増(AT 区間の純増 ÷ 初当り回数) */
   avgAtNet: number;
-  /** 上位 AT 移行回数・エンディング到達回数・V ストック獲得回数 */
+  /** 上位 AT 移行回数(UPPER_AT_ENTER = エンディング経由 = 確定 29・30) */
   upperAtCount: number;
+  /** エンディング突入回数(ENDING_START。通常 AT 10 連 + 上位 AT 10 連の両方) */
   endingCount: number;
+  /** うち上位 AT 10 連の完走(ENDING_START after = AT_END) */
+  endingCompleteCount: number;
+  /** V ストック獲得回数 */
   vStockGains: number;
   /** 役別の内部当選回数(役抽せんの検算用) */
   roleWon: Record<Role, number>;
@@ -97,6 +101,7 @@ export function simulate(games: number, seed: number): SimulationStats {
   let totalSets = 0;
   let upperAtCount = 0;
   let endingCount = 0;
+  let endingCompleteCount = 0;
   let vStockGains = 0;
 
   for (let i = 0; i < games; i++) {
@@ -130,6 +135,7 @@ export function simulate(games: number, seed: number): SimulationStats {
           break;
         case 'ENDING_START':
           endingCount += 1;
+          if (event.after === 'AT_END') endingCompleteCount += 1;
           break;
         case 'V_STOCK_GAIN':
           vStockGains += 1;
@@ -163,6 +169,7 @@ export function simulate(games: number, seed: number): SimulationStats {
     avgAtNet: atCount > 0 ? at.net / atCount : 0,
     upperAtCount,
     endingCount,
+    endingCompleteCount,
     vStockGains,
     roleWon,
     roleDisplayed,
@@ -182,7 +189,7 @@ export function formatStats(stats: SimulationStats): string {
     `AT 初当り: ${stats.atCount} 回 / 1/${f(stats.hitDenominator, 1)}(通常区間 ${stats.normal.games}G)`,
     `AT 平均セット数(連チャン): ${f(stats.avgSets, 2)}(総セット ${stats.totalSets})`,
     `AT 平均純増: ${f(stats.avgAtNet, 1)} 枚/回`,
-    `上位 AT 移行: ${stats.upperAtCount} 回 / エンディング: ${stats.endingCount} 回 / V ストック獲得: ${stats.vStockGains} 回`,
+    `上位 AT 移行: ${stats.upperAtCount} 回 / エンディング突入: ${stats.endingCount} 回(うち上位 10 連完走: ${stats.endingCompleteCount} 回)/ V ストック獲得: ${stats.vStockGains} 回`,
     `BET/G(通常区間): ${f(stats.normal.coinsIn / stats.normal.games, 3)}(最大 ${BET_PER_GAME})`,
   ];
   return lines.join('\n');

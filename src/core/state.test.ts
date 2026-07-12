@@ -8,6 +8,7 @@ import { createRng } from './rng';
 import { ROLES } from './roles';
 import {
   advanceGame,
+  ENDING_GAMES,
   initGameState,
   isNaviActive,
   type AtPhase,
@@ -167,10 +168,10 @@ describe('advanceGame: モード移行の骨格', () => {
     expect(at.state.mode).toBe('NORMAL');
     expect(at.events).toEqual([{ type: 'V_STOCK_GAIN', trigger: 'CHERRY_CENTER', vStock: 1 }]);
 
-    // エンディング中(1G 目 = 最終 G): AT 終了処理のモード・背景再抽せんのみ消費し、
+    // エンディング中(最終 G = 10G 目): AT 終了処理のモード・背景再抽せんのみ消費し、
     // モード移行抽せん(MODE_CHANGE イベント)は発生しない
     const ending = advanceGame(
-      normalState({ phase: { type: 'ENDING', game: 0 } }),
+      normalState({ phase: { type: 'ENDING', game: 9, after: 'AT_END', vStock: 0 } }),
       input('CHERRY_CENTER'),
       seqRng([0, 0]),
     );
@@ -409,9 +410,18 @@ describe('advanceGame: 偽前兆の突入(確定 3・18・22)', () => {
     expect(at.state.phase).toMatchObject({ type: 'AT', part: 'KOYAKU', partGame: 2 });
     expect(at.events).toEqual([]);
 
-    // エンディング中(1G 目 = 最終 G): AT 終了処理のモード・背景再抽せんのみ消費
+    // エンディング中(途中 G): 各種抽せんなし = 乱数消費ゼロで経過 G のみ進む
+    const endingMid = advanceGame(
+      normalState({ phase: { type: 'ENDING', game: 0, after: 'AT_END', vStock: 0 } }),
+      input('WATERMELON_STRONG'),
+      seqRng([]),
+    );
+    expect(endingMid.state.phase).toEqual({ type: 'ENDING', game: 1, after: 'AT_END', vStock: 0 });
+    expect(endingMid.events).toEqual([]);
+
+    // エンディング最終 G(10G 目): AT 終了処理のモード・背景再抽せんのみ消費
     const ending = advanceGame(
-      normalState({ phase: { type: 'ENDING', game: 0 } }),
+      normalState({ phase: { type: 'ENDING', game: 9, after: 'AT_END', vStock: 0 } }),
       input('WATERMELON_STRONG'),
       seqRng([0, 0]),
     );
@@ -1026,33 +1036,36 @@ describe('advanceGame: AT 小役パート・V ストック(確定 11・27)', () 
 });
 
 describe('advanceGame: AT バトルパート(確定 11)', () => {
-  it('バトル開始: 継続率で当せん → 継続確定・V ストック温存', () => {
+  it('バトル開始: V ストックがあれば先に 1 個消費して継続確定(継続率抽せんなし = 確定 29)', () => {
+    // seqRng([]) = 乱数消費ゼロ(継続率抽せんがあれば throw)
     const result = advanceGame(
-      normalState({ phase: atPhase({ partGame: 10, vStock: 1 }) }),
+      normalState({ phase: atPhase({ partGame: 10, vStock: 2 }) }),
+      input('NONE'),
+      seqRng([]),
+    );
+    expect(result.state.phase).toEqual(
+      atPhase({ part: 'BATTLE', partGame: 1, vStock: 1, continueConfirmed: true }),
+    );
+    expect(result.events).toEqual([{ type: 'V_STOCK_USE', vStock: 1 }]);
+  });
+
+  it('バトル開始: V ストックなし → 継続率で継続抽せん(当せんで継続確定)', () => {
+    const result = advanceGame(
+      normalState({ phase: atPhase({ partGame: 10 }) }),
       input('NONE'),
       seqRng([0.5]), // 0.5 < 0.66 → 当せん
     );
     expect(result.state.phase).toEqual(
-      atPhase({ part: 'BATTLE', partGame: 1, vStock: 1, continueConfirmed: true }),
+      atPhase({ part: 'BATTLE', partGame: 1, continueConfirmed: true }),
     );
+    expect(result.events).toEqual([]);
   });
 
-  it('バトル開始: 継続率に漏れ + V ストックあり → 1 個消費して継続確定(実装決定)', () => {
-    const result = advanceGame(
-      normalState({ phase: atPhase({ partGame: 10, vStock: 2 }) }),
-      input('NONE'),
-      seqRng([0.99]), // 0.99 >= 0.66 → 漏れ
-    );
-    expect(result.state.phase).toEqual(
-      atPhase({ part: 'BATTLE', partGame: 1, vStock: 1, continueConfirmed: true }),
-    );
-  });
-
-  it('バトル開始: 継続率に漏れ + V ストックなし → 未確定のままバトルへ', () => {
+  it('バトル開始: V ストックなし + 継続率に漏れ → 未確定のままバトルへ', () => {
     const result = advanceGame(
       normalState({ phase: atPhase({ partGame: 10 }) }),
       input('NONE'),
-      seqRng([0.99]),
+      seqRng([0.99]), // 0.99 >= 0.66 → 漏れ
     );
     expect(result.state.phase).toEqual(atPhase({ part: 'BATTLE', partGame: 1 }));
   });
@@ -1135,7 +1148,7 @@ describe('advanceGame: AT バトルパート(確定 11)', () => {
   });
 });
 
-describe('advanceGame: 10 連 → 上位 AT → エンディング(確定 12)', () => {
+describe('advanceGame: 10 連 → エンディング → 上位 AT(確定 12・29〜31)', () => {
   it('連チャン 9 のセット継続で 10 連目へ(AT_SET_CONTINUE renchan 10)', () => {
     const result = advanceGame(
       normalState({
@@ -1148,19 +1161,42 @@ describe('advanceGame: 10 連 → 上位 AT → エンディング(確定 12)', 
     expect(result.state.phase).toEqual(atPhase({ renchan: 10 }));
   });
 
-  it('10 連目のセットはバトル開始の継続抽せん・ストック消費なし(必ず移行 = 実装解釈)', () => {
-    // seqRng([]) = 乱数消費ゼロ(継続率抽せんがあれば throw)。ストックも温存
-    const result = advanceGame(
+  it('10 連目のセットもバトル開始の継続処理は通常どおり(必ず移行の特例なし = 確定 30)', () => {
+    // V ストックあり → 先に 1 個消費して継続確定(確定 29)
+    const withStock = advanceGame(
       normalState({ phase: atPhase({ partGame: 10, renchan: 10, vStock: 2 }) }),
       input('NONE'),
       seqRng([]),
     );
-    expect(result.state.phase).toEqual(
-      atPhase({ part: 'BATTLE', partGame: 1, renchan: 10, vStock: 2, continueConfirmed: true }),
+    expect(withStock.state.phase).toEqual(
+      atPhase({ part: 'BATTLE', partGame: 1, renchan: 10, vStock: 1, continueConfirmed: true }),
+    );
+    expect(withStock.events).toEqual([{ type: 'V_STOCK_USE', vStock: 1 }]);
+
+    // V ストックなし → 継続率で抽せん(漏れたら未確定のまま)
+    const noStock = advanceGame(
+      normalState({ phase: atPhase({ partGame: 10, renchan: 10 }) }),
+      input('NONE'),
+      seqRng([0.99]),
+    );
+    expect(noStock.state.phase).toEqual(
+      atPhase({ part: 'BATTLE', partGame: 1, renchan: 10 }),
     );
   });
 
-  it('通常 AT 10 連目のバトル終了 → 上位 AT(連チャンリセット・93% 固定・ストック持越し)', () => {
+  it('10 連目のバトルも未確定なら敗北 = AT 終了(敗北あり = 確定 30)', () => {
+    const result = advanceGame(
+      normalState({ phase: atPhase({ part: 'BATTLE', partGame: 7, renchan: 10 }) }),
+      input('NONE'),
+      seqRng([3156, 60]), // AT 終了処理: モード → NORMAL、背景 → 静
+    );
+    expect(result.events).toEqual([
+      { type: 'AT_END', reason: 'DEFEAT', mode: 'NORMAL', background: 'SHIZUKA' },
+    ]);
+    expect(result.state.phase).toEqual({ type: 'NORMAL' });
+  });
+
+  it('通常 AT 10 連目のバトル勝利 → エンディングへ(after = UPPER_AT・ストック持越し = 確定 29・30)', () => {
     const result = advanceGame(
       normalState({
         phase: atPhase({
@@ -1174,6 +1210,23 @@ describe('advanceGame: 10 連 → 上位 AT → エンディング(確定 12)', 
       input('NONE'),
       seqRng([]),
     );
+    expect(result.events).toEqual([{ type: 'ENDING_START', after: 'UPPER_AT' }]);
+    expect(result.state.phase).toEqual({ type: 'ENDING', game: 0, after: 'UPPER_AT', vStock: 1 });
+  });
+
+  it('エンディング 10G 消化(確定 31)→ 上位 AT 開始(連チャンリセット・93% 固定・ストック持越し)', () => {
+    // エンディング 1〜9G 目: 各種抽せんなし = 乱数消費ゼロ
+    let state = normalState({
+      phase: { type: 'ENDING', game: 0, after: 'UPPER_AT', vStock: 1 },
+    });
+    for (let g = 1; g <= ENDING_GAMES - 1; g++) {
+      const mid = advanceGame(state, input('NONE'), seqRng([]));
+      expect(mid.state.phase).toEqual({ type: 'ENDING', game: g, after: 'UPPER_AT', vStock: 1 });
+      expect(mid.events).toEqual([]);
+      state = mid.state;
+    }
+    // 最終 G(10G 目): 上位 AT へ(次ゲームが上位 AT 小役 1G 目。乱数消費なし)
+    const result = advanceGame(state, input('NONE'), seqRng([]));
     expect(result.events).toEqual([{ type: 'UPPER_AT_ENTER' }]);
     expect(result.state.phase).toEqual(
       atPhase({ tier: 'UPPER', continueRate: UPPER_AT_CONTINUE_RATE, vStock: 1 }),
@@ -1236,7 +1289,7 @@ describe('advanceGame: 10 連 → 上位 AT → エンディング(確定 12)', 
     expect(result.state.phase).toEqual({ type: 'NORMAL' });
   });
 
-  it('上位 AT 10 連目のバトル終了 → エンディング(次ゲームが 1G 目)→ AT 終了処理', () => {
+  it('上位 AT 10 連目のバトル勝利 → エンディング(after = AT_END)→ 消化後に AT 終了処理', () => {
     const ending = advanceGame(
       normalState({
         phase: atPhase({
@@ -1251,11 +1304,15 @@ describe('advanceGame: 10 連 → 上位 AT → エンディング(確定 12)', 
       input('NONE'),
       seqRng([]),
     );
-    expect(ending.events).toEqual([{ type: 'ENDING_START' }]);
-    expect(ending.state.phase).toEqual({ type: 'ENDING', game: 0 });
+    expect(ending.events).toEqual([{ type: 'ENDING_START', after: 'AT_END' }]);
+    expect(ending.state.phase).toEqual({ type: 'ENDING', game: 0, after: 'AT_END', vStock: 0 });
 
-    // エンディング 1G 目(= ENDING_GAMES 消化)で AT 終了処理(確定 12: 「AT 終了後」テーブル)
-    const end = advanceGame(ending.state, input('NONE'), seqRng([3156, 60]));
+    // エンディング最終 G(10G 目)で AT 終了処理(確定 12: 「AT 終了後」テーブル)
+    let state = ending.state;
+    for (let g = 1; g <= ENDING_GAMES - 1; g++) {
+      state = advanceGame(state, input('NONE'), seqRng([])).state;
+    }
+    const end = advanceGame(state, input('NONE'), seqRng([3156, 60]));
     expect(end.events).toEqual([
       { type: 'AT_END', reason: 'ENDING', mode: 'NORMAL', background: 'SHIZUKA' },
     ]);
@@ -1292,7 +1349,7 @@ describe('advanceGame: AT 終了処理の本前兆リドロー・ナビ・分布
     expect(next.state.phase).toMatchObject({ type: 'OMEN', kind: 'REAL', game: 1 });
   });
 
-  it('isNaviActive: AT 中(上位含む)のみ true(確定 26)', () => {
+  it('isNaviActive: AT 中(上位含む)+ エンディング中は true(確定 26・31)', () => {
     expect(isNaviActive(normalState())).toBe(false);
     expect(isNaviActive(normalState({ phase: atPhase() }))).toBe(true);
     expect(isNaviActive(normalState({ phase: atPhase({ tier: 'UPPER' }) }))).toBe(true);
@@ -1301,7 +1358,9 @@ describe('advanceGame: AT 終了処理の本前兆リドロー・ナビ・分布
         normalState({ phase: { type: 'OMEN', kind: 'FAKE', game: 1, totalGames: 8, renzoku: 'A' } }),
       ),
     ).toBe(false);
-    expect(isNaviActive(normalState({ phase: { type: 'ENDING', game: 0 } }))).toBe(false);
+    expect(
+      isNaviActive(normalState({ phase: { type: 'ENDING', game: 0, after: 'AT_END', vStock: 0 } })),
+    ).toBe(true);
   });
 
   it('大量試行: 継続率抽せんの振分けが SPEC「7.」(0.5 / 0.3 / 0.1 / 0.1)に収束する', () => {

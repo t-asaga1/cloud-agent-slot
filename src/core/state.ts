@@ -109,7 +109,8 @@ import type { Role } from './roles';
  *   通常フェーズか連続演出の解決で、いずれも次ゲームに消化されるため)。AT 終了時の
  *   モード・背景再抽せん(2d)では `backgroundGames` を 0 へリセットする(実装済み)。
  *
- * # AT 管理の実装規約(2d で確定。SPEC「7.」「8.」+ 確定 11・12・27 準拠)
+ * # AT 管理の実装規約(2d で確定・2026-07-12 のユーザー回答 = 確定 29〜31 で更新。
+ * SPEC「7.」「8.」+ 確定 11・12・27・29〜31 準拠)
  *
  * - タイムライン: 連続演出成功ゲーム(RENZOKU_RESULT success)で `drawContinueRate` を
  *   抽せんし `AT { partGame: 0 }` + `AT_START` イベント。次ゲームが小役パート 1G 目。
@@ -120,24 +121,23 @@ import type { Role } from './roles';
  *   小役パート = 成立役で V ストック抽せん(`drawVStock`。複数ストック可 = 確定 11)。
  *   バトルパート = 継続未確定なら成立役で継続抽せん(`drawBattleContinue`)/
  *   継続確定済みなら V ストック抽せん(確定 11)。
- * - バトル開始時(バトル 1G 目の冒頭・成立役の抽せんより先): まず継続率で継続抽せん
- *   (`drawSetContinue`)。当せんなら継続確定(V ストックは温存)。漏れた場合は
- *   V ストックが 1 個以上あれば 1 個消費して継続確定(**消費規則の実装決定**:
- *   継続率抽せん → 漏れたらストック消費、の順。SPEC「まず継続率に沿って継続抽選 →
- *   漏れていた場合、小役による継続抽選」の間へ挟む解釈)。どちらも漏れたら未確定のまま
- *   バトル中の小役継続抽せんに委ねる。
- * - バトル 8G 目の解決(成立役の抽せんの後): 継続確定なら連チャン数 +1 して次セットへ
- *   (`AT_SET_CONTINUE`)。未確定なら敗北 = AT 終了(上位 AT でも即終了 = 確定 12)。
- * - 10 連(確定 11・12。**実装解釈**): 連チャン数(renchan)が 10(`RENCHAN_LIMIT`)の
- *   セットは「必ず移行」= バトル開始時の継続抽せん・ストック消費なし・バトル中も
- *   継続確定扱い(V ストック抽せん)で、8G 目の解決で通常 AT → 上位 AT
- *   (`UPPER_AT_ENTER`。連チャン数 1 へリセット・継続率 0.93 固定・V ストックは持越し)/
- *   上位 AT → エンディング(`ENDING_START`)。つまり 10 連目のセット自体は現階層で
- *   遊技し、その終了時に必ず移行する(バトル敗北で 10 連目に到達できないことはある)。
- * - エンディング: `ENDING { game: 0 }` で開始し次ゲームが 1G 目。`ENDING_GAMES`(暫定 1)
- *   消化ゲームで AT 終了処理(演出尺は STEP 4 で確定するまで 1G の暫定値)。
- *   エンディング中は各種抽せんなし(モード・背景・偽前兆・V ストックとも停止)。
- * - AT 終了処理(バトル敗北 or エンディング終了のゲーム内で実施):
+ * - バトル開始時(バトル 1G 目の冒頭・成立役の抽せんより先。確定 29):
+ *   **V ストックがあれば先に 1 個消費して継続確定**(継続率抽せんなし・`V_STOCK_USE`
+ *   イベント)。ストックがない場合のみ継続率で継続抽せん(`drawSetContinue`)。
+ *   漏れたら未確定のままバトル中の小役継続抽せんに委ねる。
+ * - バトル 8G 目の解決(成立役の抽せんの後): 未確定なら敗北 = AT 終了(**10 連目も
+ *   敗北あり** = 確定 30。上位 AT でも即終了 = 確定 12)。継続確定で連チャン数が
+ *   10(`RENCHAN_LIMIT`)未満なら連チャン数 +1 して次セットへ(`AT_SET_CONTINUE`)。
+ * - 10 連目の勝利(継続確定 + renchan が `RENCHAN_LIMIT` = 確定 30): エンディングへ
+ *   (`ENDING_START`。after = 行き先)。エンディング消化後、通常 AT → **必ず上位 AT**
+ *   (`UPPER_AT_ENTER`。連チャン数 1 へリセット・継続率 0.93 固定・**V ストックは
+ *   エンディングを経由して持越し** = 確定 29)/ 上位 AT → AT 終了(確定 12)。
+ * - エンディング(確定 31): `ENDING { game: 0 }` で開始し次ゲームが 1G 目。
+ *   **`ENDING_GAMES` = 10G で押し順ナビあり**(`isNaviActive` は ENDING も true)。
+ *   最終 G(10G 目)に after = UPPER_AT なら上位 AT 開始(次ゲームが上位 AT 小役 1G 目)、
+ *   after = AT_END なら AT 終了処理。エンディング中は各種抽せんなし
+ *   (モード・背景・偽前兆・V ストックとも停止)。
+ * - AT 終了処理(バトル敗北 or エンディング(上位 AT 10 連)終了のゲーム内で実施):
  *   `drawInitialMode('AT_END')` → `drawInitialBackground` の順に再抽せんして通常へ。
  *   `backgroundGames` は 0 へリセット。再抽せんの結果が本前兆なら `initGameState` と
  *   同様にその場で本前兆スケジュールを抽せんし、次ゲームが前兆 1G 目(契機 4 の予約は
@@ -145,10 +145,10 @@ import type { Role } from './roles';
  *   再抽せん後のモード・背景を載せる(`BACKGROUND_CHANGE` イベントは発行しない =
  *   移行契機 4 種の抽せんではないため)。
  * - 乱数の消費順序(AT 関連): [連続演出成功 G] 継続率 → [小役パート] V ストック →
- *   [バトル 1G 目] セット継続 → 成立役の継続/V ストック → [終了 G] モード → 背景 →
- *   (本前兆なら)前兆 G 数 → 連続演出種別。
- * - 押し順ナビ: AT 中(上位含む)は全ゲームナビあり。`isNaviActive(state)` で導出する
- *   (2e の打ち方ポリシー用。状態には持たない)。
+ *   [バトル 1G 目] セット継続(ストックなしのときのみ)→ 成立役の継続/V ストック →
+ *   [終了 G] モード → 背景 →(本前兆なら)前兆 G 数 → 連続演出種別。
+ * - 押し順ナビ: AT 中(上位含む)+ エンディング中(確定 31)は全ゲームナビあり。
+ *   `isNaviActive(state)` で導出する(2e の打ち方ポリシー用。状態には持たない)。
  */
 
 /** AT の階層(通常 AT / 上位 AT)。確定 12 */
@@ -209,21 +209,26 @@ export interface AtPhase {
   continueConfirmed: boolean;
 }
 
+/** エンディング消化後の行き先(確定 29〜31): 通常 AT 10 連 = 上位 AT / 上位 AT 10 連 = AT 終了 */
+export type EndingAfter = 'UPPER_AT' | 'AT_END';
+
 /**
- * エンディング(上位 AT 10 連 = 確定 12)。開始ゲームは game: 0 で、次ゲームが 1G 目。
- * `ENDING_GAMES` 消化ゲームで AT 終了処理(「AT 終了後」テーブルでモード・背景再抽せん)。
+ * エンディング(10 連目のバトル勝利 = 確定 30)。開始ゲームは game: 0 で、次ゲームが 1G 目。
+ * `ENDING_GAMES`(10G。押し順ナビあり = 確定 31)消化ゲームで `after` へ移行:
+ * UPPER_AT = 上位 AT 開始(V ストック持越し = 確定 29)/ AT_END = AT 終了処理。
  */
 export interface EndingPhase {
   type: 'ENDING';
   /** 経過 G(開始ゲームは 0。次ゲームが 1G 目) */
   game: number;
+  /** 消化後の行き先(通常 AT 10 連 = UPPER_AT / 上位 AT 10 連 = AT_END) */
+  after: EndingAfter;
+  /** 上位 AT へ持ち越す V ストック(確定 29。after = AT_END では使わない) */
+  vStock: number;
 }
 
-/**
- * エンディングのゲーム数(暫定 1G)。
- * エンディングムービーの尺・演出は STEP 4 で確定するまでの暫定値(ヘッダー「AT 管理の実装規約」参照)。
- */
-export const ENDING_GAMES = 1;
+/** エンディングのゲーム数(10G・押し順ナビあり = 確定 31) */
+export const ENDING_GAMES = 10;
 
 /** 全フェーズの判別可能ユニオン(2a で確定。以後のサブステップは骨格を変えない) */
 export type Phase = NormalPhase | OmenPhase | RenzokuPhase | AtPhase | EndingPhase;
@@ -273,7 +278,8 @@ export interface GameInput {
  * 発生イベント(UI の演出表示・テスト検証用)。
  * 2a: MODE_CHANGE / HONZENCHO_ENTER。2b: FAKE_OMEN_ENTER / OMEN_REWRITE /
  * RENZOKU_START / RENZOKU_RESULT。2c: BACKGROUND_CHANGE。
- * 2d: AT_START / V_STOCK_GAIN / AT_SET_CONTINUE / UPPER_AT_ENTER / ENDING_START / AT_END。
+ * 2d: AT_START / V_STOCK_GAIN / V_STOCK_USE / AT_SET_CONTINUE / UPPER_AT_ENTER /
+ * ENDING_START / AT_END。
  */
 export type GameEvent =
   | { type: 'MODE_CHANGE'; from: Mode; to: Mode; trigger: Role }
@@ -332,6 +338,12 @@ export type GameEvent =
       vStock: number;
     }
   | {
+      /** V ストック消費(バトル開始時にストックがあれば先に消化して継続確定 = 確定 29) */
+      type: 'V_STOCK_USE';
+      /** 消費後のストック数 */
+      vStock: number;
+    }
+  | {
       /** セット継続(バトル 8G 目の解決で継続確定していた)。次ゲームが次セット小役 1G 目 */
       type: 'AT_SET_CONTINUE';
       tier: AtTier;
@@ -339,12 +351,16 @@ export type GameEvent =
       renchan: number;
     }
   | {
-      /** 通常 AT 10 連目の終了で上位 AT へ(連チャン数リセット・継続率 0.93 固定 = 確定 12) */
-      type: 'UPPER_AT_ENTER';
+      /**
+       * 10 連目のバトル勝利でエンディングへ(確定 30)。次ゲームがエンディング 1G 目。
+       * `after` = 消化後の行き先(通常 AT = 上位 AT / 上位 AT = AT 終了)。
+       */
+      type: 'ENDING_START';
+      after: EndingAfter;
     }
   | {
-      /** 上位 AT 10 連目の終了でエンディングへ(確定 12)。次ゲームがエンディング 1G 目 */
-      type: 'ENDING_START';
+      /** エンディング消化後に上位 AT へ(連チャンリセット・0.93 固定・ストック持越し = 確定 12・29) */
+      type: 'UPPER_AT_ENTER';
     }
   | {
       /**
@@ -396,9 +412,12 @@ function enterAt(rng: Rng): AtPhase {
   };
 }
 
-/** AT 中の押し順ナビ(全ナビ = 確定 26)が有効か。2e の打ち方ポリシーはこれで分岐する */
+/**
+ * 押し順ナビ(全ナビ = 確定 26)が有効か。2e の打ち方ポリシーはこれで分岐する。
+ * AT 中(上位含む)に加えエンディング中もナビあり(確定 31)。
+ */
 export function isNaviActive(state: GameState): boolean {
-  return state.phase.type === 'AT';
+  return state.phase.type === 'AT' || state.phase.type === 'ENDING';
 }
 
 /**
@@ -415,21 +434,20 @@ function advanceAt(
   finishAt: (reason: 'DEFEAT' | 'ENDING') => Phase,
 ): Phase {
   let { part, partGame, vStock, continueConfirmed } = phase;
-  /** 10 連目のセットは「必ず移行」(確定 11・12 の実装解釈。実装規約参照) */
-  const guaranteed = phase.renchan >= RENCHAN_LIMIT;
 
   if (part === 'KOYAKU' && partGame >= KOYAKU_PART_GAMES) {
     // 小役 10G 消化済み → このゲームがバトル 1G 目。
-    // バトル開始時の継続処理: 継続率で継続抽せん(当せんなら V ストック温存)→
-    // 漏れたら V ストック 1 個消費で継続確定 → どちらも漏れたら未確定のまま
+    // バトル開始時の継続処理(確定 29): V ストックがあれば先に 1 個消費して継続確定
+    // (継続率抽せんなし)→ ストックがない場合のみ継続率で継続抽せん →
+    // 漏れたら未確定のままバトル中の小役継続抽せんに委ねる。
+    // 10 連目のセットも同じ(必ず移行の特例なし = 敗北あり = 確定 30)。
     part = 'BATTLE';
     partGame = 1;
-    if (guaranteed) {
-      continueConfirmed = true;
-    } else if (drawSetContinue(rng, phase.continueRate)) {
-      continueConfirmed = true;
-    } else if (vStock > 0) {
+    if (vStock > 0) {
       vStock -= 1;
+      continueConfirmed = true;
+      events.push({ type: 'V_STOCK_USE', vStock });
+    } else if (drawSetContinue(rng, phase.continueRate)) {
       continueConfirmed = true;
     }
   } else {
@@ -449,32 +467,20 @@ function advanceAt(
 
   if (part === 'BATTLE' && partGame >= BATTLE_PART_GAMES) {
     // バトル 8G 目の解決
-    if (guaranteed) {
-      if (phase.tier === 'NORMAL') {
-        // 通常 AT 10 連 → 上位 AT(連チャン数リセット・継続率 0.93 固定・V ストック持越し)
-        events.push({ type: 'UPPER_AT_ENTER' });
-        return {
-          type: 'AT',
-          tier: 'UPPER',
-          part: 'KOYAKU',
-          partGame: 0,
-          renchan: 1,
-          continueRate: UPPER_AT_CONTINUE_RATE,
-          vStock,
-          continueConfirmed: false,
-        };
-      }
-      // 上位 AT 10 連 → エンディング(次ゲームが 1G 目)
-      events.push({ type: 'ENDING_START' });
-      return { type: 'ENDING', game: 0 };
+    if (!continueConfirmed) {
+      // バトル敗北 = AT 終了(10 連目も敗北あり = 確定 30 / 上位 AT でも即終了 = 確定 12)
+      return finishAt('DEFEAT');
     }
-    if (continueConfirmed) {
-      const renchan = phase.renchan + 1;
-      events.push({ type: 'AT_SET_CONTINUE', tier: phase.tier, renchan });
-      return { ...phase, part: 'KOYAKU', partGame: 0, renchan, vStock, continueConfirmed: false };
+    if (phase.renchan >= RENCHAN_LIMIT) {
+      // 10 連目のバトル勝利 → エンディング 10G へ(確定 30)。消化後は
+      // 通常 AT = 必ず上位 AT(V ストック持越し = 確定 29)/ 上位 AT = AT 終了(確定 12)
+      const after: EndingAfter = phase.tier === 'NORMAL' ? 'UPPER_AT' : 'AT_END';
+      events.push({ type: 'ENDING_START', after });
+      return { type: 'ENDING', game: 0, after, vStock };
     }
-    // バトル敗北 = AT 終了(上位 AT でも即終了 = 確定 12)
-    return finishAt('DEFEAT');
+    const renchan = phase.renchan + 1;
+    events.push({ type: 'AT_SET_CONTINUE', tier: phase.tier, renchan });
+    return { ...phase, part: 'KOYAKU', partGame: 0, renchan, vStock, continueConfirmed: false };
   }
 
   return { ...phase, part, partGame, vStock, continueConfirmed };
@@ -630,8 +636,23 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
       const game = phase.game + 1;
       if (game < ENDING_GAMES) {
         phase = { ...phase, game };
+      } else if (phase.after === 'UPPER_AT') {
+        // エンディング(通常 AT 10 連)消化 → 必ず上位 AT へ(確定 29・30。
+        // 連チャン数 1 へリセット・継続率 0.93 固定・V ストック持越し。
+        // partGame 0 = 次ゲームが上位 AT 小役パート 1G 目)
+        events.push({ type: 'UPPER_AT_ENTER' });
+        phase = {
+          type: 'AT',
+          tier: 'UPPER',
+          part: 'KOYAKU',
+          partGame: 0,
+          renchan: 1,
+          continueRate: UPPER_AT_CONTINUE_RATE,
+          vStock: phase.vStock,
+          continueConfirmed: false,
+        };
       } else {
-        // エンディング最終 G = AT 終了処理(確定 12: エンディング後は「AT 終了後」テーブル)
+        // エンディング(上位 AT 10 連)消化 = AT 終了処理(確定 12: 「AT 終了後」テーブル)
         phase = finishAt('ENDING');
       }
     }
