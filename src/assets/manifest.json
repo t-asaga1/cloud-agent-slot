@@ -772,5 +772,419 @@
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
     "note": "予告ムービー仮素材「前兆予告3 本前兆確定」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yoshitsune_g1",
+    "path": "video/renzoku/renzoku_a_yoshitsune_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 義経 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yoshitsune_g2",
+    "path": "video/renzoku/renzoku_a_yoshitsune_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 義経 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yoshitsune_g3",
+    "path": "video/renzoku/renzoku_a_yoshitsune_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 義経 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yoshitsune_g4",
+    "path": "video/renzoku/renzoku_a_yoshitsune_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 義経 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_shizuka_g1",
+    "path": "video/renzoku/renzoku_a_shizuka_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 静 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_shizuka_g2",
+    "path": "video/renzoku/renzoku_a_shizuka_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 静 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_shizuka_g3",
+    "path": "video/renzoku/renzoku_a_shizuka_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 静 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_shizuka_g4",
+    "path": "video/renzoku/renzoku_a_shizuka_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 静 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_benkei_g1",
+    "path": "video/renzoku/renzoku_a_benkei_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 弁慶 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_benkei_g2",
+    "path": "video/renzoku/renzoku_a_benkei_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 弁慶 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_benkei_g3",
+    "path": "video/renzoku/renzoku_a_benkei_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 弁慶 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_benkei_g4",
+    "path": "video/renzoku/renzoku_a_benkei_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 弁慶 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yugata_g1",
+    "path": "video/renzoku/renzoku_a_yugata_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 夕方 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yugata_g2",
+    "path": "video/renzoku/renzoku_a_yugata_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 夕方 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yugata_g3",
+    "path": "video/renzoku/renzoku_a_yugata_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 夕方 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_yugata_g4",
+    "path": "video/renzoku/renzoku_a_yugata_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 夕方 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_zencho_g1",
+    "path": "video/renzoku/renzoku_a_zencho_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 前兆 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_zencho_g2",
+    "path": "video/renzoku/renzoku_a_zencho_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 前兆 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_zencho_g3",
+    "path": "video/renzoku/renzoku_a_zencho_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 前兆 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_a_zencho_g4",
+    "path": "video/renzoku/renzoku_a_zencho_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出A「追走」 前兆 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yoshitsune_g1",
+    "path": "video/renzoku/renzoku_b_yoshitsune_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 義経 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yoshitsune_g2",
+    "path": "video/renzoku/renzoku_b_yoshitsune_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 義経 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yoshitsune_g3",
+    "path": "video/renzoku/renzoku_b_yoshitsune_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 義経 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yoshitsune_g4",
+    "path": "video/renzoku/renzoku_b_yoshitsune_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 義経 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_shizuka_g1",
+    "path": "video/renzoku/renzoku_b_shizuka_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 静 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_shizuka_g2",
+    "path": "video/renzoku/renzoku_b_shizuka_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 静 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_shizuka_g3",
+    "path": "video/renzoku/renzoku_b_shizuka_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 静 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_shizuka_g4",
+    "path": "video/renzoku/renzoku_b_shizuka_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 静 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_benkei_g1",
+    "path": "video/renzoku/renzoku_b_benkei_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 弁慶 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_benkei_g2",
+    "path": "video/renzoku/renzoku_b_benkei_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 弁慶 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_benkei_g3",
+    "path": "video/renzoku/renzoku_b_benkei_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 弁慶 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_benkei_g4",
+    "path": "video/renzoku/renzoku_b_benkei_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 弁慶 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yugata_g1",
+    "path": "video/renzoku/renzoku_b_yugata_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 夕方 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yugata_g2",
+    "path": "video/renzoku/renzoku_b_yugata_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 夕方 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yugata_g3",
+    "path": "video/renzoku/renzoku_b_yugata_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 夕方 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_yugata_g4",
+    "path": "video/renzoku/renzoku_b_yugata_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 夕方 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_zencho_g1",
+    "path": "video/renzoku/renzoku_b_zencho_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 前兆 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_zencho_g2",
+    "path": "video/renzoku/renzoku_b_zencho_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 前兆 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_zencho_g3",
+    "path": "video/renzoku/renzoku_b_zencho_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 前兆 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_b_zencho_g4",
+    "path": "video/renzoku/renzoku_b_zencho_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出B「一騎打ち」 前兆 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_c_g1",
+    "path": "video/renzoku/renzoku_c_g1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出C「決戦」 G1 導入」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_c_g2",
+    "path": "video/renzoku/renzoku_c_g2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出C「決戦」 G2 展開」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_c_g3",
+    "path": "video/renzoku/renzoku_c_g3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出C「決戦」 G3 あおり」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_c_g4",
+    "path": "video/renzoku/renzoku_c_g4.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「連続演出C「決戦」 G4 決着」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_result_win",
+    "path": "video/renzoku/renzoku_result_win.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「成否告知 勝利」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "renzoku_result_lose",
+    "path": "video/renzoku/renzoku_result_lose.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "連続演出ムービー仮素材「成否告知 敗北」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
   }
 ]
