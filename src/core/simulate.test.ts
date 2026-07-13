@@ -18,16 +18,17 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   const stats = simulate(GAMES, SEED);
 
   it('固定値: 投入・払出・初当り・セット・上位 AT・エンディング(回帰検出)', () => {
-    expect(stats.coinsIn).toBe(259518);
-    expect(stats.coinsOut).toBe(358395);
-    expect(stats.normal.games).toBe(65234);
-    expect(stats.at.games).toBe(GAMES - 65234);
-    expect(stats.atCount).toBe(306);
-    expect(stats.totalSets).toBe(1887);
-    expect(stats.upperAtCount).toBe(50);
-    expect(stats.endingCount).toBe(80);
-    expect(stats.endingCompleteCount).toBe(30);
-    expect(stats.vStockGains).toBe(326);
+    // 4b でシナリオ抽せんが scheduleOmen の乱数列へ加わったため取り直し(2026-07-13)
+    expect(stats.coinsIn).toBe(258771);
+    expect(stats.coinsOut).toBe(346202);
+    expect(stats.normal.games).toBe(66674);
+    expect(stats.at.games).toBe(GAMES - 66674);
+    expect(stats.atCount).toBe(304);
+    expect(stats.totalSets).toBe(1812);
+    expect(stats.upperAtCount).toBe(46);
+    expect(stats.endingCount).toBe(71);
+    expect(stats.endingCompleteCount).toBe(25);
+    expect(stats.vStockGains).toBe(292);
   });
 
   it('通常時純増 ≒ -1.8 枚/G(SPEC 想定)', () => {
