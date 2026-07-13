@@ -3,12 +3,15 @@
  *
  * `direction.ts` が返す宣言的データを表示するだけの「画面」側:
  * - `overlay`(フェーズ由来の常時表示)= 親から毎レンダー渡される(状態が変われば消える)
- * - `lever`(レバーオン時に決定する 1G 分の演出 = STEP 4c・4d)= seq が進むたびに
+ * - `lever`(レバーオン時に決定する 1G 分の演出 = STEP 4c・4d・4e)= seq が進むたびに
  *   差し替え表示する(次のレバーオンまで表示。前兆シナリオ予告 = 中央パネル /
  *   小役示唆予告 = 右下パネル + ムービー後に成立役の図柄画像を重ねる(確定 33)。
  *   図柄の遅延表示は CSS の animation-delay で行う /
  *   連続演出(STEP 4d)= 全画面ムービー + タイトル・n/4G・段階名 + チャンスアップ
- *   バッジ(G4 の成否告知は全停止後のカットイン側))
+ *   バッジ(G4 の成否告知は全停止後のカットイン側)/
+ *   AT 小役パート予告(STEP 4e)= 右下パネル + ベル・レア役の図柄とナビ押し順 /
+ *   バトルパート(STEP 4e)= 連続演出と同じ全画面構成(タイトル・n/8G・役割ラベル))
+ * - `overlay` のエンディング(STEP 4e)= 全画面ムービー(after で描き分け)+ 上部バナー
  * - `cutinFrame`(イベント由来のワンショット)= seq(ゲーム通し番号)が進むたびに
  *   カットイン列をキューへ積み、先頭から durationMs ずつ順番に表示 + SE 再生する
  *
@@ -77,16 +80,56 @@ export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
     // 依存は headKey のみ = キュー先頭が入れ替わったときだけタイマーを張り直す
   }, [headKey]);
 
-  // 前兆シナリオ予告の表示開始時に予告音を鳴らす(小役示唆予告は無音。
+  // 前兆シナリオ予告・AT 小役パート予告の表示開始時に予告音を鳴らす(小役示唆予告は無音。
   // 専用 SE は実素材入稿時にキュー追加を検討)
   const leverSeq = lever.seq;
-  const hasYokoku = lever.yokoku !== undefined;
+  const hasYokoku = lever.yokoku !== undefined || lever.atYokoku !== undefined;
   useEffect(() => {
     if (leverSeq > 0 && hasYokoku) playCue('TELOP');
   }, [leverSeq, hasYokoku]);
 
   return (
     <div className="direction-layer">
+      {overlay?.kind === 'ENDING' && (
+        <div className="ending-screen">
+          <video
+            className="ending-video"
+            src={overlay.videoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        </div>
+      )}
+      {lever.battle !== undefined && (
+        <div
+          key={`battle-${lever.seq}`}
+          className={
+            lever.battle.chanceUp ? 'renzoku-screen renzoku-chance' : 'renzoku-screen'
+          }
+          data-label={lever.battle.label}
+        >
+          <video
+            className="renzoku-video"
+            src={lever.battle.videoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          <div className="renzoku-header">
+            <span className="renzoku-title">{lever.battle.title}</span>
+            <span className="renzoku-count">
+              {lever.battle.game}/{lever.battle.totalGames}G
+            </span>
+          </div>
+          <div className="renzoku-footer">
+            <span className="renzoku-stage">{lever.battle.stage}</span>
+            {lever.battle.chanceUp && <span className="renzoku-chance-badge">CHANCE UP!</span>}
+          </div>
+        </div>
+      )}
       {lever.renzoku !== undefined && (
         <div
           key={`renzoku-${lever.seq}`}
@@ -140,6 +183,31 @@ export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
         >
           <video className="hint-video" src={lever.hint.videoUrl} autoPlay muted playsInline />
           <img className="hint-symbol" src={lever.hint.symbolUrl} alt={lever.hint.label} />
+        </div>
+      )}
+      {lever.atYokoku !== undefined && (
+        <div
+          key={`at-yokoku-${lever.seq}`}
+          className={lever.atYokoku.strong ? 'koyaku-hint hint-strong' : 'koyaku-hint'}
+          data-label={lever.atYokoku.label}
+        >
+          <video
+            className="hint-video"
+            src={lever.atYokoku.videoUrl}
+            autoPlay
+            muted
+            playsInline
+          />
+          {lever.atYokoku.symbolUrl !== undefined && (
+            <img
+              className="hint-symbol"
+              src={lever.atYokoku.symbolUrl}
+              alt={lever.atYokoku.label}
+            />
+          )}
+          {lever.atYokoku.naviText !== undefined && (
+            <div className="hint-navi-order">{lever.atYokoku.naviText}</div>
+          )}
         </div>
       )}
       {head !== undefined && (

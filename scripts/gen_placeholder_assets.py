@@ -8,8 +8,8 @@
 ※ ユーザー入稿素材の取り込み(変換)は scripts/import_incoming_assets.py 参照。
 
 実行: python3 scripts/gen_placeholder_assets.py [対象...]
-  対象なし = 全生成 / 対象 = images / effects / yokoku / renzoku / audio のいずれか
-  (例: `python3 scripts/gen_placeholder_assets.py renzoku` で連続演出ムービーのみ再生成。
+  対象なし = 全生成 / 対象 = images / effects / yokoku / renzoku / at / audio のいずれか
+  (例: `python3 scripts/gen_placeholder_assets.py at` で AT・エンディング演出ムービーのみ再生成。
    ffmpeg 出力はバイト単位で再現しないため、無関係な既存仮素材まで差分を出さないよう
    追加分の対象だけを指定して実行すること)
 依存: pip install pillow / ffmpeg / fonts-noto-cjk(日本語フォント)
@@ -150,6 +150,94 @@ def renzoku_files() -> list[tuple[str, str, str]]:
     return files
 
 
+# ---------------------------------------------------------------------------
+# AT・上位 AT・エンディング演出ムービー(STEP 4e)— docs/DIRECTION_SPEC.md「4.」の命名規約
+#   AT 小役パート予告: at_koyaku_<navi|rare|strong>.webm / uat_koyaku_<...>.webm(6)
+#   バトルパート(AT): battle_at_<01-20>.webm(Excel「AT中」シートのパターン No に対応 = 20)
+#   バトルパート(上位): battle_uat_<no>.webm(Excel「上位AT中」の No に対応。
+#     13・15・16・19 は歯抜けで 01-12, 14, 17, 18, 20, 21 の 17 本)
+#   エンディング: ending_<to_upper|complete>.webm(2)
+# バトルの通常/チャンス変化は Excel の No がパターン別に採番済み(ムービー自体が別)。
+# 実素材入稿時は同名ファイル置き換えで差し替え(STEP 4f)。
+# ---------------------------------------------------------------------------
+
+AT_KOYAKU_YOKOKU = [
+    ("navi", "ベルナビ", "white"),
+    ("rare", "レア役示唆", "#facc15"),
+    ("strong", "強予告 V濃厚", "#f87171"),
+]
+
+AT_TIERS = [("at", "AT"), ("uat", "上位AT")]
+
+# Excel「AT中」シート バトルパート No 1〜20(No, ラベル, 文字色)
+BATTLE_AT_PATTERNS = [
+    (1, "G1 導入 通常", "white"),
+    (2, "G1 導入 チャンス", "#facc15"),
+    (3, "G2 義経台詞 通常", "white"),
+    (4, "G2 義経台詞 チャンス", "#facc15"),
+    (5, "G3 頼朝台詞 通常", "white"),
+    (6, "G3 頼朝台詞 チャンス", "#facc15"),
+    (7, "G4 攻撃決め 義経攻撃へ", "white"),
+    (8, "G4 攻撃決め 頼朝攻撃へ", "white"),
+    (9, "G5 義経弱攻撃", "white"),
+    (10, "G5 義経強攻撃", "#facc15"),
+    (11, "G5 頼朝弱攻撃", "white"),
+    (12, "G5 頼朝強攻撃", "#facc15"),
+    (13, "G6 頼朝にヒット", "white"),
+    (14, "G6 桜花繚乱チャンス", "#facc15"),
+    (15, "G6 義経喰らうか", "white"),
+    (16, "G7 頼朝の台詞", "white"),
+    (17, "G7 耐える", "white"),
+    (18, "G7 耐えれない", "#94a3b8"),
+    (19, "G8 継続 次セットへ", "#facc15"),
+    (20, "G8 復活判定", "#f87171"),
+]
+
+# Excel「上位AT中」シート バトルパート No(歯抜けのまま。共闘版)
+BATTLE_UAT_PATTERNS = [
+    (1, "G1 導入 通常", "white"),
+    (2, "G1 導入 チャンス", "#facc15"),
+    (3, "G2 義経台詞 通常", "white"),
+    (4, "G2 義経台詞 チャンス", "#facc15"),
+    (5, "G3 頼朝台詞 通常", "white"),
+    (6, "G3 頼朝台詞 チャンス", "#facc15"),
+    (7, "G4 義経攻撃へ", "white"),
+    (8, "G4 頼朝攻撃へ", "white"),
+    (9, "G4 ダブル攻撃へ", "#facc15"),
+    (10, "G5 義経攻撃", "white"),
+    (11, "G5 頼朝攻撃", "white"),
+    (12, "G5 ダブル攻撃", "#facc15"),
+    (14, "G6 敵を倒せるか", "white"),
+    (17, "G7 倒せる 二人の台詞", "white"),
+    (18, "G7 倒せない 敵の反撃", "#94a3b8"),
+    (20, "G8 継続", "#facc15"),
+    (21, "G8 復活判定", "#f87171"),
+]
+
+# エンディング 2 種(EndingPhase.after で描き分け = Q20)
+ENDING_MOVIES = [
+    ("to_upper", "エンディング 上位ATへ", "#facc15"),
+    ("complete", "エンディング 完全制覇", "#f87171"),
+]
+
+AT_SECONDS = 2
+
+
+def at_files() -> list[tuple[str, str, str]]:
+    """(ファイル名 stem, 表示ラベル, 文字色)の一覧(合計 45 本)。"""
+    files: list[tuple[str, str, str]] = []
+    for tier_id, tier_label in AT_TIERS:
+        for kind_id, kind_label, color in AT_KOYAKU_YOKOKU:
+            files.append((f"{tier_id}_koyaku_{kind_id}", f"{tier_label}予告 {kind_label}", color))
+    for no, label, color in BATTLE_AT_PATTERNS:
+        files.append((f"battle_at_{no:02d}", f"ATバトル {label}", color))
+    for no, label, color in BATTLE_UAT_PATTERNS:
+        files.append((f"battle_uat_{no:02d}", f"共闘バトル {label}", color))
+    for ending_id, label, color in ENDING_MOVIES:
+        files.append((f"ending_{ending_id}", label, color))
+    return files
+
+
 # SE(id, 周波数系列 [(Hz, 長さ秒), ...])
 SES = [
     ("se_lever_on", [(880, 0.08), (1320, 0.10)]),
@@ -262,6 +350,14 @@ def gen_renzoku_videos() -> None:
         )
 
 
+def gen_at_videos() -> None:
+    for stem, label, color in at_files():
+        gen_placeholder_video(
+            ASSETS / f"video/at/{stem}.webm", label, AT_SECONDS,
+            fontcolor=color, fontsize=72,
+        )
+
+
 # ---------------------------------------------------------------------------
 # 音声系(サイン波合成 → OGG Vorbis)
 # ---------------------------------------------------------------------------
@@ -312,11 +408,11 @@ def gen_audio() -> None:
 
 def main() -> None:
     # 対象指定なし = 全生成 / 指定あり = その対象のみ(既存仮素材の無用な差分を防ぐ)
-    targets = set(sys.argv[1:]) or {"images", "effects", "yokoku", "renzoku", "audio"}
-    unknown = targets - {"images", "effects", "yokoku", "renzoku", "audio"}
+    targets = set(sys.argv[1:]) or {"images", "effects", "yokoku", "renzoku", "at", "audio"}
+    unknown = targets - {"images", "effects", "yokoku", "renzoku", "at", "audio"}
     if unknown:
         raise SystemExit(
-            f"未知の対象: {sorted(unknown)}(images / effects / yokoku / renzoku / audio)"
+            f"未知の対象: {sorted(unknown)}(images / effects / yokoku / renzoku / at / audio)"
         )
     if "images" in targets:
         gen_images()
@@ -326,6 +422,8 @@ def main() -> None:
         gen_yokoku_videos()
     if "renzoku" in targets:
         gen_renzoku_videos()
+    if "at" in targets:
+        gen_at_videos()
     if "audio" in targets:
         gen_audio()
     total = 0
