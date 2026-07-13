@@ -44,10 +44,14 @@ describe('overlayForState(フェーズ由来の常時表示)', () => {
   });
 
   it('前兆中(偽・本共通)はテロップ。文言は経過 G でローテーションし種別を悟らせない', () => {
+    const scenario = {
+      steps: Array.from({ length: 9 }, () => ({ level: 0 as const })),
+      renzokuSteps: ['NORMAL', 'NORMAL', 'NORMAL'],
+    } as const;
     for (const kind of ['FAKE', 'REAL'] as const) {
       for (let game = 0; game <= 9; game++) {
         const overlay = overlayForState(
-          state({ type: 'OMEN', kind, game, totalGames: 9, renzoku: 'A' }),
+          state({ type: 'OMEN', kind, game, totalGames: 9, renzoku: 'A', scenario }),
         );
         expect(overlay).toEqual({ kind: 'TELOP', text: TELOP_TEXTS[game % TELOP_TEXTS.length] });
       }
@@ -57,7 +61,13 @@ describe('overlayForState(フェーズ由来の常時表示)', () => {
   it('連続演出中は種別・経過 G 付きの全画面表示', () => {
     for (const renzoku of ['A', 'B', 'C'] as const) {
       const overlay = overlayForState(
-        state({ type: 'RENZOKU', kind: 'REAL', renzoku, game: 2 }),
+        state({
+          type: 'RENZOKU',
+          kind: 'REAL',
+          renzoku,
+          game: 2,
+          chanceUps: ['NORMAL', 'NORMAL', 'NORMAL'],
+        }),
       );
       expect(overlay).toEqual({
         kind: 'RENZOKU',

@@ -26,6 +26,7 @@ import {
 import { calcPayout, type PayoutResult } from './payout';
 import type { Rng } from './rng';
 import type { Role } from './roles';
+import { drawOmenScenario, type OmenScenario, type RenzokuChanceUps } from './scenario';
 
 /**
  * 1 ゲーム通しフローのステートマシン(STEP 2a で骨格を確定。以後のサブステップは骨格を変えない)。
@@ -81,6 +82,17 @@ import type { Role } from './roles';
  * - `initGameState` で初期モードが本前兆(0.0132)の場合はその場で本前兆スケジュールを抽せんし、
  *   最初のゲームが前兆 1G 目になる(「当せん」= 初期抽せんと解釈。背景は HONZENCHO 用の
  *   初期テーブルで抽せん済みのため契機 4 の予約はしない)。
+ *
+ * # 演出シナリオ(4b で追加。確定 28・34 = docs/DIRECTION_SPEC.md)
+ *
+ * - 前兆スケジュール抽せん(`scheduleOmen`)で演出シナリオ(各 G の予告レベル・スロット +
+ *   連続演出チャンスアップ)も一括抽せんし `OmenPhase.scenario` に保持する。
+ *   乱数の消費順序: 前兆 G 数 → 連続演出種別 → シナリオ(`drawOmenScenario`)。
+ * - 連続演出への発展時は `scenario.renzokuSteps` を `RenzokuPhase.chanceUps` へ引き継ぐ。
+ * - 偽→本書き換え時はシナリオも再抽せんせず引き継ぐ(Q16 = 確定 34。確定 21 の a/b と整合)。
+ * - 小役示唆予告・AT 中予告・バトルルートの抽せんは `scenario.ts` の独立関数
+ *   (`drawKoyakuHint` / `drawAtYokoku` / `drawBattleRoute`)で、`advanceGame` の
+ *   乱数列は消費しない(UI・演出層が別の rng で呼ぶ)。
  *
  * # 背景移行の実装規約(2c で確定。確定 24・25 準拠)
  *
@@ -168,6 +180,7 @@ export interface NormalPhase {
  * - `game`: 経過 G(当せんゲームは 0。当せんの次ゲームが 1G 目 = 確定 18)
  * - `totalGames`: 抽せん済みの前兆総 G 数(偽 7〜9 / 本 7〜10)
  * - `renzoku`: 当せん時に確定済みの発展先連続演出(偽→本書き換えでも引き継ぐ = 確定 21)
+ * - `scenario`: 当せん時に一括抽せん済みの演出シナリオ(確定 28・34。書き換えでも引き継ぐ = Q16)
  */
 export interface OmenPhase {
   type: 'OMEN';
@@ -175,6 +188,7 @@ export interface OmenPhase {
   game: number;
   totalGames: number;
   renzoku: RenzokuKind;
+  scenario: OmenScenario;
 }
 
 /**
@@ -188,6 +202,8 @@ export interface RenzokuPhase {
   renzoku: RenzokuKind;
   /** 何 G 目か(1〜RENZOKU_GAMES) */
   game: number;
+  /** 1〜3G 目のチャンスアップ(前兆シナリオから引継ぎ。4G 目は成否告知で固定) */
+  chanceUps: RenzokuChanceUps;
 }
 
 /**
@@ -386,13 +402,15 @@ export interface AdvanceResult {
 }
 
 /**
- * 前兆スケジュールの抽せん(前兆総 G 数 → 発展連続演出の順に乱数を消費)。
+ * 前兆スケジュールの抽せん(前兆総 G 数 → 発展連続演出 → 演出シナリオの順に乱数を消費)。
  * 当せんゲーム = game: 0 で開始し、次ゲームが前兆 1G 目(確定 18)。
+ * 演出シナリオ(確定 28・34)はここで一括抽せんし、偽→本書き換えでも引き継ぐ(Q16)。
  */
 function scheduleOmen(rng: Rng, kind: OmenKind): OmenPhase {
   const totalGames = drawOmenGames(rng, kind);
   const renzoku = drawRenzoku(rng, kind);
-  return { type: 'OMEN', kind, game: 0, totalGames, renzoku };
+  const scenario = drawOmenScenario(rng, kind, totalGames);
+  return { type: 'OMEN', kind, game: 0, totalGames, renzoku, scenario };
 }
 
 /**
@@ -602,9 +620,16 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
         // 前兆 G 数の消化(このゲームが前兆 game + 1 G 目)
         phase = { ...phase, game: phase.game + 1 };
       } else {
-        // 前兆 G 数消化済み → このゲームが連続演出 1G 目(確定 19)
+        // 前兆 G 数消化済み → このゲームが連続演出 1G 目(確定 19)。
+        // チャンスアップはシナリオから引継ぎ(4b)
         events.push({ type: 'RENZOKU_START', kind: phase.kind, renzoku: phase.renzoku });
-        phase = { type: 'RENZOKU', kind: phase.kind, renzoku: phase.renzoku, game: 1 };
+        phase = {
+          type: 'RENZOKU',
+          kind: phase.kind,
+          renzoku: phase.renzoku,
+          game: 1,
+          chanceUps: phase.scenario.renzokuSteps,
+        };
       }
     } else if (phase.type === 'RENZOKU') {
       const game = phase.game + 1;
