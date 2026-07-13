@@ -17,7 +17,12 @@ import type { Mode } from './core/mode';
 import { RENZOKU_GAMES } from './core/omen';
 import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER } from './core/play';
 import {
+  drawAtYokoku,
+  drawBattleRoute,
   drawKoyakuHint,
+  drawRevival,
+  type BattleRoute,
+  type BattleTier,
   type OmenScenario,
   type RenzokuChanceUps,
   type ZenchoYokokuSlot,
@@ -49,13 +54,19 @@ import {
 import { isBgmPlaying, playBgm, stopBgm } from './platform/audio';
 import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
 import {
+  atYokokuAllowed,
+  atYokokuView,
+  battleGameAtLeverOn,
+  battleView,
   cutinsForEvents,
   koyakuHintAllowed,
   koyakuHintView,
   overlayForState,
   renzokuAtLeverOn,
   resultSoundCue,
+  revivalCutin,
   scenarioYokokuAtLeverOn,
+  type Cutin,
   type LeverDirection,
 } from './ui/direction';
 import { DirectionLayer, type CutinFrame } from './ui/DirectionLayer';
@@ -324,7 +335,14 @@ function makePlayState(gameState: GameState): PlayState {
 
 type Action =
   | { type: 'LEVER' }
-  | { type: 'FINISH'; spin: SpinResult; result: AdvanceResult; pushOrder: string }
+  | {
+      type: 'FINISH';
+      spin: SpinResult;
+      result: AdvanceResult;
+      pushOrder: string;
+      /** このゲームのカットイン列(復活告知の差し込みがあるため呼び出し側で確定させる) */
+      cutins: readonly Cutin[];
+    }
   | { type: 'RESET'; gameState: GameState };
 
 function reducer(prev: PlayState, action: Action): PlayState {
@@ -359,7 +377,7 @@ function reducer(prev: PlayState, action: Action): PlayState {
     logs: [log, ...prev.logs].slice(0, 8),
     eventLog: [...newEvents, ...prev.eventLog].slice(0, 14),
     meter: meterOnFinish(prev.meter, wasAtGame, result),
-    cutinFrame: { seq: game, cutins: cutinsForEvents(result.events) },
+    cutinFrame: { seq: game, cutins: action.cutins },
   };
 }
 
@@ -434,6 +452,14 @@ function App() {
   const finishTimerRef = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(finishTimerRef.current), []);
 
+  /**
+   * バトルパートの進行中ルート(STEP 4e)。バトル 1G 目のレバーオンで一括抽せんし、
+   * バトル中の毎レバーオンで参照する(表示は `battleView`)。UI 専用 rng で引くため
+   * state ではなく ref に保持(再レンダー契機は leverDirection 側が担う)。
+   * リセット・バトル終了(セット継続 / エンディング / AT 終了)で破棄する。
+   */
+  const battleRef = useRef<{ tier: BattleTier; route: BattleRoute } | undefined>(undefined);
+
   /** 全停止 → 表示判定 → advanceGame → レバー待ちへ(1G の締め) */
   const finishGame = (cycle: SpinCycle) => {
     const spin = finishSpin(cycle);
@@ -445,28 +471,95 @@ function App() {
     // 基本 SE(レア役 > 払出)。告知系の SE はカットイン表示時に DirectionLayer が鳴らす
     const cue = resultSoundCue(cycle.wonRole, result.payout.payout);
     if (cue !== undefined) playCue(cue);
+
+    // 復活告知(STEP 4e): 敗北寄りルートの 8G 目全停止でセット継続 / エンディング移行が
+    // 確定していたら、復活告知パターンを抽せんしてカットイン列の先頭へ差し込む
+    // (第 3 リール停止時の告知 = DIRECTION_SPEC 2.5)
+    let cutins: readonly Cutin[] = cutinsForEvents(result.events);
+    const battle = battleRef.current;
+    if (
+      battle !== undefined &&
+      battle.route.outcome === 'LOSE' &&
+      result.events.some((e) => e.type === 'AT_SET_CONTINUE' || e.type === 'ENDING_START')
+    ) {
+      cutins = [revivalCutin(drawRevival(hintRng, battle.tier)), ...cutins];
+    }
+
+    // バトルルートの更新(STEP 4e): バトル 1G 目の全停止で率当せん(継続確定)が
+    // 判明したら勝利ルートへ引き直す(direction.ts ヘッダーの実装解釈)。
+    // バトルが終わったら破棄(次セット・エンディング・AT 終了・通常復帰)
+    const nextPhase = result.state.phase;
+    if (nextPhase.type === 'AT' && nextPhase.part === 'BATTLE') {
+      if (
+        nextPhase.partGame === 1 &&
+        battle !== undefined &&
+        battle.route.outcome === 'LOSE' &&
+        nextPhase.continueConfirmed
+      ) {
+        battleRef.current = {
+          tier: nextPhase.tier,
+          route: drawBattleRoute(hintRng, nextPhase.tier, true, nextPhase.continueRate),
+        };
+      }
+    } else {
+      battleRef.current = undefined;
+    }
+
     const pushOrder = cycle.pressed.map((reel) => REEL_NAMES[reel]).join('→');
-    dispatch({ type: 'FINISH', spin, result, pushOrder });
+    dispatch({ type: 'FINISH', spin, result, pushOrder, cutins });
     setSpinUi({ mode: 'IDLE' });
   };
 
   /**
-   * レバーオン時の演出の決定(STEP 4c・4d)。
-   * 連続演出中(1G 目 = 前兆最終 G 消化済みを含む)は 4G 構成の全画面表示(STEP 4d)。
-   * それ以外は前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ
-   * 小役示唆予告を成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。
+   * レバーオン時の演出の決定(STEP 4c・4d・4e)。
+   * - バトルパート中(1G 目 = 小役 10G 消化済みを含む)はバトル 8G 構成の全画面表示。
+   *   1G 目でルートを一括抽せん(継続確定 = V ストック有無で仮判定。率当せんが
+   *   1G 目の全停止で判明したら finishGame 側で勝利ルートへ引き直す)。
+   * - AT 小役パート中は成立役から AT 予告を抽せん(DIRECTION_SPEC 2.3・3.5)。
+   * - 連続演出中(1G 目 = 前兆最終 G 消化済みを含む)は 4G 構成の全画面表示(STEP 4d)。
+   * - それ以外は前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ
+   *   小役示唆予告を成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。
    * いずれも次のレバーオンまで表示。
    */
   const drawLeverDirection = (won: Role) => {
     const state = play.gameState;
-    const renzoku = renzokuAtLeverOn(state);
-    const yokoku = renzoku === undefined ? scenarioYokokuAtLeverOn(state) : undefined;
+    const { phase: currentPhase } = state;
+    // バトルパート(STEP 4e)
+    let battle: LeverDirection['battle'];
+    const battleGame = battleGameAtLeverOn(state);
+    if (battleGame !== undefined && currentPhase.type === 'AT') {
+      if (battleGame === 1 || battleRef.current === undefined) {
+        // バトル 1G 目 = ルート一括抽せん(確定 29 の V ストック先消化ぶんだけ確定を仮判定)
+        const confirmed =
+          battleGame === 1 ? currentPhase.vStock > 0 : currentPhase.continueConfirmed;
+        battleRef.current = {
+          tier: currentPhase.tier,
+          route: drawBattleRoute(hintRng, currentPhase.tier, confirmed, currentPhase.continueRate),
+        };
+      }
+      battle = battleView(battleRef.current.tier, battleRef.current.route, battleGame);
+    }
+    // AT 小役パート予告(STEP 4e)
+    let atYokoku: LeverDirection['atYokoku'];
+    if (battle === undefined && atYokokuAllowed(state) && currentPhase.type === 'AT') {
+      const drawn = drawAtYokoku(hintRng, won);
+      if (drawn !== null) atYokoku = atYokokuView(drawn, won, currentPhase.tier);
+    }
+    const renzoku = battle === undefined ? renzokuAtLeverOn(state) : undefined;
+    const yokoku =
+      battle === undefined && renzoku === undefined ? scenarioYokokuAtLeverOn(state) : undefined;
     let hint: LeverDirection['hint'];
-    if (renzoku === undefined && yokoku === undefined && koyakuHintAllowed(state)) {
+    if (
+      battle === undefined &&
+      atYokoku === undefined &&
+      renzoku === undefined &&
+      yokoku === undefined &&
+      koyakuHintAllowed(state)
+    ) {
       const drawn = drawKoyakuHint(hintRng, won);
       if (drawn !== null) hint = koyakuHintView(drawn, won, state.background);
     }
-    setLeverDirection((prev) => ({ seq: prev.seq + 1, yokoku, hint, renzoku }));
+    setLeverDirection((prev) => ({ seq: prev.seq + 1, yokoku, hint, renzoku, atYokoku, battle }));
   };
 
   /** レバーオン: BET 徴収(メーター)+ 役抽せん + 予告決定 + 全リール回転開始(回転中は無視) */
@@ -576,6 +669,7 @@ function App() {
     setSpinUi({ mode: 'IDLE' });
     setResetCount((n) => n + 1); // DirectionLayer を再マウントして演出キューを破棄
     setLeverDirection({ seq: 0 });
+    battleRef.current = undefined;
     dispatch({ type: 'RESET', gameState: initGameState(rng) });
   };
 
@@ -790,7 +884,11 @@ function App() {
               </div>
               <div>
                 予告演出:{' '}
-                {leverDirection.renzoku !== undefined ? (
+                {leverDirection.battle !== undefined ? (
+                  <strong className="accent">{leverDirection.battle.label}</strong>
+                ) : leverDirection.atYokoku !== undefined ? (
+                  <strong className="accent">{leverDirection.atYokoku.label}</strong>
+                ) : leverDirection.renzoku !== undefined ? (
                   <strong className="accent">{leverDirection.renzoku.label}</strong>
                 ) : leverDirection.yokoku !== undefined ? (
                   <strong className="accent">{leverDirection.yokoku.label}</strong>
@@ -939,6 +1037,9 @@ function App() {
                 ))}
               </select>
             </label>
+            <button type="button" onClick={autoGame} disabled={spinning}>
+              1G消化(オート)
+            </button>
             <button type="button" onClick={onReset}>
               リセット
             </button>

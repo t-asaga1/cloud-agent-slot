@@ -200,6 +200,12 @@ export interface KoyakuHint { slot: KoyakuHintSlot; strong: boolean; }
 - チャンスアップ(1〜3G 目の通常/チャンス)は**ルートへ焼き込み**(ルート自体がチャンスアップの
   バリエーションを持つ = Excel のパターン No 採番と整合)。
 - 上位 AT はルートに「ダブル攻撃」(確定済みのみ)を加えた共闘版で同じ仕組み(17 ルート)。
+- **実装解釈(STEP 4e)**: バトル開始時の継続率抽せん(確定 29)は core ではバトル 1G 目の
+  `advanceGame`(= 全停止時)で行われるため、レバーオン時点で UI が知り得る「開始時確定」は
+  V ストック(> 0 なら消費で確定)のみ。ルートはバトル 1G 目のレバーオンで
+  「確定 = V ストック有無」により仮抽せんし、**1G 目の全停止で率当せん(継続確定)が判明したら
+  勝利ルートへ抽せんし直す**(2G 目以降の表示から反映)。2G 目以降の小役継続当せんでは
+  引き直さない(敗北寄りルートのまま 8G 目の復活告知で見せる)。
 
 ## 3. 仮テーブル(実装値。Q14・Q15 回答 =「仮値で OK」)
 
@@ -419,7 +425,14 @@ Q1〜Q11(STEP 2 着手前)からの連番。回答の全文は `docs/SPEC.md`「
   解決(レバーオン時に 1G 分。1G 目はフェーズ OMEN の最終 G 消化済み状態から)。
   チャンスアップ G は仮素材では表示差分(CHANCE UP! バッジ + 金枠)。
   成否告知は `RENZOKU_RESULT` カットイン + `renzoku_result_<win|lose>` ムービー。
-- 4e(AT・エンディング): 1.3〜1.4 + 2.3・2.5(`drawAtYokoku` / `drawBattleRoute` / `drawRevival`
-  を UI から配線)+ エンディング 2 種。
+- **4e(AT・エンディング)= 実装済み(AGENT #046)**: 仮素材 45 本(4. の `at_koyaku_*` /
+  `battle_at_*` / `battle_uat_*` / `ending_*`)を生成し、`direction.ts` に
+  `atYokokuAllowed` / `atYokokuView`(AT 小役予告。NAVI = ベル図柄 + 押し順 / RARE = 成立役図柄)、
+  `battleGameAtLeverOn` / `battleView`(ルート × G → Excel パターン No のムービー解決。
+  G1〜3 = 通常/チャンスのペア No・G4〜8 = ルート分岐 No の対応表)、`revivalCutin`
+  (復活告知。8G 目全停止でセット継続が確定していたとき `drawRevival` の結果を表示)、
+  エンディング全画面ムービー(`overlayForState` に videoUrl 追加。after で描き分け)を実装。
+  バトルルートは `App.tsx` の `battleRef`(UI 専用 rng で抽せん・保持)。
+  継続確定状態の扱いは 2.5 の実装解釈参照。
 - 仮素材の生成は `scripts/gen_placeholder_assets.py` へ追記(命名は 4. の規約)。
   `manifest.json` への登録を忘れない(`docs/ASSET_GUIDELINES.md`)。

@@ -168,6 +168,30 @@ export const RENZOKU_VIDEOS: Record<string, string> = Object.fromEntries(
   ]),
 );
 
+// AT・上位 AT・エンディング演出ムービー(STEP 4e。45 本あるため glob で一括解決)
+const atVideoModules = import.meta.glob('./video/at/*.webm', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * AT・上位 AT・エンディング演出ムービー URL(仮素材)。キー = ファイル名 stem(拡張子なし)。
+ * 命名規約は docs/DIRECTION_SPEC.md「4.」:
+ * - AT 小役パート予告: `at_koyaku_<navi|rare|strong>` / `uat_koyaku_<...>`(6)
+ * - バトルパート(AT): `battle_at_<01-20>`(Excel「AT中」シートのパターン No = 20)
+ * - バトルパート(上位): `battle_uat_<no>`(Excel「上位AT中」の No。13・15・16・19 は
+ *   歯抜けで 01-12, 14, 17, 18, 20, 21 の 17 本)
+ * - エンディング: `ending_<to_upper|complete>`(2)
+ * キーからの解決は `src/ui/direction.ts` の `atVideoUrl` を使うこと
+ * (存在しないキーを検知できる)。全 45 キーの存在は direction.test.ts で検証する。
+ */
+export const AT_VIDEOS: Record<string, string> = Object.fromEntries(
+  Object.entries(atVideoModules).map(([path, url]) => [
+    path.slice('./video/at/'.length, -'.webm'.length),
+    url,
+  ]),
+);
+
 /**
  * 効果音 URL(仮素材)。
  * ゲーム中の SE 再生は本テーブルを直接参照せず、`src/ui/sound.ts` の

@@ -53,16 +53,44 @@
  *   `koyakuHintAllowed` を確認して `drawKoyakuHint` を呼ぶ)。前兆背景滞在中は
  *   小役示唆予告なし(前兆背景の固有 1〜3 は期待度ラダー専用)。連続演出・AT・
  *   エンディング中も出さない(AT 中の予告は 4e の `drawAtYokoku` が担う)。
+ *
+ * # AT・上位 AT・エンディング演出の解決規約(STEP 4e。docs/DIRECTION_SPEC.md「2.3」「2.5」「3.5」「3.6」)
+ *
+ * - **AT 小役パート予告**(`AT_NAVI` / `AT_RARE` / `AT_STRONG`): 予告と同じく
+ *   レバーオン時に成立役から `drawAtYokoku`(独立関数・UI 専用 rng)で抽せんし、
+ *   `atYokokuView` で AT 階層別のムービー + 図柄画像(NAVI = ベル + 押し順 /
+ *   RARE = 成立役の図柄 = 確定 33)へ解決する。バトルパート・エンディング中は出さない(2.3)。
+ * - **バトルパート 8G**: バトル開始(バトル 1G 目のレバーオン)で `drawBattleRoute` により
+ *   ルートを一括抽せんし(UI 側が保持)、毎 G `battleView` で「G 位置 × ルート」を
+ *   Excel パターン No のムービーへ解決する(G1〜3 = 通常/チャンスのペア No、
+ *   G4〜8 = ルート分岐の No)。
+ *   - **継続確定状態の実装解釈**: バトル開始時の継続率抽せん(確定 29)は core では
+ *     バトル 1G 目の `advanceGame`(= 全停止時)で行われるため、レバーオン時点で UI が
+ *     知り得る確定は V ストック(> 0 なら消費で確定)のみ。ルートは V ストック有無で
+ *     仮抽せんし、**1G 目の全停止で率当せん(継続確定)が判明したら勝利ルートへ
+ *     引き直す**(2G 目以降の表示から反映)。バトル 2G 目以降の小役継続当せんは
+ *     引き直さない(敗北寄りルートのまま 8G 目の復活告知で見せる = 2.5)。
+ * - **復活告知**: 敗北寄りルートの 8G 目全停止でセット継続(`AT_SET_CONTINUE` /
+ *   `ENDING_START`)が発生していたら、UI が `drawRevival` で告知パターンを抽せんし
+ *   `revivalCutin` をカットイン列の先頭へ差し込む(第 3 リール停止 = 全停止時の告知)。
+ * - **エンディング**: フェーズ ENDING の常時表示(`overlayForState`)に全画面ムービーを
+ *   追加(`EndingPhase.after` で `ending_to_upper` / `ending_complete` を描き分け = Q20)。
  */
-import { EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
+import { AT_VIDEOS, EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
+import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
+import { NAVI_PUSH_ORDER } from '../core/play';
 import type { ReelSymbol } from '../core/reel';
 import { isRareRole, type Role } from '../core/roles';
 import {
   stepAt,
+  type AtYokoku,
+  type BattleRoute,
+  type BattleTier,
   type KoyakuHint,
   type RenzokuChanceUps,
+  type RevivalPattern,
   type ScenarioLevel,
   type ZenchoYokokuSlot,
 } from '../core/scenario';
@@ -80,11 +108,13 @@ import type { SoundCueId } from './sound';
 
 /** フェーズ由来の常時表示(毎ゲーム state から導出) */
 export type StateOverlay = {
-  /** エンディング中のバナー(n/10G) */
+  /** エンディング中の全画面ムービー + バナー(n/10G) */
   kind: 'ENDING';
   game: number;
   totalGames: number;
   after: EndingAfter;
+  /** 全画面エンディングムービー(after で描き分け = Q20。STEP 4e) */
+  videoUrl: string;
 };
 
 /**
@@ -92,11 +122,19 @@ export type StateOverlay = {
  * 前兆中の予告は 4c のシナリオ由来レバーオン演出(`scenarioYokokuAtLeverOn`)、
  * 連続演出 4G は 4d のレバーオン演出(`renzokuAtLeverOn`)が担い、常時表示は出さない
  * (予告のない G は静かに進む = 予告が出た時だけ前兆を匂わせる)。
+ * エンディングは 10G 通しの全画面ムービー(STEP 4e。`ending_to_upper` = 上位 AT 突入前 /
+ * `ending_complete` = 完全制覇 → AT 終了)。
  */
 export function overlayForState(state: GameState): StateOverlay | undefined {
   const { phase } = state;
   if (phase.type === 'ENDING') {
-    return { kind: 'ENDING', game: phase.game, totalGames: ENDING_GAMES, after: phase.after };
+    return {
+      kind: 'ENDING',
+      game: phase.game,
+      totalGames: ENDING_GAMES,
+      after: phase.after,
+      videoUrl: atVideoUrl(phase.after === 'UPPER_AT' ? 'ending_to_upper' : 'ending_complete'),
+    };
   }
   return undefined;
 }
@@ -334,6 +372,214 @@ export function renzokuAtLeverOn(state: GameState): RenzokuView | undefined {
   return undefined;
 }
 
+// ---------------------------------------------------------------------------
+// AT 中の演出(STEP 4e = 小役パート予告 / バトルパート 8G / 復活告知)
+// ---------------------------------------------------------------------------
+
+/** AT 演出ムービー URL をキーから解決する(存在しないキーは仮素材の生成漏れ = 即エラー) */
+export function atVideoUrl(key: string): string {
+  const url = AT_VIDEOS[key];
+  if (url === undefined) throw new Error(`AT 演出ムービーがありません: ${key}`);
+  return url;
+}
+
+const AT_YOKOKU_LABELS: Record<AtYokoku, string> = {
+  AT_NAVI: 'ベルナビ',
+  AT_RARE: 'レア役示唆',
+  AT_STRONG: '強予告(Vストック濃厚)',
+};
+
+const AT_YOKOKU_KEYS: Record<AtYokoku, string> = {
+  AT_NAVI: 'navi',
+  AT_RARE: 'rare',
+  AT_STRONG: 'strong',
+};
+
+/** ナビの押し順表示(打ち方ポリシーの NAVI_PUSH_ORDER = 中第一 と一致させる) */
+const NAVI_ORDER_TEXT = NAVI_PUSH_ORDER.map((reel) => ['左', '中', '右'][reel]).join('→');
+
+/** AT 小役パート予告の表示データ(レバーオン時に解決し、次のレバーオンまで表示) */
+export interface AtYokokuView {
+  kind: AtYokoku;
+  videoUrl: string;
+  /** ムービー後に画面表示する図柄画像(NAVI = ベル / RARE = 成立役の図柄 = 確定 33) */
+  symbolUrl?: string;
+  /** NAVI の押し順テキスト(中→左→右) */
+  naviText?: string;
+  /** 強調枠(AT_STRONG = V ストック濃厚) */
+  strong: boolean;
+  /** デバッグ・テスト用(画面には出さない) */
+  label: string;
+}
+
+/**
+ * AT 小役パート予告を出せる状況か(DIRECTION_SPEC 2.3)。
+ * 次に回すゲームが AT 小役パートの G(1〜10G 目)のときのみ。
+ * バトルパート(次がバトル 1G 目 = partGame 10 消化済みを含む)・エンディング中は出さない。
+ */
+export function atYokokuAllowed(state: GameState): boolean {
+  const { phase } = state;
+  return phase.type === 'AT' && phase.part === 'KOYAKU' && phase.partGame < KOYAKU_PART_GAMES;
+}
+
+/**
+ * AT 小役パート予告(`drawAtYokoku` の結果)を見た目へ解決する。
+ * AT と上位 AT で別ムービー(`at_koyaku_*` / `uat_koyaku_*`)。
+ * 図柄画像は NAVI = ベル(+ 押し順テキスト)/ RARE = 成立役の図柄(目押し補助)/
+ * STRONG = なし(ムービーのみ。V ストック濃厚の強調枠)。
+ */
+export function atYokokuView(kind: AtYokoku, role: Role, tier: BattleTier): AtYokokuView {
+  const prefix = tier === 'UPPER' ? 'uat' : 'at';
+  const videoUrl = atVideoUrl(`${prefix}_koyaku_${AT_YOKOKU_KEYS[kind]}`);
+  const label = `${tier === 'UPPER' ? '上位AT' : 'AT'}予告 ${AT_YOKOKU_LABELS[kind]}`;
+  if (kind === 'AT_NAVI') {
+    return {
+      kind,
+      videoUrl,
+      symbolUrl: SYMBOL_IMAGES.BELL,
+      naviText: NAVI_ORDER_TEXT,
+      strong: false,
+      label,
+    };
+  }
+  if (kind === 'AT_RARE') {
+    const symbol = HINT_SYMBOLS[role];
+    return {
+      kind,
+      videoUrl,
+      symbolUrl: symbol !== undefined ? SYMBOL_IMAGES[symbol] : undefined,
+      strong: false,
+      label,
+    };
+  }
+  return { kind, videoUrl, strong: true, label };
+}
+
+/** バトルの全画面タイトル(仮素材用) */
+export const BATTLE_TITLES: Record<BattleTier, string> = {
+  NORMAL: 'BATTLE — 頼朝との一戦',
+  UPPER: '共闘BATTLE — 敵軍との決戦',
+};
+
+/** バトル 8G の役割ラベル(SPEC「7.」「8.」の 8G 構成表) */
+export const BATTLE_STAGE_LABELS: Record<BattleTier, readonly string[]> = {
+  NORMAL: ['導入', '義経台詞', '頼朝台詞', '攻撃決め', '攻撃', '判定', '帰結', '最終'],
+  UPPER: ['導入', '義経台詞', '頼朝台詞', '攻撃決め', '攻撃', 'ヒット判定', '帰結', '最終'],
+};
+
+/**
+ * ルート ID → G4〜G8 のパターン No(Excel「AT中」シートの No 1〜20)。
+ * G1〜3 は通常/チャンスのペア(No 1/2・3/4・5/6)でルートの chanceUps から解決する。
+ */
+const AT_ROUTE_PATTERN_NOS: Record<string, readonly [number, number, number, number, number]> = {
+  W1: [7, 9, 13, 16, 19],
+  W2: [7, 9, 13, 16, 19],
+  W3: [7, 10, 14, 16, 19],
+  W4: [7, 10, 14, 16, 19],
+  W5: [8, 11, 15, 17, 19],
+  W6: [8, 11, 15, 17, 19],
+  W7: [8, 12, 15, 17, 19],
+  W8: [8, 12, 15, 17, 19],
+  U1: [8, 11, 15, 18, 20],
+  U2: [8, 11, 15, 18, 20],
+  U3: [8, 11, 15, 18, 20],
+  U4: [8, 12, 15, 18, 20],
+  U5: [8, 12, 15, 18, 20],
+  U6: [8, 12, 15, 18, 20],
+};
+
+/**
+ * ルート ID → G4〜G8 のパターン No(Excel「上位AT中」シートの No。
+ * 13・15・16・19 は歯抜けで、G6 のヒット判定は No 14 の 1 種のみ)。
+ */
+const UPPER_ROUTE_PATTERN_NOS: Record<string, readonly [number, number, number, number, number]> = {
+  W1: [7, 10, 14, 17, 20],
+  W2: [7, 10, 14, 17, 20],
+  W3: [8, 11, 14, 17, 20],
+  W4: [8, 11, 14, 17, 20],
+  W5: [9, 12, 14, 17, 20],
+  W6: [9, 12, 14, 17, 20],
+  W7: [9, 12, 14, 17, 20],
+  U1: [7, 10, 14, 18, 21],
+  U2: [7, 10, 14, 18, 21],
+  U3: [8, 11, 14, 18, 21],
+  U4: [8, 11, 14, 18, 21],
+  U5: [8, 11, 14, 18, 21],
+};
+
+/** バトル 1G 分の表示データ(レバーオン時に解決し、次のレバーオンまで全画面表示) */
+export interface BattleView {
+  tier: BattleTier;
+  /** これから回すゲームがバトル何 G 目か(1〜BATTLE_PART_GAMES) */
+  game: number;
+  totalGames: number;
+  videoUrl: string;
+  title: string;
+  /** 8G 構成の役割ラベル(導入 / 台詞 / 攻撃 / …) */
+  stage: string;
+  /** この G がチャンスアップか(G1〜3 のみ。ルートへ焼き込み = Q18) */
+  chanceUp: boolean;
+  routeId: string;
+  /** デバッグ・テスト用(画面には出さない) */
+  label: string;
+}
+
+/**
+ * これから回すゲームがバトル何 G 目か(レバーオン時に UI が呼ぶ)。
+ * バトル 1G 目 = 小役 10G 消化済みのフェーズ AT(part KOYAKU・partGame 10)、
+ * 2〜8G 目 = part BATTLE(game = 消化済み G 数)。バトル以外は undefined。
+ */
+export function battleGameAtLeverOn(state: GameState): number | undefined {
+  const { phase } = state;
+  if (phase.type !== 'AT') return undefined;
+  if (phase.part === 'KOYAKU') {
+    return phase.partGame >= KOYAKU_PART_GAMES ? 1 : undefined;
+  }
+  return phase.partGame < BATTLE_PART_GAMES ? phase.partGame + 1 : undefined;
+}
+
+/** ルート × G → 具体ムービーの解決(DIRECTION_SPEC 3.6。UI がルートを保持して毎 G 呼ぶ) */
+export function battleView(tier: BattleTier, route: BattleRoute, game: number): BattleView {
+  const chanceUp = game <= 3 && route.chanceUps.includes(game);
+  let no: number;
+  if (game <= 3) {
+    // G1〜3 は通常/チャンスのペア No(1/2・3/4・5/6)
+    no = (game - 1) * 2 + (chanceUp ? 2 : 1);
+  } else {
+    const nos = (tier === 'NORMAL' ? AT_ROUTE_PATTERN_NOS : UPPER_ROUTE_PATTERN_NOS)[route.id];
+    if (nos === undefined) throw new Error(`未知のバトルルート: ${tier} ${route.id}`);
+    no = nos[game - 4];
+  }
+  const key = `battle_${tier === 'NORMAL' ? 'at' : 'uat'}_${String(no).padStart(2, '0')}`;
+  const stage = BATTLE_STAGE_LABELS[tier][game - 1];
+  return {
+    tier,
+    game,
+    totalGames: BATTLE_PART_GAMES,
+    videoUrl: atVideoUrl(key),
+    title: BATTLE_TITLES[tier],
+    stage,
+    chanceUp,
+    routeId: route.id,
+    label: `${tier === 'UPPER' ? '共闘' : 'AT'}バトル ${route.id} G${game} ${stage}${chanceUp ? '(チャンス)' : ''}`,
+  };
+}
+
+/**
+ * 復活告知のカットイン(敗北寄りルートの 8G 目全停止でセット継続が確定していたとき、
+ * UI が `drawRevival` の結果を渡してカットイン列の先頭へ差し込む = 第 3 リール停止の告知)。
+ */
+export function revivalCutin(pattern: RevivalPattern): Cutin {
+  return {
+    title: '復活!',
+    sub: pattern.label,
+    style: 'SPECIAL',
+    videoUrl: EFFECT_VIDEOS.cutinStrong,
+    sound: 'BIG_WIN',
+    durationMs: 2200,
+  };
+}
+
 /** レバーオン時に決定する 1G 分の演出(seq = レバーオンの通し番号) */
 export interface LeverDirection {
   seq: number;
@@ -343,6 +589,10 @@ export interface LeverDirection {
   hint?: KoyakuHintView;
   /** 連続演出の全画面表示(STEP 4d。あるとき yokoku / hint は undefined) */
   renzoku?: RenzokuView;
+  /** AT 小役パート予告(STEP 4e。AT 中のみ。あるとき他は undefined) */
+  atYokoku?: AtYokokuView;
+  /** バトルパート 8G の全画面表示(STEP 4e。あるとき他は undefined) */
+  battle?: BattleView;
 }
 
 // ---------------------------------------------------------------------------

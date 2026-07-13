@@ -1186,5 +1186,410 @@
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
     "note": "連続演出ムービー仮素材「成否告知 敗北」(STEP 4d。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "at_koyaku_navi",
+    "path": "video/at/at_koyaku_navi.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「AT予告 ベルナビ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "at_koyaku_rare",
+    "path": "video/at/at_koyaku_rare.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「AT予告 レア役示唆」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "at_koyaku_strong",
+    "path": "video/at/at_koyaku_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「AT予告 強予告 V濃厚」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "uat_koyaku_navi",
+    "path": "video/at/uat_koyaku_navi.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「上位AT予告 ベルナビ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "uat_koyaku_rare",
+    "path": "video/at/uat_koyaku_rare.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「上位AT予告 レア役示唆」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "uat_koyaku_strong",
+    "path": "video/at/uat_koyaku_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「上位AT予告 強予告 V濃厚」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_01",
+    "path": "video/at/battle_at_01.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G1 導入 通常」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_02",
+    "path": "video/at/battle_at_02.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G1 導入 チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_03",
+    "path": "video/at/battle_at_03.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G2 義経台詞 通常」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_04",
+    "path": "video/at/battle_at_04.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G2 義経台詞 チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_05",
+    "path": "video/at/battle_at_05.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G3 頼朝台詞 通常」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_06",
+    "path": "video/at/battle_at_06.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G3 頼朝台詞 チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_07",
+    "path": "video/at/battle_at_07.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G4 攻撃決め 義経攻撃へ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_08",
+    "path": "video/at/battle_at_08.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G4 攻撃決め 頼朝攻撃へ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_09",
+    "path": "video/at/battle_at_09.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G5 義経弱攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_10",
+    "path": "video/at/battle_at_10.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G5 義経強攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_11",
+    "path": "video/at/battle_at_11.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G5 頼朝弱攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_12",
+    "path": "video/at/battle_at_12.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G5 頼朝強攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_13",
+    "path": "video/at/battle_at_13.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G6 頼朝にヒット」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_14",
+    "path": "video/at/battle_at_14.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G6 桜花繚乱チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_15",
+    "path": "video/at/battle_at_15.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G6 義経喰らうか」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_16",
+    "path": "video/at/battle_at_16.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G7 頼朝の台詞」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_17",
+    "path": "video/at/battle_at_17.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G7 耐える」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_18",
+    "path": "video/at/battle_at_18.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G7 耐えれない」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_19",
+    "path": "video/at/battle_at_19.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G8 継続 次セットへ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_at_20",
+    "path": "video/at/battle_at_20.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「ATバトル G8 復活判定」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_01",
+    "path": "video/at/battle_uat_01.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G1 導入 通常」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_02",
+    "path": "video/at/battle_uat_02.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G1 導入 チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_03",
+    "path": "video/at/battle_uat_03.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G2 義経台詞 通常」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_04",
+    "path": "video/at/battle_uat_04.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G2 義経台詞 チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_05",
+    "path": "video/at/battle_uat_05.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G3 頼朝台詞 通常」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_06",
+    "path": "video/at/battle_uat_06.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G3 頼朝台詞 チャンス」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_07",
+    "path": "video/at/battle_uat_07.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G4 義経攻撃へ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_08",
+    "path": "video/at/battle_uat_08.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G4 頼朝攻撃へ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_09",
+    "path": "video/at/battle_uat_09.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G4 ダブル攻撃へ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_10",
+    "path": "video/at/battle_uat_10.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G5 義経攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_11",
+    "path": "video/at/battle_uat_11.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G5 頼朝攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_12",
+    "path": "video/at/battle_uat_12.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G5 ダブル攻撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_14",
+    "path": "video/at/battle_uat_14.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G6 敵を倒せるか」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_17",
+    "path": "video/at/battle_uat_17.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G7 倒せる 二人の台詞」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_18",
+    "path": "video/at/battle_uat_18.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G7 倒せない 敵の反撃」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_20",
+    "path": "video/at/battle_uat_20.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G8 継続」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "battle_uat_21",
+    "path": "video/at/battle_uat_21.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「共闘バトル G8 復活判定」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "ending_to_upper",
+    "path": "video/at/ending_to_upper.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「エンディング 上位ATへ」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "ending_complete",
+    "path": "video/at/ending_complete.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT・エンディング演出ムービー仮素材「エンディング 完全制覇」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
   }
 ]

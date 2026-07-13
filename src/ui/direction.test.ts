@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { RENZOKU_VIDEOS, YOKOKU_VIDEOS } from '../assets';
+import { AT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES } from '../core/omen';
-import type { OmenScenario, RenzokuChanceUps, ScenarioStep } from '../core/scenario';
+import type { BattleRoute, OmenScenario, RenzokuChanceUps, ScenarioStep } from '../core/scenario';
 import { ENDING_GAMES, type GameEvent, type GameState } from '../core/state';
 import {
+  atVideoUrl,
+  atYokokuAllowed,
+  atYokokuView,
+  battleGameAtLeverOn,
+  battleView,
   cutinsForEvents,
   koyakuHintAllowed,
   koyakuHintView,
@@ -13,6 +18,7 @@ import {
   renzokuVideoUrl,
   RENZOKU_TITLES,
   resultSoundCue,
+  revivalCutin,
   scenarioYokokuAtLeverOn,
   yokokuVideoUrl,
 } from './direction';
@@ -86,9 +92,24 @@ describe('overlayForState(フェーズ由来の常時表示)', () => {
     ).toBeUndefined();
   });
 
-  it('エンディング中は n/10G バナー(行き先付き)', () => {
-    const overlay = overlayForState(state({ type: 'ENDING', game: 4, after: 'UPPER_AT', vStock: 2 }));
-    expect(overlay).toEqual({ kind: 'ENDING', game: 4, totalGames: ENDING_GAMES, after: 'UPPER_AT' });
+  it('エンディング中は n/10G バナー + 全画面ムービー(after で描き分け = Q20)', () => {
+    const toUpper = overlayForState(
+      state({ type: 'ENDING', game: 4, after: 'UPPER_AT', vStock: 2 }),
+    );
+    expect(toUpper).toEqual({
+      kind: 'ENDING',
+      game: 4,
+      totalGames: ENDING_GAMES,
+      after: 'UPPER_AT',
+      videoUrl: AT_VIDEOS['ending_to_upper'],
+    });
+    const complete = overlayForState(
+      state({ type: 'ENDING', game: 9, after: 'AT_END', vStock: 0 }),
+    );
+    expect(complete).toMatchObject({
+      after: 'AT_END',
+      videoUrl: AT_VIDEOS['ending_complete'],
+    });
   });
 });
 
@@ -379,6 +400,175 @@ describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', (
 
   it('前兆背景では解決しない(素材がない)', () => {
     expect(koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'ZENCHO')).toBeUndefined();
+  });
+});
+
+describe('AT_VIDEOS(AT・エンディング演出ムービー仮素材の存在検証。DIRECTION_SPEC「4.」の全 45 本)', () => {
+  it('全キーが揃っている(小役予告 6 + AT バトル 20 + 上位バトル 17 + エンディング 2)', () => {
+    const expected: string[] = [];
+    for (const tier of ['at', 'uat']) {
+      for (const kind of ['navi', 'rare', 'strong']) expected.push(`${tier}_koyaku_${kind}`);
+    }
+    for (let no = 1; no <= 20; no++) expected.push(`battle_at_${String(no).padStart(2, '0')}`);
+    // 上位 AT は Excel の No 歯抜け(13・15・16・19 なし)のまま採番
+    for (const no of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 17, 18, 20, 21]) {
+      expected.push(`battle_uat_${String(no).padStart(2, '0')}`);
+    }
+    expected.push('ending_to_upper', 'ending_complete');
+
+    expect(expected).toHaveLength(45);
+    for (const key of expected) {
+      expect(AT_VIDEOS[key], key).toBeTruthy();
+      expect(atVideoUrl(key), key).toBe(AT_VIDEOS[key]);
+    }
+    expect(Object.keys(AT_VIDEOS)).toHaveLength(45);
+  });
+
+  it('存在しないキーはエラー(仮素材の生成漏れ検知)', () => {
+    expect(() => atVideoUrl('battle_uat_13')).toThrow(); // 歯抜け No
+    expect(() => atVideoUrl('at_koyaku_nazo')).toThrow();
+  });
+});
+
+describe('atYokokuAllowed / atYokokuView(AT 小役パート予告 = DIRECTION_SPEC 2.3)', () => {
+  it('次が AT 小役パートの G のときのみ許可(バトル・エンディング・通常時は不可)', () => {
+    expect(atYokokuAllowed(state(AT_PHASE))).toBe(true); // KOYAKU partGame 3 → 次は 4G 目
+    expect(atYokokuAllowed(state({ ...AT_PHASE, partGame: 0 }))).toBe(true);
+    // 小役 10G 消化済み = 次はバトル 1G 目 → 小役予告は出さない
+    expect(atYokokuAllowed(state({ ...AT_PHASE, partGame: 10 }))).toBe(false);
+    expect(atYokokuAllowed(state({ ...AT_PHASE, part: 'BATTLE', partGame: 2 }))).toBe(false);
+    expect(
+      atYokokuAllowed(state({ type: 'ENDING', game: 1, after: 'UPPER_AT', vStock: 0 })),
+    ).toBe(false);
+    expect(atYokokuAllowed(state({ type: 'NORMAL' }))).toBe(false);
+  });
+
+  it('AT_NAVI = ベル図柄 + 押し順テキスト(ナビの中第一と一致)', () => {
+    const view = atYokokuView('AT_NAVI', 'BELL', 'NORMAL');
+    expect(view).toEqual({
+      kind: 'AT_NAVI',
+      videoUrl: AT_VIDEOS['at_koyaku_navi'],
+      symbolUrl: SYMBOL_IMAGES.BELL,
+      naviText: '中→左→右',
+      strong: false,
+      label: 'AT予告 ベルナビ',
+    });
+  });
+
+  it('AT_RARE = 成立役の図柄画像(目押し補助 = Q17)/ AT_STRONG = 図柄なし + 強調', () => {
+    const rare = atYokokuView('AT_RARE', 'WATERMELON_STRONG', 'NORMAL');
+    expect(rare.videoUrl).toBe(AT_VIDEOS['at_koyaku_rare']);
+    expect(rare.symbolUrl).toBe(SYMBOL_IMAGES.WATERMELON);
+    expect(rare.naviText).toBeUndefined();
+    expect(rare.strong).toBe(false);
+
+    const cherry = atYokokuView('AT_RARE', 'CHERRY_CORNER', 'NORMAL');
+    expect(cherry.symbolUrl).toBe(SYMBOL_IMAGES.CHERRY);
+
+    const strong = atYokokuView('AT_STRONG', 'CHERRY_CENTER', 'NORMAL');
+    expect(strong.videoUrl).toBe(AT_VIDEOS['at_koyaku_strong']);
+    expect(strong.symbolUrl).toBeUndefined();
+    expect(strong.strong).toBe(true);
+  });
+
+  it('上位 AT は専用ムービー(uat_koyaku_*)へ解決する', () => {
+    expect(atYokokuView('AT_NAVI', 'BELL', 'UPPER').videoUrl).toBe(AT_VIDEOS['uat_koyaku_navi']);
+    expect(atYokokuView('AT_STRONG', 'REACH_ME', 'UPPER').videoUrl).toBe(
+      AT_VIDEOS['uat_koyaku_strong'],
+    );
+  });
+});
+
+describe('battleGameAtLeverOn / battleView(バトルパート 8G = DIRECTION_SPEC 2.5・3.6)', () => {
+  it('バトル 1G 目 = 小役 10G 消化済み / 2〜8G 目 = BATTLE フェーズ(消化済み +1)', () => {
+    expect(battleGameAtLeverOn(state({ ...AT_PHASE, partGame: 10 }))).toBe(1);
+    expect(battleGameAtLeverOn(state({ ...AT_PHASE, part: 'BATTLE', partGame: 1 }))).toBe(2);
+    expect(battleGameAtLeverOn(state({ ...AT_PHASE, part: 'BATTLE', partGame: 7 }))).toBe(8);
+    // 小役パート中・通常時・エンディング中はバトルではない
+    expect(battleGameAtLeverOn(state(AT_PHASE))).toBeUndefined();
+    expect(battleGameAtLeverOn(state({ type: 'NORMAL' }))).toBeUndefined();
+    expect(
+      battleGameAtLeverOn(state({ type: 'ENDING', game: 1, after: 'AT_END', vStock: 0 })),
+    ).toBeUndefined();
+  });
+
+  const route = (id: string, outcome: 'WIN' | 'LOSE', chanceUps: number[]): BattleRoute => ({
+    id,
+    outcome,
+    label: '',
+    chanceUps,
+  });
+
+  it('G1〜3 は通常/チャンスのペア No(チャンスアップはルートへ焼き込み = Q18)', () => {
+    const w4 = route('W4', 'WIN', [1, 3]);
+    expect(battleView('NORMAL', w4, 1)).toMatchObject({
+      videoUrl: AT_VIDEOS['battle_at_02'],
+      chanceUp: true,
+      stage: '導入',
+    });
+    expect(battleView('NORMAL', w4, 2)).toMatchObject({
+      videoUrl: AT_VIDEOS['battle_at_03'],
+      chanceUp: false,
+      stage: '義経台詞',
+    });
+    expect(battleView('NORMAL', w4, 3)).toMatchObject({
+      videoUrl: AT_VIDEOS['battle_at_06'],
+      chanceUp: true,
+      stage: '頼朝台詞',
+    });
+  });
+
+  it('G4〜8 はルート分岐の No(AT: 義経強 = 桜花繚乱 / 敗北寄り = 復活判定)', () => {
+    const w3 = route('W3', 'WIN', []);
+    expect([4, 5, 6, 7, 8].map((g) => battleView('NORMAL', w3, g).videoUrl)).toEqual([
+      AT_VIDEOS['battle_at_07'], // 攻撃決め 義経攻撃へ
+      AT_VIDEOS['battle_at_10'], // 義経強攻撃
+      AT_VIDEOS['battle_at_14'], // 桜花繚乱チャンス
+      AT_VIDEOS['battle_at_16'], // 頼朝の台詞
+      AT_VIDEOS['battle_at_19'], // 継続 次セットへ
+    ]);
+    const u4 = route('U4', 'LOSE', []);
+    expect([4, 5, 6, 7, 8].map((g) => battleView('NORMAL', u4, g).videoUrl)).toEqual([
+      AT_VIDEOS['battle_at_08'], // 攻撃決め 頼朝攻撃へ
+      AT_VIDEOS['battle_at_12'], // 頼朝強攻撃
+      AT_VIDEOS['battle_at_15'], // 義経喰らうか
+      AT_VIDEOS['battle_at_18'], // 耐えれない
+      AT_VIDEOS['battle_at_20'], // 復活判定
+    ]);
+  });
+
+  it('上位 AT は歯抜け No(G6 ヒット判定 = 14 / G8 = 20 or 21)へ解決する', () => {
+    const w5 = route('W5', 'WIN', []);
+    expect([4, 5, 6, 7, 8].map((g) => battleView('UPPER', w5, g).videoUrl)).toEqual([
+      AT_VIDEOS['battle_uat_09'], // ダブル攻撃へ
+      AT_VIDEOS['battle_uat_12'], // ダブル攻撃
+      AT_VIDEOS['battle_uat_14'], // 敵を倒せるか
+      AT_VIDEOS['battle_uat_17'], // 倒せる 二人の台詞
+      AT_VIDEOS['battle_uat_20'], // 継続
+    ]);
+    const u1 = route('U1', 'LOSE', []);
+    expect(battleView('UPPER', u1, 8).videoUrl).toBe(AT_VIDEOS['battle_uat_21']); // 復活判定
+    expect(battleView('UPPER', u1, 8).title).toContain('共闘');
+  });
+
+  it('未知のルート ID はエラー(ルート表とのズレ検知)', () => {
+    expect(() => battleView('NORMAL', route('W9', 'WIN', []), 4)).toThrow();
+    // G1〜3 はルート ID 非依存のためエラーにならない
+    expect(() => battleView('NORMAL', route('W9', 'WIN', []), 1)).not.toThrow();
+  });
+});
+
+describe('revivalCutin(復活告知 = 敗北寄りルート 8G 目の第 3 リール停止)', () => {
+  it('復活パターンのラベル付き SPECIAL カットインになる', () => {
+    const cutin = revivalCutin({ id: 'R3', label: '静の祈り→復活' });
+    expect(cutin).toMatchObject({
+      title: '復活!',
+      sub: '静の祈り→復活',
+      style: 'SPECIAL',
+      sound: 'BIG_WIN',
+    });
+    expect(cutin.durationMs).toBeGreaterThan(0);
+    expect(cutin.videoUrl).toBeTruthy();
   });
 });
 
