@@ -609,16 +609,52 @@ UI を触るものはブラウザ実機確認(録画)済み」で終わるよう
 - 総合ブラウザ確認 + ユーザー向け動作確認手順書 `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式を踏襲)
 - 完了条件: グリーン + 実機確認記録、`docs/ROADMAP.md` の STEP 4 完了マークと HANDOVER 更新
 
-### STEP 5: exe パッケージング(Tauri)+ CI — 中 → 2 サブステップの想定
+### STEP 5: exe パッケージング(Tauri)+ CI — 中 → **5a・5b の 2 サブステップに分割**(AGENT #047 で計画確定)
 
-**5a と 5b で分割する想定**(着手前に計画 AGENT が詳細を確定してよい):
+**細分化の判断(AGENT #047・2026-07-13)**: STEP 1(6 分割)・STEP 2(6 分割)のような追加細分化は**不要**。
+根拠: (1) 作業領域が「Tauri シェル導入 = ローカル(VM 内)で完結」と「CI ビルド = GitHub Actions 側」で
+自然に 2 分割でき、依存も 5a → 5b の一方向のみ / (2) 既存の `src/core/`・`src/ui/` は原則無変更で、
+追加は `src-tauri/`(設定 + 雛形)と CI ワークフローだけ = STEP 1 で ERROR 終了を招いた巨大スコープとは
+規模が違う / (3) これ以上割ると「テスト・lint・ビルドがグリーン + 動作確認済みで終わる」1 サブステップの
+完了条件を満たせない(設定だけ入れて動作未確認のマージは不可)。
+進め方は STEP 1〜4 と同じ **1 サブステップ = 1 AGENT = 1 PR**。5a → 5b の順で実施し、1 本ずつマージする。
 
-- **5a: Tauri 導入 + ローカル動作確認**: デスクトップシェルで Web 版と同一動作すること。
-  `src/platform/` ラッパー(音声・動画・(将来)永続化)のデスクトップ動作確認と必要な実装差し替え
-- **5b: CI ビルド + 配布**: GitHub Actions(Windows ランナー)で exe を自動ビルドし Release へ添付。
-  ビルド手順・動作確認手順のドキュメント化
-- リスク: VM(Linux)では Windows exe の実機確認ができないため、5b はユーザーの Windows 環境での
-  確認を依頼する前提で手順書を整備する
+**全体設計(5a で確定させ、5b は従う)**:
+
+- **Tauri 2.x を採用**(Rust シェル + OS WebView。Windows = WebView2(Chromium 系)/ Linux = WebKitGTK)。
+  フロントエンドは既存 Vite ビルドをそのまま利用(`frontendDist` = `dist/`)し、**コアロジック・UI・
+  テストは無変更**。素材(約 30MB)はバンドルに含める。
+- `src/platform/` ラッパー(audio.ts。動画再生は `<video>` タグ直)は Web API のままで動く想定。
+  5a のデスクトップ実機確認で問題が出た場合のみ差し替える(ラッパー経由の規約はこのための布石)。
+- 既存の `npm run dev` / `build` / `test` / `lint` は**従来どおり動くまま**にする(Web 版の開発フローを壊さない)。
+  Tauri 用スクリプトは `tauri:dev` / `tauri:build` として追加する。
+
+#### STEP 5a: Tauri 導入 + ローカル動作確認 — 中
+
+- VM へ Rust toolchain + Linux 用依存(`libwebkit2gtk-4.1-dev` 等)を導入し、`src-tauri/` を scaffold
+  (`tauri.conf.json`: アプリ名・ウィンドウサイズ(筐体 UI に合わせる)・アイコンは仮でよい)
+- npm scripts(`tauri:dev` / `tauri:build`)+ `@tauri-apps/cli` を devDependencies へ追加
+- Linux デスクトップでアプリを起動し、**Web 版と同一動作**を実機確認(録画): リール回転・停止ボタン・
+  キーボード操作 / 背景動画・演出ムービー再生 / BGM・SE / 通しフロー(前兆 → AT)/ console エラーなし
+- **リスク(事前認識)**: Linux の WebKitGTK は WebM(VP9)再生に gstreamer プラグインが必要な場合がある。
+  Linux で再生不可でも **Windows の WebView2(Chromium 系)では別系統**のため、Windows 側の問題とは
+  切り分けて記録する(Linux 側はプラグイン導入で解消を試みる)
+- 環境構築コマンドが多くなるため、完了時に **Cursor Cloud の環境セットアップ更新の要否**を HANDOVER へ記録する
+- 完了条件: `npm test` / `npm run lint` / `npm run build` グリーン(既存 274+ 件に影響なし)+
+  `tauri:build` の Linux バイナリ生成 + デスクトップ実機確認記録(録画)
+
+#### STEP 5b: CI ビルド + 配布 — 中
+
+- GitHub Actions(`windows-latest`)で Windows exe(NSIS インストーラ / ポータブル exe)を自動ビルド
+  (`tauri-apps/tauri-action` or 手動ステップ。実装 AGENT が選定して記録)
+- トリガー: **タグ push で Release へ添付** + **`workflow_dispatch`(手動実行。検証用)** の 2 本立て。
+  PR ブランチ上で `workflow_dispatch` を実行し、ビルド成功と成果物生成を CI 上で確認する
+  (`gh run view --log` で確認可能。Actions の実行はユーザーへ依頼が必要な場合がある)
+- **Windows 実機での起動・動作確認は VM(Linux)では不可能**なため、ユーザーへ依頼する前提で
+  手順書 `docs/STEP5_VERIFICATION.md` を作成(exe の入手方法(Release / Actions 成果物)・
+  起動手順・確認チェックリスト = STEP3 版の形式を踏襲)
+- 完了条件: CI ビルドグリーン(exe 成果物の生成をログ・成果物一覧で確認)+ 手順書 +
+  ROADMAP の STEP 5 完了マークと HANDOVER 更新(Windows 実機確認の結果待ちはユーザー依頼として明記)
 
 ### STEP 6: 仕上げ — 小〜中(項目ごとに独立。優先順はユーザー指示で決める)
 
@@ -644,6 +680,6 @@ UI を触るものはブラウザ実機確認(録画)済み」で終わるよう
 ## 進め方のルール(再掲)
 
 - 1 AGENT に対するやり取りは 1 回。大きい STEP は「実装 → 指摘反映」で 2 AGENT に分けてもよい
-- STEP 1 は 1a〜1f、STEP 2 は 2a〜2f、STEP 3 は 3a〜3e、STEP 4 は 4a〜4f のサブステップへ分割済み。**1 サブステップ = 1 AGENT = 1 PR** で順番に進める(STEP 4f のみ素材入稿に合わせて先行実施可)
+- STEP 1 は 1a〜1f、STEP 2 は 2a〜2f、STEP 3 は 3a〜3e、STEP 4 は 4a〜4f、STEP 5 は 5a〜5b のサブステップへ分割済み。**1 サブステップ = 1 AGENT = 1 PR** で順番に進める(STEP 4f のみ素材入稿に合わせて先行実施可)
 - 各 STEP 完了ごとに PR を 1 本ずつマージする(`docs/HANDOVER.md` が競合しやすいため)
 - 数値(確率・配当・配列)は必ず SPEC.md と実装・テストを一致させる
