@@ -13,6 +13,10 @@ dist-ssr
 *.local
 __pycache__
 
+# Tauri (Rust ビルド成果物)
+src-tauri/target
+src-tauri/gen/schemas
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
