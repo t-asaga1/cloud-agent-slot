@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #047(STEP 5 の細分化要否の回答 + STEP 5(Tauri + CI)の詳細計画確定)
+- 作成者: AGENT #048(STEP 5a 依頼ランの ERROR 終了の原因調査)
 - 作成日: 2026-07-13
-- 履歴コピー: `docs/handover/047_step5_plan.md`
+- 履歴コピー: `docs/handover/048_step5a_error_investigation.md`
 
 ## プロジェクト概要
 
@@ -311,6 +311,10 @@
    - **5b(CI ビルド + 配布)**: タグ push で Release 添付 + `workflow_dispatch`(検証用)の 2 本立て。Windows 実機確認は VM では不可能なためユーザー依頼前提で `docs/STEP5_VERIFICATION.md` を作成する。
    - STEP 4 の完了状況の整理: 4a〜4e 完了済み。**4f(実素材差し替え + 総合確認 + `docs/STEP4_VERIFICATION.md`)は素材入稿待ちの順不同タスク**として残置(`incoming/` に新規入稿なしを確認済み)。入稿があり次第 STEP 5 と並行して実施してよい(従来ルールどおり)。
    - テスト 323 パス・lint グリーン(コード変更なしのため現状確認)。
+42. **AGENT #048(今回)**: **STEP 5a を依頼したラン「Roadmap step5a」が ERROR 終了した原因を Cloud Agent 診断 API で調査**(コード変更なし。ドキュメントのみ):
+   - **ユーザーが確認したログの ERROR(`Failed to create recording directory /opt/cursor/artifacts/`)は失敗原因ではない**。これは Cursor Cloud VM 起動時の既知の無害な警告で、正常完了した直近ラン(AGENT #046 = STEP 4e / AGENT #047 = STEP 5 計画)の起動ログにも全く同じ ERROR が 2 件ずつ記録されている。VM セットアップの `create-artifacts-dir` ステップと exec-daemon 起動が並行して走る際の一時的な競合で、直後に「Artifacts assets directory created/verified」と成功しており、エージェントの動作(画面録画・アーティファクトのアップロード)にも影響していない。
+   - **実際の障害**: 当該ラン(bc-11a6fcd6。21:32:20 作成)は 36 秒後の 21:32:56 に ERROR となり、**トランスクリプトが完全に空(メッセージ 0 件)**・ブランチ作成なし・コード変更なし。エージェントが最初の応答を生成する前(会話が始まる前)に Cursor Cloud サービス側でランが打ち切られた形。リポジトリ・環境・依頼文の問題ではない(環境セットアップは `npm install` まで exit code 0 で正常完了していた)。#014 で調査した事例(巨大スコープによる思考肥大化 → 応答生成の繰り返し失敗)とも異なり、今回は開始直後の即死 = **サービス側の一過性障害**と判断。
+   - **失われた成果物はゼロで、再試行は安全**。現 main(96c4432)でテスト 323 パス・lint グリーンを確認済み。同じ依頼文で STEP 5a を再依頼すればよい(スコープ分割等の対策は不要)。
 
 - Phase 1〜2 完了 + Phase 3 の抽せんテーブル層が完了。
 - **背景動画・リール図柄はユーザー入稿の実素材**。BGM/SE・液晶フォールバック・カットイン演出動画は仮素材のまま。
@@ -360,8 +364,8 @@
 ユーザーの指示内容を最優先とした上で、次を実施:
 
 1. **実素材が `incoming/` に入稿されていたら STEP 4f(実素材の差し替え + 総合確認)に着手**(`docs/ROADMAP.md` の「STEP 4f」参照): `scripts/import_incoming_assets.py` の対応表を拡張して取り込み、`manifest.json` へ出所登録。差し替えポイントは SE = `SOUND_CUES` / BGM = `STAGE_BGMS` / 予告 = `YOKOKU_VIDEOS` / 連続演出 = `RENZOKU_VIDEOS` / AT・エンディング = `AT_VIDEOS`(いずれも同名ファイル置き換え or 対応表の張り替え)。総合ブラウザ確認 + `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式)を作成し、STEP 4 完了マークを付ける。
-2. 入稿がまだの場合は **STEP 5a(Tauri 導入 + ローカル動作確認)に着手**(ROADMAP の STEP 5 参照。計画は AGENT #047 が確定済みのため、5a の作業項目・完了条件・リスクに従って実装する。5a → 5b の順で 1 サブステップ = 1 AGENT = 1 PR)。
-3. 作業終了時に本ファイルを更新し、`docs/handover/048_*.md` に履歴を残す(047 は使用済み)。
+2. 入稿がまだの場合は **STEP 5a(Tauri 導入 + ローカル動作確認)に着手**(ROADMAP の STEP 5 参照。計画は AGENT #047 が確定済みのため、5a の作業項目・完了条件・リスクに従って実装する。5a → 5b の順で 1 サブステップ = 1 AGENT = 1 PR)。**前回の STEP 5a 依頼ランはサービス側の一過性障害で ERROR 終了(成果物ゼロ・経緯 42 参照)のため、同じ依頼文での再依頼で問題ない**。
+3. 作業終了時に本ファイルを更新し、`docs/handover/049_*.md` に履歴を残す(048 は使用済み)。
 
 STEP 5a の実装 AGENT への注意(AGENT #047 の計画より):
 
