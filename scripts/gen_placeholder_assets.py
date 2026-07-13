@@ -8,8 +8,8 @@
 ※ ユーザー入稿素材の取り込み(変換)は scripts/import_incoming_assets.py 参照。
 
 実行: python3 scripts/gen_placeholder_assets.py [対象...]
-  対象なし = 全生成 / 対象 = images / effects / yokoku / audio のいずれか
-  (例: `python3 scripts/gen_placeholder_assets.py yokoku` で予告ムービーのみ再生成。
+  対象なし = 全生成 / 対象 = images / effects / yokoku / renzoku / audio のいずれか
+  (例: `python3 scripts/gen_placeholder_assets.py renzoku` で連続演出ムービーのみ再生成。
    ffmpeg 出力はバイト単位で再現しないため、無関係な既存仮素材まで差分を出さないよう
    追加分の対象だけを指定して実行すること)
 依存: pip install pillow / ffmpeg / fonts-noto-cjk(日本語フォント)
@@ -93,6 +93,62 @@ def yokoku_files() -> list[tuple[str, str, str]]:
     for n, role, color in YOKOKU_ZENCHO:
         files.append((f"yokoku_zencho{n}", f"前兆予告{n} {role}", color))
     return files
+
+# ---------------------------------------------------------------------------
+# 連続演出ムービー(STEP 4d)— docs/DIRECTION_SPEC.md「4.」の命名規約
+#   連続演出 A/B(背景固有): renzoku_<a|b>_<bg>_g<1-4>.webm(2 × 5 背景 × 4 = 40)
+#   連続演出 C(背景共通):   renzoku_c_g<1-4>.webm(4)
+#   成否告知:               renzoku_result_<win|lose>.webm(2)
+# 4G 構成は G1 = 導入 / G2 = 展開 / G3 = あおり / G4 = 決着(成否告知は全停止後の
+# カットイン = renzoku_result_*)。チャンスアップは仮素材では表示差分(UI 側のバッジ)で
+# 表現するためムービーは共通(DIRECTION_SPEC「4.」)。実素材入稿時は同名置き換え(STEP 4f)。
+# ---------------------------------------------------------------------------
+
+RENZOKU_BG_LIST = [
+    ("yoshitsune", "義経"),
+    ("shizuka", "静"),
+    ("benkei", "弁慶"),
+    ("yugata", "夕方"),
+    ("zencho", "前兆"),
+]
+
+RENZOKU_KINDS = [("a", "A「追走」"), ("b", "B「一騎打ち」")]
+
+# G ごとの(段階ラベル, 文字色)。あおり・決着ほど熱い色にする
+RENZOKU_GAME_STAGES = [
+    (1, "導入", "white"),
+    (2, "展開", "white"),
+    (3, "あおり", "#facc15"),
+    (4, "決着", "#f87171"),
+]
+
+RENZOKU_RESULTS = [
+    ("win", "勝利", "#facc15"),
+    ("lose", "敗北", "#94a3b8"),
+]
+
+RENZOKU_SECONDS = 2
+
+
+def renzoku_files() -> list[tuple[str, str, str]]:
+    """(ファイル名 stem, 表示ラベル, 文字色)の一覧(合計 46 本)。"""
+    files: list[tuple[str, str, str]] = []
+    for kind_id, kind_label in RENZOKU_KINDS:
+        for bg_id, bg_label in RENZOKU_BG_LIST:
+            for n, stage, color in RENZOKU_GAME_STAGES:
+                files.append(
+                    (
+                        f"renzoku_{kind_id}_{bg_id}_g{n}",
+                        f"連続演出{kind_label} {bg_label} G{n} {stage}",
+                        color,
+                    )
+                )
+    for n, stage, color in RENZOKU_GAME_STAGES:
+        files.append((f"renzoku_c_g{n}", f"連続演出C「決戦」 G{n} {stage}", color))
+    for result_id, label, color in RENZOKU_RESULTS:
+        files.append((f"renzoku_result_{result_id}", f"成否告知 {label}", color))
+    return files
+
 
 # SE(id, 周波数系列 [(Hz, 長さ秒), ...])
 SES = [
@@ -198,6 +254,14 @@ def gen_yokoku_videos() -> None:
         )
 
 
+def gen_renzoku_videos() -> None:
+    for stem, label, color in renzoku_files():
+        gen_placeholder_video(
+            ASSETS / f"video/renzoku/{stem}.webm", label, RENZOKU_SECONDS,
+            fontcolor=color, fontsize=72,
+        )
+
+
 # ---------------------------------------------------------------------------
 # 音声系(サイン波合成 → OGG Vorbis)
 # ---------------------------------------------------------------------------
@@ -248,16 +312,20 @@ def gen_audio() -> None:
 
 def main() -> None:
     # 対象指定なし = 全生成 / 指定あり = その対象のみ(既存仮素材の無用な差分を防ぐ)
-    targets = set(sys.argv[1:]) or {"images", "effects", "yokoku", "audio"}
-    unknown = targets - {"images", "effects", "yokoku", "audio"}
+    targets = set(sys.argv[1:]) or {"images", "effects", "yokoku", "renzoku", "audio"}
+    unknown = targets - {"images", "effects", "yokoku", "renzoku", "audio"}
     if unknown:
-        raise SystemExit(f"未知の対象: {sorted(unknown)}(images / effects / yokoku / audio)")
+        raise SystemExit(
+            f"未知の対象: {sorted(unknown)}(images / effects / yokoku / renzoku / audio)"
+        )
     if "images" in targets:
         gen_images()
     if "effects" in targets:
         gen_videos()
     if "yokoku" in targets:
         gen_yokoku_videos()
+    if "renzoku" in targets:
+        gen_renzoku_videos()
     if "audio" in targets:
         gen_audio()
     total = 0

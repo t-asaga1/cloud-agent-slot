@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { YOKOKU_VIDEOS } from '../assets';
+import { RENZOKU_VIDEOS, YOKOKU_VIDEOS } from '../assets';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES } from '../core/omen';
-import type { OmenScenario, ScenarioStep } from '../core/scenario';
+import type { OmenScenario, RenzokuChanceUps, ScenarioStep } from '../core/scenario';
 import { ENDING_GAMES, type GameEvent, type GameState } from '../core/state';
 import {
   cutinsForEvents,
   koyakuHintAllowed,
   koyakuHintView,
   overlayForState,
-  RENZOKU_PRESENTATION,
+  renzokuAtLeverOn,
+  renzokuVideoUrl,
+  RENZOKU_TITLES,
   resultSoundCue,
   scenarioYokokuAtLeverOn,
   yokokuVideoUrl,
@@ -66,33 +68,22 @@ const AT_PHASE = {
 } as const;
 
 describe('overlayForState(フェーズ由来の常時表示)', () => {
-  it('通常時・前兆中・AT 中は常時表示なし(前兆予告はレバーオン演出側 = 4c)', () => {
+  it('通常時・前兆中・連続演出中・AT 中は常時表示なし(前兆予告・連続演出はレバーオン演出側 = 4c・4d)', () => {
     const steps: ScenarioStep[] = Array.from({ length: 7 }, () => ({ level: 1, slot: 'KOYU_4' }));
     expect(overlayForState(state({ type: 'NORMAL' }))).toBeUndefined();
     expect(overlayForState(omenState(3, steps))).toBeUndefined();
     expect(overlayForState(state(AT_PHASE))).toBeUndefined();
-  });
-
-  it('連続演出中は種別・経過 G 付きの全画面表示', () => {
-    for (const renzoku of ['A', 'B', 'C'] as const) {
-      const overlay = overlayForState(
+    expect(
+      overlayForState(
         state({
           type: 'RENZOKU',
           kind: 'REAL',
-          renzoku,
+          renzoku: 'A',
           game: 2,
           chanceUps: ['NORMAL', 'NORMAL', 'NORMAL'],
         }),
-      );
-      expect(overlay).toEqual({
-        kind: 'RENZOKU',
-        renzoku,
-        game: 2,
-        totalGames: RENZOKU_GAMES,
-        title: RENZOKU_PRESENTATION[renzoku].title,
-        text: RENZOKU_PRESENTATION[renzoku].text,
-      });
-    }
+      ),
+    ).toBeUndefined();
   });
 
   it('エンディング中は n/10G バナー(行き先付き)', () => {
@@ -124,6 +115,124 @@ describe('YOKOKU_VIDEOS(予告ムービー仮素材の存在検証。DIRECTION_S
 
   it('存在しないキーはエラー(仮素材の生成漏れ検知)', () => {
     expect(() => yokokuVideoUrl('yokoku_nazo_koyu9_weak')).toThrow();
+  });
+});
+
+describe('RENZOKU_VIDEOS(連続演出ムービー仮素材の存在検証。DIRECTION_SPEC「4.」の全 46 本)', () => {
+  it('全キーが揃っている(A/B × 5 背景 × 4G = 40 + C 4 + 成否告知 2)', () => {
+    const expected: string[] = [];
+    for (const kind of ['a', 'b']) {
+      for (const bg of ['yoshitsune', 'shizuka', 'benkei', 'yugata', 'zencho']) {
+        for (let g = 1; g <= 4; g++) expected.push(`renzoku_${kind}_${bg}_g${g}`);
+      }
+    }
+    for (let g = 1; g <= 4; g++) expected.push(`renzoku_c_g${g}`);
+    expected.push('renzoku_result_win', 'renzoku_result_lose');
+
+    expect(expected).toHaveLength(46);
+    for (const key of expected) {
+      expect(RENZOKU_VIDEOS[key], key).toBeTruthy();
+      expect(renzokuVideoUrl(key), key).toBe(RENZOKU_VIDEOS[key]);
+    }
+    expect(Object.keys(RENZOKU_VIDEOS)).toHaveLength(46);
+  });
+
+  it('存在しないキーはエラー(仮素材の生成漏れ検知)', () => {
+    expect(() => renzokuVideoUrl('renzoku_z_yoshitsune_g1')).toThrow();
+  });
+});
+
+describe('renzokuAtLeverOn(連続演出 4G のレバーオン解決 = DIRECTION_SPEC 2.4)', () => {
+  const chanceUps: RenzokuChanceUps = ['CHANCE', 'NORMAL', 'CHANCE'];
+
+  /** 連続演出 gG 目を消化済み(次のレバーオンで g+1 G 目)の RENZOKU フェーズ state */
+  function renzokuState(
+    game: number,
+    renzoku: 'A' | 'B' | 'C',
+    background: Background = 'YOSHITSUNE',
+    kind: 'REAL' | 'FAKE' = 'REAL',
+  ): GameState {
+    return state({ type: 'RENZOKU', kind, renzoku, game, chanceUps }, { background });
+  }
+
+  it('前兆最終 G 消化済み(次が連続演出 1G 目)は G1 導入(チャンスアップはシナリオ参照)', () => {
+    const steps: ScenarioStep[] = Array.from({ length: 7 }, () => ({ level: 0 }));
+    const omenFinal = state(
+      {
+        type: 'OMEN',
+        kind: 'REAL',
+        game: 7,
+        totalGames: 7,
+        renzoku: 'A',
+        scenario: { steps, renzokuSteps: chanceUps },
+      },
+      { background: 'SHIZUKA' },
+    );
+    expect(renzokuAtLeverOn(omenFinal)).toEqual({
+      renzoku: 'A',
+      game: 1,
+      totalGames: RENZOKU_GAMES,
+      videoUrl: RENZOKU_VIDEOS['renzoku_a_shizuka_g1'],
+      title: RENZOKU_TITLES.A,
+      stage: '導入',
+      chanceUp: true,
+      label: '連続演出A G1 導入(チャンス)',
+    });
+  });
+
+  it('前兆消化中(次も前兆の G)は undefined(予告演出側が担う)', () => {
+    const steps: ScenarioStep[] = Array.from({ length: 7 }, () => ({ level: 0 }));
+    expect(renzokuAtLeverOn(omenState(3, steps))).toBeUndefined();
+  });
+
+  it('連続演出中は次 G の段階(G2 展開 / G3 あおり / G4 決着)。チャンスアップは chanceUps 参照', () => {
+    expect(renzokuAtLeverOn(renzokuState(1, 'A'))).toMatchObject({
+      game: 2,
+      stage: '展開',
+      chanceUp: false,
+      videoUrl: RENZOKU_VIDEOS['renzoku_a_yoshitsune_g2'],
+    });
+    expect(renzokuAtLeverOn(renzokuState(2, 'B', 'YUGATA'))).toMatchObject({
+      game: 3,
+      stage: 'あおり',
+      chanceUp: true,
+      videoUrl: RENZOKU_VIDEOS['renzoku_b_yugata_g3'],
+      title: RENZOKU_TITLES.B,
+    });
+    // G4 は成否告知の決着 G のためチャンスアップなし
+    expect(renzokuAtLeverOn(renzokuState(3, 'B', 'YUGATA'))).toMatchObject({
+      game: 4,
+      stage: '決着',
+      chanceUp: false,
+      videoUrl: RENZOKU_VIDEOS['renzoku_b_yugata_g4'],
+    });
+  });
+
+  it('A/B は前兆背景でも背景固有素材 / C は背景不問で共通素材(Q19)', () => {
+    expect(renzokuAtLeverOn(renzokuState(1, 'A', 'ZENCHO'))?.videoUrl).toBe(
+      RENZOKU_VIDEOS['renzoku_a_zencho_g2'],
+    );
+    expect(renzokuAtLeverOn(renzokuState(1, 'C', 'BENKEI'))?.videoUrl).toBe(
+      RENZOKU_VIDEOS['renzoku_c_g2'],
+    );
+    expect(renzokuAtLeverOn(renzokuState(1, 'C', 'ZENCHO'))?.videoUrl).toBe(
+      RENZOKU_VIDEOS['renzoku_c_g2'],
+    );
+  });
+
+  it('見た目は前兆種別(本/偽)に依存しない(偽→本書き換えでも演出継続 = 確定 21(c))', () => {
+    expect(renzokuAtLeverOn(renzokuState(2, 'A', 'YOSHITSUNE', 'FAKE'))).toEqual(
+      renzokuAtLeverOn(renzokuState(2, 'A', 'YOSHITSUNE', 'REAL')),
+    );
+  });
+
+  it('連続演出最終 G 消化後・通常時・AT・エンディング中は undefined', () => {
+    expect(renzokuAtLeverOn(renzokuState(4, 'A'))).toBeUndefined();
+    expect(renzokuAtLeverOn(state({ type: 'NORMAL' }))).toBeUndefined();
+    expect(renzokuAtLeverOn(state(AT_PHASE))).toBeUndefined();
+    expect(
+      renzokuAtLeverOn(state({ type: 'ENDING', game: 1, after: 'UPPER_AT', vStock: 0 })),
+    ).toBeUndefined();
   });
 });
 
@@ -286,19 +395,28 @@ describe('cutinsForEvents(イベント由来のワンショット表示)', () =>
     expect(cutinsForEvents(hidden)).toEqual([]);
   });
 
-  it('連続演出の成否告知(成功 = WIN + 成功音 / 失敗 = LOSE + 失敗音)', () => {
+  it('連続演出の成否告知(成功 = WIN + 専用ムービー + 成功音 / 失敗 = LOSE + 専用ムービー + 失敗音)', () => {
     const success = cutinsForEvents([
       { type: 'RENZOKU_RESULT', kind: 'REAL', renzoku: 'C', success: true },
     ]);
     expect(success).toHaveLength(1);
-    expect(success[0]).toMatchObject({ title: '勝利!', style: 'WIN', sound: 'RENZOKU_SUCCESS' });
+    expect(success[0]).toMatchObject({
+      title: '勝利!',
+      style: 'WIN',
+      sound: 'RENZOKU_SUCCESS',
+      videoUrl: RENZOKU_VIDEOS['renzoku_result_win'],
+    });
 
     const fail = cutinsForEvents([
       { type: 'RENZOKU_RESULT', kind: 'FAKE', renzoku: 'A', success: false },
     ]);
     expect(fail).toHaveLength(1);
-    expect(fail[0]).toMatchObject({ title: '敗北…', style: 'LOSE', sound: 'RENZOKU_FAIL' });
-    expect(fail[0].videoUrl).toBeUndefined();
+    expect(fail[0]).toMatchObject({
+      title: '敗北…',
+      style: 'LOSE',
+      sound: 'RENZOKU_FAIL',
+      videoUrl: RENZOKU_VIDEOS['renzoku_result_lose'],
+    });
   });
 
   it('AT 系イベントのカットイン(突入・継続・V ストック・上位・エンディング・終了)', () => {

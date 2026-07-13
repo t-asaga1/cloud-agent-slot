@@ -374,8 +374,8 @@ export interface KoyakuHint { slot: KoyakuHintSlot; strong: boolean; }
 | 合計 | | **142** |
 
 - チャンスアップ(通常/チャンス)は連続演出 G1〜G3・バトル G1〜G3 の各ムービーに含める
-  (バトルは Excel の No がパターン別に採番済み。連続演出は仮素材ではテキスト差分で表現し、
-  実素材の持ち方は入稿時に決める)。
+  (バトルは Excel の No がパターン別に採番済み。連続演出は仮素材では UI の表示差分
+  (CHANCE UP! バッジ + 金枠 = 4d 実装)で表現し、実素材の持ち方は入稿時に決める)。
 - 小役示唆系(`AT_NAVI` / `AT_RARE`)の「最終的に図柄画像を出す」(確定 33)は、
   ムービー再生後に既存のリール図柄画像(`SYMBOL_IMAGES`)+ ナビ数字を重ねる実装とし、
   ムービー自体には焼き込まない(仮素材でも実素材でも同じ動きになる)。
@@ -413,7 +413,12 @@ Q1〜Q11(STEP 2 着手前)からの連番。回答の全文は `docs/SPEC.md`「
 - 4c(予告表示): 1.1〜1.2 の予告ムービー(仮素材)を生成し、`direction.ts` を
   「シナリオ → 演出」解決へ置換。前兆背景のレベルマッピング(2.1)と
   **小役示唆予告(`drawKoyakuHint`。通常時も出す = Q12)+ シナリオ予告との競合規約(2.1)**を含む。
-- 4d(連続演出): 1.5 の成否告知 + 2.4 の 4G 構成(チャンスアップは `RenzokuPhase.chanceUps` 参照)。
+- **4d(連続演出)= 実装済み(AGENT #045)**: 1.5 の成否告知 + 2.4 の 4G 構成
+  (チャンスアップは `RenzokuPhase.chanceUps` 参照)。仮素材 46 本(4. の
+  `renzoku_*`)を生成し、`direction.ts` の `renzokuAtLeverOn` が「種別 × 滞在背景 × G」で
+  解決(レバーオン時に 1G 分。1G 目はフェーズ OMEN の最終 G 消化済み状態から)。
+  チャンスアップ G は仮素材では表示差分(CHANCE UP! バッジ + 金枠)。
+  成否告知は `RENZOKU_RESULT` カットイン + `renzoku_result_<win|lose>` ムービー。
 - 4e(AT・エンディング): 1.3〜1.4 + 2.3・2.5(`drawAtYokoku` / `drawBattleRoute` / `drawRevival`
   を UI から配線)+ エンディング 2 種。
 - 仮素材の生成は `scripts/gen_placeholder_assets.py` へ追記(命名は 4. の規約)。
