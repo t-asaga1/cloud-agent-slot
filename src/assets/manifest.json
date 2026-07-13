@@ -313,5 +313,464 @@
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
     "note": "上位AT(バトルパート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu1_weak",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu1_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告1 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu1_strong",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu1_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告1 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu2_weak",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu2_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告2 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu2_strong",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu2_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告2 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu3_weak",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu3_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告3 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu3_strong",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu3_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告3 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu4_weak",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu4_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告4 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu4_strong",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu4_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告4 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu5_weak",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu5_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告5 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yoshitsune_koyu5_strong",
+    "path": "video/yokoku/yokoku_yoshitsune_koyu5_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「義経予告5 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu1_weak",
+    "path": "video/yokoku/yokoku_shizuka_koyu1_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告1 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu1_strong",
+    "path": "video/yokoku/yokoku_shizuka_koyu1_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告1 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu2_weak",
+    "path": "video/yokoku/yokoku_shizuka_koyu2_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告2 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu2_strong",
+    "path": "video/yokoku/yokoku_shizuka_koyu2_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告2 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu3_weak",
+    "path": "video/yokoku/yokoku_shizuka_koyu3_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告3 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu3_strong",
+    "path": "video/yokoku/yokoku_shizuka_koyu3_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告3 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu4_weak",
+    "path": "video/yokoku/yokoku_shizuka_koyu4_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告4 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu4_strong",
+    "path": "video/yokoku/yokoku_shizuka_koyu4_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告4 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu5_weak",
+    "path": "video/yokoku/yokoku_shizuka_koyu5_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告5 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_shizuka_koyu5_strong",
+    "path": "video/yokoku/yokoku_shizuka_koyu5_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「静予告5 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu1_weak",
+    "path": "video/yokoku/yokoku_benkei_koyu1_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告1 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu1_strong",
+    "path": "video/yokoku/yokoku_benkei_koyu1_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告1 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu2_weak",
+    "path": "video/yokoku/yokoku_benkei_koyu2_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告2 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu2_strong",
+    "path": "video/yokoku/yokoku_benkei_koyu2_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告2 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu3_weak",
+    "path": "video/yokoku/yokoku_benkei_koyu3_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告3 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu3_strong",
+    "path": "video/yokoku/yokoku_benkei_koyu3_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告3 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu4_weak",
+    "path": "video/yokoku/yokoku_benkei_koyu4_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告4 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu4_strong",
+    "path": "video/yokoku/yokoku_benkei_koyu4_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告4 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu5_weak",
+    "path": "video/yokoku/yokoku_benkei_koyu5_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告5 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_benkei_koyu5_strong",
+    "path": "video/yokoku/yokoku_benkei_koyu5_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「弁慶予告5 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu1_weak",
+    "path": "video/yokoku/yokoku_yugata_koyu1_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告1 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu1_strong",
+    "path": "video/yokoku/yokoku_yugata_koyu1_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告1 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu2_weak",
+    "path": "video/yokoku/yokoku_yugata_koyu2_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告2 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu2_strong",
+    "path": "video/yokoku/yokoku_yugata_koyu2_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告2 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu3_weak",
+    "path": "video/yokoku/yokoku_yugata_koyu3_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告3 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu3_strong",
+    "path": "video/yokoku/yokoku_yugata_koyu3_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告3 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu4_weak",
+    "path": "video/yokoku/yokoku_yugata_koyu4_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告4 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu4_strong",
+    "path": "video/yokoku/yokoku_yugata_koyu4_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告4 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu5_weak",
+    "path": "video/yokoku/yokoku_yugata_koyu5_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告5 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_yugata_koyu5_strong",
+    "path": "video/yokoku/yokoku_yugata_koyu5_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「夕方予告5 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common1_weak",
+    "path": "video/yokoku/yokoku_common1_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告1 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common1_strong",
+    "path": "video/yokoku/yokoku_common1_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告1 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common2_weak",
+    "path": "video/yokoku/yokoku_common2_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告2 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common2_strong",
+    "path": "video/yokoku/yokoku_common2_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告2 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common3_weak",
+    "path": "video/yokoku/yokoku_common3_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告3 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common3_strong",
+    "path": "video/yokoku/yokoku_common3_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告3 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common4_weak",
+    "path": "video/yokoku/yokoku_common4_weak.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告4 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_common4_strong",
+    "path": "video/yokoku/yokoku_common4_strong.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「共通予告4 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_zencho1",
+    "path": "video/yokoku/yokoku_zencho1.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「前兆予告1 期待度弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_zencho2",
+    "path": "video/yokoku/yokoku_zencho2.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「前兆予告2 期待度中」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "yokoku_zencho3",
+    "path": "video/yokoku/yokoku_zencho3.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "予告ムービー仮素材「前兆予告3 本前兆確定」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
   }
 ]

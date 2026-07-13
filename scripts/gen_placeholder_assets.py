@@ -7,13 +7,18 @@
 差し替えるだけで置き換えられる。
 ※ ユーザー入稿素材の取り込み(変換)は scripts/import_incoming_assets.py 参照。
 
-実行: python3 scripts/gen_placeholder_assets.py
+実行: python3 scripts/gen_placeholder_assets.py [対象...]
+  対象なし = 全生成 / 対象 = images / effects / yokoku / audio のいずれか
+  (例: `python3 scripts/gen_placeholder_assets.py yokoku` で予告ムービーのみ再生成。
+   ffmpeg 出力はバイト単位で再現しないため、無関係な既存仮素材まで差分を出さないよう
+   追加分の対象だけを指定して実行すること)
 依存: pip install pillow / ffmpeg / fonts-noto-cjk(日本語フォント)
 """
 
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -45,6 +50,49 @@ EFFECTS = [
     ("effect_cutin_weak", "カットイン(弱)", 2),
     ("effect_cutin_strong", "カットイン(強)", 2),
 ]
+
+# ---------------------------------------------------------------------------
+# 予告ムービー(STEP 4c)— docs/DIRECTION_SPEC.md「4.」の命名規約
+#   通常背景固有予告: yokoku_<bg>_koyu<1-5>_<weak|strong>.webm(4 背景 × 5 × 2 = 40)
+#   背景共通予告:     yokoku_common<1-4>_<weak|strong>.webm(8)
+#   前兆背景固有予告: yokoku_zencho<1-3>.webm(期待度 弱/中/確定 = 3)
+# 実素材入稿時は同名ファイル置き換えで差し替え(STEP 4f)。
+# ---------------------------------------------------------------------------
+
+YOKOKU_BGS = [
+    ("yoshitsune", "義経"),
+    ("shizuka", "静"),
+    ("benkei", "弁慶"),
+    ("yugata", "夕方"),
+]
+
+YOKOKU_VARIANTS = [("weak", "弱", "white"), ("strong", "強", "#facc15")]
+
+# 前兆背景の期待度ラダー(確定 33: 1 = 弱 / 2 = 中 / 3 = 本前兆確定)
+YOKOKU_ZENCHO = [
+    (1, "期待度弱", "white"),
+    (2, "期待度中", "#facc15"),
+    (3, "本前兆確定", "#f87171"),
+]
+
+YOKOKU_SECONDS = 2
+
+
+def yokoku_files() -> list[tuple[str, str, str]]:
+    """(ファイル名 stem, 表示ラベル, 文字色)の一覧(合計 51 本)。"""
+    files: list[tuple[str, str, str]] = []
+    for bg_id, bg_label in YOKOKU_BGS:
+        for n in range(1, 6):
+            for variant, v_label, color in YOKOKU_VARIANTS:
+                files.append(
+                    (f"yokoku_{bg_id}_koyu{n}_{variant}", f"{bg_label}予告{n} {v_label}", color)
+                )
+    for n in range(1, 5):
+        for variant, v_label, color in YOKOKU_VARIANTS:
+            files.append((f"yokoku_common{n}_{variant}", f"共通予告{n} {v_label}", color))
+    for n, role, color in YOKOKU_ZENCHO:
+        files.append((f"yokoku_zencho{n}", f"前兆予告{n} {role}", color))
+    return files
 
 # SE(id, 周波数系列 [(Hz, 長さ秒), ...])
 SES = [
@@ -117,12 +165,14 @@ def gen_images() -> None:
 # 動画系(黒背景 + 白文字がゆっくり明滅する WebM/VP9 ループ)
 # ---------------------------------------------------------------------------
 
-def gen_placeholder_video(path: Path, label: str, duration: int) -> None:
+def gen_placeholder_video(
+    path: Path, label: str, duration: int, fontcolor: str = "white", fontsize: int = 96
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = f"{label}（仮）"
     # 明滅周期 = 動画長にして、ループの継ぎ目を目立たせない
     drawtext = (
-        f"drawtext=fontfile={FONT}:text='{text}':fontsize=96:fontcolor=white:"
+        f"drawtext=fontfile={FONT}:text='{text}':fontsize={fontsize}:fontcolor={fontcolor}:"
         f"x=(w-text_w)/2:y=(h-text_h)/2:alpha='0.65+0.35*sin(2*PI*t/{duration})'"
     )
     run([
@@ -138,6 +188,14 @@ def gen_placeholder_video(path: Path, label: str, duration: int) -> None:
 def gen_videos() -> None:
     for effect_id, label, duration in EFFECTS:
         gen_placeholder_video(ASSETS / f"video/effect/{effect_id}.webm", label, duration)
+
+
+def gen_yokoku_videos() -> None:
+    for stem, label, color in yokoku_files():
+        gen_placeholder_video(
+            ASSETS / f"video/yokoku/{stem}.webm", label, YOKOKU_SECONDS,
+            fontcolor=color, fontsize=84,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -189,9 +247,19 @@ def gen_audio() -> None:
 
 
 def main() -> None:
-    gen_images()
-    gen_videos()
-    gen_audio()
+    # 対象指定なし = 全生成 / 指定あり = その対象のみ(既存仮素材の無用な差分を防ぐ)
+    targets = set(sys.argv[1:]) or {"images", "effects", "yokoku", "audio"}
+    unknown = targets - {"images", "effects", "yokoku", "audio"}
+    if unknown:
+        raise SystemExit(f"未知の対象: {sorted(unknown)}(images / effects / yokoku / audio)")
+    if "images" in targets:
+        gen_images()
+    if "effects" in targets:
+        gen_videos()
+    if "yokoku" in targets:
+        gen_yokoku_videos()
+    if "audio" in targets:
+        gen_audio()
     total = 0
     for f in sorted(ASSETS.rglob("*")):
         if f.is_file() and f.suffix in {".webp", ".webm", ".ogg"}:

@@ -17,6 +17,12 @@ import type { Mode } from './core/mode';
 import { RENZOKU_GAMES } from './core/omen';
 import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER } from './core/play';
 import {
+  drawKoyakuHint,
+  type OmenScenario,
+  type RenzokuChanceUps,
+  type ZenchoYokokuSlot,
+} from './core/scenario';
+import {
   KOMA_COUNT,
   LINES,
   PUSH_ORDERS,
@@ -42,7 +48,15 @@ import {
 } from './core/state';
 import { isBgmPlaying, playBgm, stopBgm } from './platform/audio';
 import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
-import { cutinsForEvents, overlayForState, resultSoundCue } from './ui/direction';
+import {
+  cutinsForEvents,
+  koyakuHintAllowed,
+  koyakuHintView,
+  overlayForState,
+  resultSoundCue,
+  scenarioYokokuAtLeverOn,
+  type LeverDirection,
+} from './ui/direction';
 import { DirectionLayer, type CutinFrame } from './ui/DirectionLayer';
 import { playCue } from './ui/sound';
 import {
@@ -190,6 +204,28 @@ function formatEvent(event: GameEvent): string {
     case 'AT_END':
       return `AT終了(${event.reason === 'DEFEAT' ? 'バトル敗北' : 'エンディング完走'}→${MODE_LABELS[event.mode]}モード・${BACKGROUND_LABELS[event.background]}背景)`;
   }
+}
+
+/** 前兆シナリオのデバッグ 1 行表示用のスロット短縮名 */
+const SLOT_SHORT: Record<ZenchoYokokuSlot, string> = {
+  KOYU_4: '固4',
+  KOYU_5: '固5',
+  KYOTSU_3: '共3',
+  KYOTSU_4: '共4',
+};
+
+/** 前兆シナリオの 1 行表示(デバッグパネル用。予告なしの G = ・) */
+function scenarioSummary(scenario: OmenScenario): string {
+  return scenario.steps
+    .map((step) =>
+      step.level === 0 || step.slot === undefined ? '・' : `L${step.level}${SLOT_SHORT[step.slot]}`,
+    )
+    .join(' ');
+}
+
+/** 連続演出チャンスアップの 1 行表示(デバッグパネル用) */
+function chanceUpSummary(chanceUps: RenzokuChanceUps): string {
+  return chanceUps.map((pattern) => (pattern === 'CHANCE' ? 'チ' : '通')).join('・');
 }
 
 /** オート消化時の目押しモード(押下位置の決め方)。手動時はタイミング押しが正 */
@@ -362,8 +398,13 @@ function App() {
     return { rng, initialState: initGameState(rng) };
   }, [seed]);
   const rng = session.rng;
+  // 演出専用 rng(小役示唆予告の抽せん)。advanceGame が使う rng とは分離し、
+  // 出玉に影響する乱数列を演出が汚さないようにする(DIRECTION_SPEC「6.」)
+  const hintRng = useMemo(() => createRng(randomSeed()), []);
   const [play, dispatch] = useReducer(reducer, session.initialState, makePlayState);
   const [spinUi, setSpinUi] = useState<SpinUi>({ mode: 'IDLE' });
+  // レバーオン時に決定する 1G 分の予告演出(前兆シナリオ予告 / 小役示唆予告 = STEP 4c)
+  const [leverDirection, setLeverDirection] = useState<LeverDirection>({ seq: 0 });
 
   const [stageSelect, setStageSelect] = useState<'AUTO' | StageId>('AUTO');
   const [bgmOn, setBgmOn] = useState(false);
@@ -408,12 +449,29 @@ function App() {
     setSpinUi({ mode: 'IDLE' });
   };
 
-  /** レバーオン: BET 徴収(メーター)+ 役抽せん + 全リール回転開始(回転中は無視) */
+  /**
+   * レバーオン時の予告演出の決定(STEP 4c)。
+   * 前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ小役示唆予告を
+   * 成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。次のレバーオンまで表示。
+   */
+  const drawLeverDirection = (won: Role) => {
+    const state = play.gameState;
+    const yokoku = scenarioYokokuAtLeverOn(state);
+    let hint: LeverDirection['hint'];
+    if (yokoku === undefined && koyakuHintAllowed(state)) {
+      const drawn = drawKoyakuHint(hintRng, won);
+      if (drawn !== null) hint = koyakuHintView(drawn, won, state.background);
+    }
+    setLeverDirection((prev) => ({ seq: prev.seq + 1, yokoku, hint }));
+  };
+
+  /** レバーオン: BET 徴収(メーター)+ 役抽せん + 予告決定 + 全リール回転開始(回転中は無視) */
   const onLever = () => {
     if (spinUi.mode !== 'IDLE') return;
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
+    drawLeverDirection(won);
     setSpinUi({
       mode: 'SPINNING',
       cycle: startSpin(won),
@@ -450,6 +508,7 @@ function App() {
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
+    drawLeverDirection(won);
     const pushes = pickPushes(aim, rng);
     const order: PushOrder =
       pushOrderSelect === 'AUTO'
@@ -512,6 +571,7 @@ function App() {
     window.clearTimeout(finishTimerRef.current);
     setSpinUi({ mode: 'IDLE' });
     setResetCount((n) => n + 1); // DirectionLayer を再マウントして演出キューを破棄
+    setLeverDirection({ seq: 0 });
     dispatch({ type: 'RESET', gameState: initGameState(rng) });
   };
 
@@ -584,6 +644,7 @@ function App() {
               <DirectionLayer
                 key={resetCount}
                 overlay={overlayForState(gameState)}
+                lever={leverDirection}
                 cutinFrame={play.cutinFrame}
               />
             </div>
@@ -723,7 +784,35 @@ function App() {
                 ナビ:{' '}
                 {navi ? <strong className="accent">押し順ナビ中(ベル = 中第一)</strong> : 'なし'}
               </div>
+              <div>
+                予告演出:{' '}
+                {leverDirection.yokoku !== undefined ? (
+                  <strong className="accent">{leverDirection.yokoku.label}</strong>
+                ) : leverDirection.hint !== undefined ? (
+                  <strong>小役示唆 {leverDirection.hint.label}</strong>
+                ) : (
+                  'なし'
+                )}
+              </div>
             </div>
+            {phase.type === 'OMEN' && (
+              <div className="at-detail">
+                <span>
+                  シナリオ: <strong>{scenarioSummary(phase.scenario)}</strong>
+                </span>
+                <span>
+                  連続演出チャンスアップ:{' '}
+                  <strong>{chanceUpSummary(phase.scenario.renzokuSteps)}</strong>
+                </span>
+              </div>
+            )}
+            {phase.type === 'RENZOKU' && (
+              <div className="at-detail">
+                <span>
+                  チャンスアップ(1〜3G): <strong>{chanceUpSummary(phase.chanceUps)}</strong>
+                </span>
+              </div>
+            )}
             {phase.type === 'AT' && (
               <div className="at-detail">
                 <span>
