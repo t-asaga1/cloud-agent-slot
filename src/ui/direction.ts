@@ -18,6 +18,22 @@
  * - SE はサウンドキュー ID(`src/ui/sound.ts`)で参照し、音声ファイルへ直接依存しない
  *   (BGM / SE の実素材差し替えは sound.ts / assets 側で完結する)。
  *
+ * # 連続演出の解決規約(STEP 4d。docs/DIRECTION_SPEC.md「2.4」= Q19)
+ *
+ * - 連続演出 4G(G1 導入 / G2 展開 / G3 あおり / G4 決着)は予告と同じく
+ *   **レバーオン時に「これから回すゲーム」の 1G 分を解決**する(`renzokuAtLeverOn`)。
+ *   連続演出 1G 目のレバーオンはフェーズ `OMEN`(前兆最終 G 消化済み)、2G 目以降は
+ *   フェーズ `RENZOKU`(game = 消化済み G 数)で判定する。
+ * - A/B = 背景固有(発展時の滞在背景の素材。前兆背景含む 5 種)/ C = 背景共通(Q19。
+ *   前兆背景の連続演出 C も共通素材を流用)。連続演出中に背景は変わらない
+ *   (30G 契機は前兆・演出中停止 = 確定 25、予約契機も構造上発生しない)。
+ * - チャンスアップ(G1〜3 の通常/チャンス)は `RenzokuPhase.chanceUps`(1G 目は
+ *   `OmenPhase.scenario.renzokuSteps`)を参照し、仮素材では表示差分(バッジ + 枠色)で
+ *   表現する(ムービー差分は実素材入稿時に検討 = DIRECTION_SPEC「4.」)。
+ * - G4 の成否告知は全停止後のカットイン(`cutinsForEvents` の `RENZOKU_RESULT` →
+ *   `renzoku_result_<win|lose>` ムービー)。演出の見た目は前兆種別(本/偽)に依存しない
+ *   ため、偽→本書き換え(確定 21(c))が起きても演出は自然に継続する。
+ *
  * # 予告の解決規約(STEP 4c。docs/DIRECTION_SPEC.md「2.1」= 確定 33・34)
  *
  * - **前兆シナリオ予告**(固有 4・5 / 共通 3・4): `OmenPhase.scenario` の
@@ -38,7 +54,7 @@
  *   小役示唆予告なし(前兆背景の固有 1〜3 は期待度ラダー専用)。連続演出・AT・
  *   エンディング中も出さない(AT 中の予告は 4e の `drawAtYokoku` が担う)。
  */
-import { EFFECT_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
+import { EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
 import type { ReelSymbol } from '../core/reel';
@@ -46,6 +62,7 @@ import { isRareRole, type Role } from '../core/roles';
 import {
   stepAt,
   type KoyakuHint,
+  type RenzokuChanceUps,
   type ScenarioLevel,
   type ZenchoYokokuSlot,
 } from '../core/scenario';
@@ -62,56 +79,26 @@ import type { SoundCueId } from './sound';
 // ---------------------------------------------------------------------------
 
 /** フェーズ由来の常時表示(毎ゲーム state から導出) */
-export type StateOverlay =
-  | {
-      /** 連続演出 4G の全画面表示(種別 A/B/C・n/4G。成否告知はカットイン側) */
-      kind: 'RENZOKU';
-      renzoku: RenzokuKind;
-      /** 何 G 目か(1〜totalGames) */
-      game: number;
-      totalGames: number;
-      title: string;
-      text: string;
-    }
-  | {
-      /** エンディング中のバナー(n/10G) */
-      kind: 'ENDING';
-      game: number;
-      totalGames: number;
-      after: EndingAfter;
-    };
-
-/** 連続演出の仮タイトルとあおりテキスト(4d で 4G 構成の実演出へ差し替え) */
-export const RENZOKU_PRESENTATION: Record<RenzokuKind, { title: string; text: string }> = {
-  A: { title: '連続演出A「追走」', text: '義経、賊を追う…!' },
-  B: { title: '連続演出B「一騎打ち」', text: '弁慶との一騎打ち…!' },
-  C: { title: '連続演出C「決戦」', text: '宿命の決戦、開幕…!' },
+export type StateOverlay = {
+  /** エンディング中のバナー(n/10G) */
+  kind: 'ENDING';
+  game: number;
+  totalGames: number;
+  after: EndingAfter;
 };
 
 /**
  * 現在のフェーズから常時表示の演出を導出する(通常時・前兆中・AT 中は undefined)。
- * 前兆中の予告は 4c からシナリオ由来のレバーオン演出(`scenarioYokokuAtLeverOn`)が担い、
- * 常時表示は出さない(予告のない G は静かに進む = 予告が出た時だけ前兆を匂わせる)。
+ * 前兆中の予告は 4c のシナリオ由来レバーオン演出(`scenarioYokokuAtLeverOn`)、
+ * 連続演出 4G は 4d のレバーオン演出(`renzokuAtLeverOn`)が担い、常時表示は出さない
+ * (予告のない G は静かに進む = 予告が出た時だけ前兆を匂わせる)。
  */
 export function overlayForState(state: GameState): StateOverlay | undefined {
   const { phase } = state;
-  switch (phase.type) {
-    case 'RENZOKU': {
-      const { title, text } = RENZOKU_PRESENTATION[phase.renzoku];
-      return {
-        kind: 'RENZOKU',
-        renzoku: phase.renzoku,
-        game: phase.game,
-        totalGames: RENZOKU_GAMES,
-        title,
-        text,
-      };
-    }
-    case 'ENDING':
-      return { kind: 'ENDING', game: phase.game, totalGames: ENDING_GAMES, after: phase.after };
-    default:
-      return undefined;
+  if (phase.type === 'ENDING') {
+    return { kind: 'ENDING', game: phase.game, totalGames: ENDING_GAMES, after: phase.after };
   }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,13 +251,98 @@ export function koyakuHintView(
   };
 }
 
-/** レバーオン時に決定する 1G 分の予告演出(seq = レバーオンの通し番号) */
+// ---------------------------------------------------------------------------
+// レバーオン時の連続演出表示(STEP 4d = 4G 構成の解決)
+// ---------------------------------------------------------------------------
+
+/** 連続演出のタイトル(仮素材用。実素材入稿時はムービーへ焼き込まれる想定) */
+export const RENZOKU_TITLES: Record<RenzokuKind, string> = {
+  A: '連続演出A「追走」',
+  B: '連続演出B「一騎打ち」',
+  C: '連続演出C「決戦」',
+};
+
+/** 4G 構成の段階名(DIRECTION_SPEC 2.4: G1 導入 / G2 展開 / G3 あおり / G4 = 成否告知へ) */
+export const RENZOKU_STAGE_LABELS = ['導入', '展開', 'あおり', '決着'] as const;
+
+/** 連続演出ムービー URL をキーから解決する(存在しないキーは仮素材の生成漏れ = 即エラー) */
+export function renzokuVideoUrl(key: string): string {
+  const url = RENZOKU_VIDEOS[key];
+  if (url === undefined) throw new Error(`連続演出ムービーがありません: ${key}`);
+  return url;
+}
+
+/** 連続演出 1G 分の表示データ(レバーオン時に解決し、次のレバーオンまで全画面表示) */
+export interface RenzokuView {
+  renzoku: RenzokuKind;
+  /** これから回すゲームが連続演出何 G 目か(1〜RENZOKU_GAMES) */
+  game: number;
+  totalGames: number;
+  videoUrl: string;
+  title: string;
+  /** 4G 構成の段階名(導入 / 展開 / あおり / 決着) */
+  stage: string;
+  /** この G がチャンスアップか(G1〜3 のみ。G4 は成否告知のため常に false) */
+  chanceUp: boolean;
+  /** デバッグ・テスト用(画面には出さない) */
+  label: string;
+}
+
+/** 種別 × 背景 × G → 具体ムービーの解決(A/B = 背景固有 / C = 背景共通 = Q19) */
+function resolveRenzoku(
+  background: Background,
+  renzoku: RenzokuKind,
+  game: number,
+  chanceUps: RenzokuChanceUps,
+): RenzokuView {
+  const key =
+    renzoku === 'C'
+      ? `renzoku_c_g${game}`
+      : `renzoku_${renzoku.toLowerCase()}_${BACKGROUND_KEYS[background]}_g${game}`;
+  const stage = RENZOKU_STAGE_LABELS[game - 1];
+  const chanceUp = game <= chanceUps.length && chanceUps[game - 1] === 'CHANCE';
+  return {
+    renzoku,
+    game,
+    totalGames: RENZOKU_GAMES,
+    videoUrl: renzokuVideoUrl(key),
+    title: RENZOKU_TITLES[renzoku],
+    stage,
+    chanceUp,
+    label: `連続演出${renzoku} G${game} ${stage}${chanceUp ? '(チャンス)' : ''}`,
+  };
+}
+
+/**
+ * これから回すゲームの連続演出表示(レバーオン時に UI が呼ぶ)。
+ * - 連続演出 1G 目 = 前兆最終 G 消化済みのフェーズ `OMEN`(チャンスアップは
+ *   シナリオの `renzokuSteps` から)
+ * - 2〜4G 目 = フェーズ `RENZOKU`(game = 消化済み G 数。チャンスアップは引継ぎ済みの
+ *   `chanceUps` から)
+ * - それ以外(連続演出最終 G 消化後を含む)は undefined。
+ * 見た目は前兆種別(本/偽)に依存しないため、偽→本書き換え(確定 21(c))が
+ * 途中で起きても演出は継続する(G4 の成否告知だけが変わる)。
+ */
+export function renzokuAtLeverOn(state: GameState): RenzokuView | undefined {
+  const { phase } = state;
+  if (phase.type === 'OMEN' && phase.game >= phase.totalGames) {
+    return resolveRenzoku(state.background, phase.renzoku, 1, phase.scenario.renzokuSteps);
+  }
+  if (phase.type === 'RENZOKU' && phase.game < RENZOKU_GAMES) {
+    return resolveRenzoku(state.background, phase.renzoku, phase.game + 1, phase.chanceUps);
+  }
+  return undefined;
+}
+
+/** レバーオン時に決定する 1G 分の演出(seq = レバーオンの通し番号) */
 export interface LeverDirection {
   seq: number;
   /** 前兆シナリオ予告(優先。あるとき hint は undefined) */
   yokoku?: ScenarioYokokuView;
   /** 小役示唆予告 */
   hint?: KoyakuHintView;
+  /** 連続演出の全画面表示(STEP 4d。あるとき yokoku / hint は undefined) */
+  renzoku?: RenzokuView;
 }
 
 // ---------------------------------------------------------------------------
@@ -302,22 +374,24 @@ export function cutinsForEvents(events: readonly GameEvent[]): Cutin[] {
   for (const event of events) {
     switch (event.type) {
       case 'RENZOKU_RESULT':
+        // 成否告知(STEP 4d): 専用ムービー renzoku_result_<win|lose> を全画面カットインで
         cutins.push(
           event.success
             ? {
                 title: '勝利!',
                 sub: `連続演出${event.renzoku} 成功`,
                 style: 'WIN',
-                videoUrl: EFFECT_VIDEOS.cutinStrong,
+                videoUrl: renzokuVideoUrl('renzoku_result_win'),
                 sound: 'RENZOKU_SUCCESS',
-                durationMs: 2000,
+                durationMs: 2200,
               }
             : {
                 title: '敗北…',
                 sub: `連続演出${event.renzoku} 失敗`,
                 style: 'LOSE',
+                videoUrl: renzokuVideoUrl('renzoku_result_lose'),
                 sound: 'RENZOKU_FAIL',
-                durationMs: 1800,
+                durationMs: 2000,
               },
         );
         break;

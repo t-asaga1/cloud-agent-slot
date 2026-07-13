@@ -53,6 +53,7 @@ import {
   koyakuHintAllowed,
   koyakuHintView,
   overlayForState,
+  renzokuAtLeverOn,
   resultSoundCue,
   scenarioYokokuAtLeverOn,
   type LeverDirection,
@@ -450,19 +451,22 @@ function App() {
   };
 
   /**
-   * レバーオン時の予告演出の決定(STEP 4c)。
-   * 前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ小役示唆予告を
-   * 成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。次のレバーオンまで表示。
+   * レバーオン時の演出の決定(STEP 4c・4d)。
+   * 連続演出中(1G 目 = 前兆最終 G 消化済みを含む)は 4G 構成の全画面表示(STEP 4d)。
+   * それ以外は前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ
+   * 小役示唆予告を成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。
+   * いずれも次のレバーオンまで表示。
    */
   const drawLeverDirection = (won: Role) => {
     const state = play.gameState;
-    const yokoku = scenarioYokokuAtLeverOn(state);
+    const renzoku = renzokuAtLeverOn(state);
+    const yokoku = renzoku === undefined ? scenarioYokokuAtLeverOn(state) : undefined;
     let hint: LeverDirection['hint'];
-    if (yokoku === undefined && koyakuHintAllowed(state)) {
+    if (renzoku === undefined && yokoku === undefined && koyakuHintAllowed(state)) {
       const drawn = drawKoyakuHint(hintRng, won);
       if (drawn !== null) hint = koyakuHintView(drawn, won, state.background);
     }
-    setLeverDirection((prev) => ({ seq: prev.seq + 1, yokoku, hint }));
+    setLeverDirection((prev) => ({ seq: prev.seq + 1, yokoku, hint, renzoku }));
   };
 
   /** レバーオン: BET 徴収(メーター)+ 役抽せん + 予告決定 + 全リール回転開始(回転中は無視) */
@@ -786,7 +790,9 @@ function App() {
               </div>
               <div>
                 予告演出:{' '}
-                {leverDirection.yokoku !== undefined ? (
+                {leverDirection.renzoku !== undefined ? (
+                  <strong className="accent">{leverDirection.renzoku.label}</strong>
+                ) : leverDirection.yokoku !== undefined ? (
                   <strong className="accent">{leverDirection.yokoku.label}</strong>
                 ) : leverDirection.hint !== undefined ? (
                   <strong>小役示唆 {leverDirection.hint.label}</strong>

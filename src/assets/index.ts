@@ -146,6 +146,28 @@ export const YOKOKU_VIDEOS: Record<string, string> = Object.fromEntries(
   ]),
 );
 
+// 連続演出ムービー(STEP 4d。46 本あるため glob で一括解決。ビルド時に列挙される)
+const renzokuVideoModules = import.meta.glob('./video/renzoku/*.webm', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * 連続演出ムービー URL(仮素材)。キー = ファイル名 stem(拡張子なし)。
+ * 命名規約は docs/DIRECTION_SPEC.md「4.」:
+ * - 連続演出 A/B(背景固有): `renzoku_<a|b>_<bg>_g<1-4>`(bg = 前兆背景含む 5 種)
+ * - 連続演出 C(背景共通):   `renzoku_c_g<1-4>`
+ * - 成否告知:               `renzoku_result_<win|lose>`
+ * キーからの解決は `src/ui/direction.ts` の `renzokuVideoUrl` を使うこと
+ * (存在しないキーを検知できる)。全 46 キーの存在は direction.test.ts で検証する。
+ */
+export const RENZOKU_VIDEOS: Record<string, string> = Object.fromEntries(
+  Object.entries(renzokuVideoModules).map(([path, url]) => [
+    path.slice('./video/renzoku/'.length, -'.webm'.length),
+    url,
+  ]),
+);
+
 /**
  * 効果音 URL(仮素材)。
  * ゲーム中の SE 再生は本テーブルを直接参照せず、`src/ui/sound.ts` の

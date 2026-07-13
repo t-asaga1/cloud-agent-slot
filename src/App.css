@@ -295,18 +295,32 @@
   }
 }
 
-/* 連続演出 4G の全画面表示 */
+/* 連続演出 4G の全画面表示(STEP 4d: 全画面ムービー + タイトル / n/4G / 段階名) */
 .renzoku-screen {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4%;
-  background:
-    radial-gradient(ellipse at center, rgba(127, 29, 29, 0.55), rgba(0, 0, 0, 0.82));
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.88);
   border: 2px solid rgba(220, 38, 38, 0.7);
+  animation: yokoku-in 0.3s ease-out;
+}
+
+.renzoku-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.renzoku-header {
+  position: absolute;
+  top: 3%;
+  left: 4%;
+  right: 4%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
 }
 
 .renzoku-title {
@@ -317,17 +331,56 @@
   text-shadow: 0 0 12px rgba(220, 38, 38, 0.9);
 }
 
-.renzoku-text {
-  color: #fef2f2;
-  font-size: clamp(0.7rem, 1.5vw, 1rem);
-  letter-spacing: 0.14em;
-}
-
 .renzoku-count {
   color: #fbbf24;
   font-family: 'Consolas', 'Menlo', monospace;
   font-weight: 700;
   font-size: clamp(0.75rem, 1.7vw, 1.15rem);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.renzoku-footer {
+  position: absolute;
+  bottom: 4%;
+  left: 4%;
+  right: 4%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.renzoku-stage {
+  color: #fef2f2;
+  font-size: clamp(0.7rem, 1.5vw, 1rem);
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+/* チャンスアップの G(仮素材では表示差分で表現 = DIRECTION_SPEC「4.」) */
+.renzoku-screen.renzoku-chance {
+  border: 3px solid #facc15;
+  box-shadow: inset 0 0 28px rgba(250, 204, 21, 0.4);
+}
+
+.renzoku-chance-badge {
+  color: #1c1206;
+  background: #facc15;
+  font-weight: 900;
+  font-size: clamp(0.7rem, 1.5vw, 1rem);
+  letter-spacing: 0.12em;
+  padding: 0.1em 0.6em;
+  border-radius: 6px;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.85);
+  animation: chance-badge-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes chance-badge-pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
 }
 
 /* エンディング中のバナー(画面上部) */

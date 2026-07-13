@@ -3,10 +3,12 @@
  *
  * `direction.ts` が返す宣言的データを表示するだけの「画面」側:
  * - `overlay`(フェーズ由来の常時表示)= 親から毎レンダー渡される(状態が変われば消える)
- * - `lever`(レバーオン時に決定する 1G 分の予告演出 = STEP 4c)= seq が進むたびに
+ * - `lever`(レバーオン時に決定する 1G 分の演出 = STEP 4c・4d)= seq が進むたびに
  *   差し替え表示する(次のレバーオンまで表示。前兆シナリオ予告 = 中央パネル /
  *   小役示唆予告 = 右下パネル + ムービー後に成立役の図柄画像を重ねる(確定 33)。
- *   図柄の遅延表示は CSS の animation-delay で行う)
+ *   図柄の遅延表示は CSS の animation-delay で行う /
+ *   連続演出(STEP 4d)= 全画面ムービー + タイトル・n/4G・段階名 + チャンスアップ
+ *   バッジ(G4 の成否告知は全停止後のカットイン側))
  * - `cutinFrame`(イベント由来のワンショット)= seq(ゲーム通し番号)が進むたびに
  *   カットイン列をキューへ積み、先頭から durationMs ずつ順番に表示 + SE 再生する
  *
@@ -85,12 +87,31 @@ export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
 
   return (
     <div className="direction-layer">
-      {overlay?.kind === 'RENZOKU' && (
-        <div className="renzoku-screen">
-          <div className="renzoku-title">{overlay.title}</div>
-          <div className="renzoku-text">{overlay.text}</div>
-          <div className="renzoku-count">
-            {overlay.game}/{overlay.totalGames}G
+      {lever.renzoku !== undefined && (
+        <div
+          key={`renzoku-${lever.seq}`}
+          className={
+            lever.renzoku.chanceUp ? 'renzoku-screen renzoku-chance' : 'renzoku-screen'
+          }
+          data-label={lever.renzoku.label}
+        >
+          <video
+            className="renzoku-video"
+            src={lever.renzoku.videoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          <div className="renzoku-header">
+            <span className="renzoku-title">{lever.renzoku.title}</span>
+            <span className="renzoku-count">
+              {lever.renzoku.game}/{lever.renzoku.totalGames}G
+            </span>
+          </div>
+          <div className="renzoku-footer">
+            <span className="renzoku-stage">{lever.renzoku.stage}</span>
+            {lever.renzoku.chanceUp && <span className="renzoku-chance-badge">CHANCE UP!</span>}
           </div>
         </div>
       )}
