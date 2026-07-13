@@ -15,11 +15,13 @@
   margin-bottom: 20px;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 420px) 1fr;
-  gap: 24px;
-  align-items: start;
+/*
+ * 通常プレイ視点のレイアウト(STEP 3e): 筐体 + 遊技パネルを画面中央へ置き、
+ * 開発用の情報・操作は下部の折りたたみ(.debug)へ集約する。
+ */
+.play-area {
+  display: flex;
+  justify-content: center;
 }
 
 /* --- 筐体ビュー --- */
@@ -28,6 +30,75 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: min(100%, 460px);
+}
+
+/* レバーオン・オート消化・BGM(遊技パネル。停止ボタンの下) */
+.main-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.main-controls button {
+  font-size: 1rem;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #3b4252;
+  background: #1f2430;
+  color: inherit;
+  cursor: pointer;
+}
+
+.main-controls button.lever {
+  flex: 1;
+  min-width: 180px;
+  background: #b91c1c;
+  border-color: #dc2626;
+  font-weight: 700;
+}
+
+.main-controls button.lever:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.main-controls button.lever:disabled {
+  background: #4b1113;
+  border-color: #6b7280;
+  color: #9aa4b2;
+  cursor: default;
+}
+
+.main-controls button.auto-on {
+  background: #166534;
+  border-color: #22c55e;
+}
+
+/* --- デバッグ折りたたみ(開発用。デフォルト閉) --- */
+
+.debug {
+  margin-top: 20px;
+  border: 1px solid #3b4252;
+  border-radius: 10px;
+  background: #12151c;
+}
+
+.debug > summary {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #9aa4b2;
+  user-select: none;
+}
+
+.debug[open] > summary {
+  border-bottom: 1px solid #262c38;
+  color: inherit;
+}
+
+.debug-body {
+  padding: 14px;
 }
 
 .cabinet {
@@ -437,16 +508,9 @@
   padding: 0 6px;
 }
 
-.panel button.lever:disabled {
-  background: #4b1113;
-  border-color: #6b7280;
-  color: #9aa4b2;
-  cursor: default;
-}
+/* --- 操作パネル(デバッグ内) --- */
 
-/* --- 操作パネル --- */
-
-.side h2 {
+.debug-body h2 {
   font-size: 1rem;
   margin: 16px 0 8px;
 }
@@ -474,16 +538,6 @@
   background: #1f2430;
   color: inherit;
   cursor: pointer;
-}
-
-.panel button.lever {
-  background: #b91c1c;
-  border-color: #dc2626;
-  font-weight: 700;
-}
-
-.panel button.lever:hover {
-  background: #dc2626;
 }
 
 .status {
@@ -523,11 +577,6 @@
 
 .accent {
   color: #facc15;
-}
-
-.panel button.auto-on {
-  background: #166534;
-  border-color: #22c55e;
 }
 
 .event-log {
@@ -588,8 +637,3 @@ th {
   background: #1f2430;
 }
 
-@media (max-width: 720px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
