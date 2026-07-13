@@ -1037,6 +1037,9 @@ function App() {
                 ))}
               </select>
             </label>
+            <button type="button" onClick={autoGame} disabled={spinning}>
+              1G消化(オート)
+            </button>
             <button type="button" onClick={onReset}>
               リセット
             </button>
