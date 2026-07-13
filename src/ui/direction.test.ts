@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { YOKOKU_VIDEOS } from '../assets';
+import type { Background } from '../core/background';
 import { RENZOKU_GAMES } from '../core/omen';
+import type { OmenScenario, ScenarioStep } from '../core/scenario';
 import { ENDING_GAMES, type GameEvent, type GameState } from '../core/state';
 import {
   cutinsForEvents,
+  koyakuHintAllowed,
+  koyakuHintView,
   overlayForState,
   RENZOKU_PRESENTATION,
   resultSoundCue,
-  TELOP_TEXTS,
+  scenarioYokokuAtLeverOn,
+  yokokuVideoUrl,
 } from './direction';
 import { SOUND_CUES, type SoundCueId } from './sound';
 
@@ -24,38 +30,47 @@ function state(phase: GameState['phase'], overrides: Partial<GameState> = {}): G
   };
 }
 
-describe('overlayForState(フェーズ由来の常時表示)', () => {
-  it('通常時・AT 中は演出なし', () => {
-    expect(overlayForState(state({ type: 'NORMAL' }))).toBeUndefined();
-    expect(
-      overlayForState(
-        state({
-          type: 'AT',
-          tier: 'NORMAL',
-          part: 'KOYAKU',
-          partGame: 3,
-          renchan: 1,
-          continueRate: 0.66,
-          vStock: 0,
-          continueConfirmed: false,
-        }),
-      ),
-    ).toBeUndefined();
-  });
+/** 指定ステップ列の前兆シナリオを作る(チャンスアップは固定) */
+function scenario(steps: ScenarioStep[]): OmenScenario {
+  return { steps, renzokuSteps: ['NORMAL', 'NORMAL', 'NORMAL'] };
+}
 
-  it('前兆中(偽・本共通)はテロップ。文言は経過 G でローテーションし種別を悟らせない', () => {
-    const scenario = {
-      steps: Array.from({ length: 9 }, () => ({ level: 0 as const })),
-      renzokuSteps: ['NORMAL', 'NORMAL', 'NORMAL'],
-    } as const;
-    for (const kind of ['FAKE', 'REAL'] as const) {
-      for (let game = 0; game <= 9; game++) {
-        const overlay = overlayForState(
-          state({ type: 'OMEN', kind, game, totalGames: 9, renzoku: 'A', scenario }),
-        );
-        expect(overlay).toEqual({ kind: 'TELOP', text: TELOP_TEXTS[game % TELOP_TEXTS.length] });
-      }
-    }
+/** 前兆 gG 目を消化済み(次のレバーオンで g+1 G 目)の OMEN フェーズ state */
+function omenState(
+  game: number,
+  steps: ScenarioStep[],
+  background: Background = 'YOSHITSUNE',
+): GameState {
+  return state(
+    {
+      type: 'OMEN',
+      kind: 'REAL',
+      game,
+      totalGames: steps.length,
+      renzoku: 'A',
+      scenario: scenario(steps),
+    },
+    { background },
+  );
+}
+
+const AT_PHASE = {
+  type: 'AT',
+  tier: 'NORMAL',
+  part: 'KOYAKU',
+  partGame: 3,
+  renchan: 1,
+  continueRate: 0.66,
+  vStock: 0,
+  continueConfirmed: false,
+} as const;
+
+describe('overlayForState(フェーズ由来の常時表示)', () => {
+  it('通常時・前兆中・AT 中は常時表示なし(前兆予告はレバーオン演出側 = 4c)', () => {
+    const steps: ScenarioStep[] = Array.from({ length: 7 }, () => ({ level: 1, slot: 'KOYU_4' }));
+    expect(overlayForState(state({ type: 'NORMAL' }))).toBeUndefined();
+    expect(overlayForState(omenState(3, steps))).toBeUndefined();
+    expect(overlayForState(state(AT_PHASE))).toBeUndefined();
   });
 
   it('連続演出中は種別・経過 G 付きの全画面表示', () => {
@@ -83,6 +98,178 @@ describe('overlayForState(フェーズ由来の常時表示)', () => {
   it('エンディング中は n/10G バナー(行き先付き)', () => {
     const overlay = overlayForState(state({ type: 'ENDING', game: 4, after: 'UPPER_AT', vStock: 2 }));
     expect(overlay).toEqual({ kind: 'ENDING', game: 4, totalGames: ENDING_GAMES, after: 'UPPER_AT' });
+  });
+});
+
+describe('YOKOKU_VIDEOS(予告ムービー仮素材の存在検証。DIRECTION_SPEC「4.」の全 51 本)', () => {
+  it('全キーが揃っている(通常 40 + 共通 8 + 前兆 3)', () => {
+    const expected: string[] = [];
+    for (const bg of ['yoshitsune', 'shizuka', 'benkei', 'yugata']) {
+      for (let n = 1; n <= 5; n++) {
+        expected.push(`yokoku_${bg}_koyu${n}_weak`, `yokoku_${bg}_koyu${n}_strong`);
+      }
+    }
+    for (let n = 1; n <= 4; n++) {
+      expected.push(`yokoku_common${n}_weak`, `yokoku_common${n}_strong`);
+    }
+    expected.push('yokoku_zencho1', 'yokoku_zencho2', 'yokoku_zencho3');
+
+    expect(expected).toHaveLength(51);
+    for (const key of expected) {
+      expect(YOKOKU_VIDEOS[key], key).toBeTruthy();
+      expect(yokokuVideoUrl(key), key).toBe(YOKOKU_VIDEOS[key]);
+    }
+    expect(Object.keys(YOKOKU_VIDEOS)).toHaveLength(51);
+  });
+
+  it('存在しないキーはエラー(仮素材の生成漏れ検知)', () => {
+    expect(() => yokokuVideoUrl('yokoku_nazo_koyu9_weak')).toThrow();
+  });
+});
+
+describe('scenarioYokokuAtLeverOn(前兆シナリオ予告のレバーオン解決 = DIRECTION_SPEC 2.1)', () => {
+  // 前兆 7G のシナリオ例: 1G 目 L1 固有4 / 2G 目 L0 / 3G 目 L2 共通3 /
+  // 4G 目 L1 共通4 / 5G 目 L3 固有5 / 6G 目 L0 / 7G 目 L2 固有4
+  const steps: ScenarioStep[] = [
+    { level: 1, slot: 'KOYU_4' },
+    { level: 0 },
+    { level: 2, slot: 'KYOTSU_3' },
+    { level: 1, slot: 'KYOTSU_4' },
+    { level: 3, slot: 'KOYU_5' },
+    { level: 0 },
+    { level: 2, slot: 'KOYU_4' },
+  ];
+
+  it('通常時・連続演出・AT・エンディング中は undefined', () => {
+    expect(scenarioYokokuAtLeverOn(state({ type: 'NORMAL' }))).toBeUndefined();
+    expect(
+      scenarioYokokuAtLeverOn(
+        state({
+          type: 'RENZOKU',
+          kind: 'REAL',
+          renzoku: 'A',
+          game: 1,
+          chanceUps: ['NORMAL', 'NORMAL', 'NORMAL'],
+        }),
+      ),
+    ).toBeUndefined();
+    expect(scenarioYokokuAtLeverOn(state(AT_PHASE))).toBeUndefined();
+    expect(
+      scenarioYokokuAtLeverOn(state({ type: 'ENDING', game: 1, after: 'UPPER_AT', vStock: 0 })),
+    ).toBeUndefined();
+  });
+
+  it('通常 4 背景: L1 = スロットの弱素材 / L2 = 強素材(背景固有は滞在背景の素材)', () => {
+    // 当せんゲーム消化直後(game 0)→ 次は 1G 目 = L1 固有4
+    const g1 = scenarioYokokuAtLeverOn(omenState(0, steps));
+    expect(g1).toEqual({
+      videoUrl: YOKOKU_VIDEOS['yokoku_yoshitsune_koyu4_weak'],
+      label: '固有予告4(弱)',
+      level: 1,
+    });
+    // 背景が変われば同じスロットでも背景の素材(静背景の固有4)
+    expect(scenarioYokokuAtLeverOn(omenState(0, steps, 'SHIZUKA'))?.videoUrl).toBe(
+      YOKOKU_VIDEOS['yokoku_shizuka_koyu4_weak'],
+    );
+    // 3G 目 = L2 共通3 → 共通素材の強
+    const g3 = scenarioYokokuAtLeverOn(omenState(2, steps, 'BENKEI'));
+    expect(g3).toEqual({
+      videoUrl: YOKOKU_VIDEOS['yokoku_common3_strong'],
+      label: '共通予告3(強)',
+      level: 2,
+    });
+    // 5G 目 = L3(確定)→ 通常背景に確定素材はないため強素材で表示
+    const g5 = scenarioYokokuAtLeverOn(omenState(4, steps, 'YUGATA'));
+    expect(g5).toEqual({
+      videoUrl: YOKOKU_VIDEOS['yokoku_yugata_koyu5_strong'],
+      label: '固有予告5(強)',
+      level: 3,
+    });
+  });
+
+  it('前兆背景: スロットを無視してレベル → 固有 1/2/3 の期待度ラダー(確定 33)', () => {
+    const cases: [number, string, string][] = [
+      [0, 'yokoku_zencho1', '前兆予告1(期待度弱)'], // 1G 目 = L1
+      [2, 'yokoku_zencho2', '前兆予告2(期待度中)'], // 3G 目 = L2
+      [4, 'yokoku_zencho3', '前兆予告3(本前兆確定)'], // 5G 目 = L3
+    ];
+    for (const [game, key, label] of cases) {
+      const view = scenarioYokokuAtLeverOn(omenState(game, steps, 'ZENCHO'));
+      expect(view, key).toEqual({
+        videoUrl: YOKOKU_VIDEOS[key],
+        label,
+        level: steps[game].level,
+      });
+    }
+  });
+
+  it('L0 の G は予告なし(undefined)', () => {
+    expect(scenarioYokokuAtLeverOn(omenState(1, steps))).toBeUndefined(); // 2G 目 = L0
+    expect(scenarioYokokuAtLeverOn(omenState(5, steps))).toBeUndefined(); // 6G 目 = L0
+  });
+
+  it('前兆最終 G 消化後(次は連続演出 1G 目)は undefined', () => {
+    expect(scenarioYokokuAtLeverOn(omenState(7, steps))).toBeUndefined();
+  });
+});
+
+describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', () => {
+  const steps: ScenarioStep[] = Array.from({ length: 7 }, () => ({ level: 0 }));
+
+  it('通常時と前兆中(次も前兆の G)は出せる。前兆背景滞在中は出さない', () => {
+    expect(koyakuHintAllowed(state({ type: 'NORMAL' }))).toBe(true);
+    expect(koyakuHintAllowed(omenState(0, steps))).toBe(true);
+    expect(koyakuHintAllowed(omenState(6, steps))).toBe(true);
+    expect(koyakuHintAllowed(state({ type: 'NORMAL' }, { background: 'ZENCHO' }))).toBe(false);
+    expect(koyakuHintAllowed(omenState(0, steps, 'ZENCHO'))).toBe(false);
+  });
+
+  it('前兆最終 G 消化後(次は連続演出)・連続演出・AT・エンディング中は出さない', () => {
+    expect(koyakuHintAllowed(omenState(7, steps))).toBe(false);
+    expect(
+      koyakuHintAllowed(
+        state({
+          type: 'RENZOKU',
+          kind: 'FAKE',
+          renzoku: 'B',
+          game: 2,
+          chanceUps: ['NORMAL', 'NORMAL', 'NORMAL'],
+        }),
+      ),
+    ).toBe(false);
+    expect(koyakuHintAllowed(state(AT_PHASE))).toBe(false);
+    expect(koyakuHintAllowed(state({ type: 'ENDING', game: 1, after: 'AT_END', vStock: 0 }))).toBe(
+      false,
+    );
+  });
+
+  it('固有 1〜3 は滞在背景の素材 / 共通 1・2 は共通素材へ解決し、成立役の図柄画像が付く', () => {
+    const koyu = koyakuHintView({ slot: 'KOYU_2', strong: false }, 'BELL', 'SHIZUKA');
+    expect(koyu).toBeDefined();
+    expect(koyu?.videoUrl).toBe(YOKOKU_VIDEOS['yokoku_shizuka_koyu2_weak']);
+    expect(koyu?.label).toBe('固有予告2(弱)');
+    expect(koyu?.strong).toBe(false);
+    expect(koyu?.symbolUrl).toBeTruthy();
+
+    const kyotsu = koyakuHintView({ slot: 'KYOTSU_1', strong: true }, 'WATERMELON_STRONG', 'YUGATA');
+    expect(kyotsu?.videoUrl).toBe(YOKOKU_VIDEOS['yokoku_common1_strong']);
+    expect(kyotsu?.strong).toBe(true);
+  });
+
+  it('図柄画像は成立役に対応する(スイカ系 = スイカ / チェリー系 = チェリー / リーチ目 = 赤7)', () => {
+    const at = (role: Parameters<typeof koyakuHintView>[1]) =>
+      koyakuHintView({ slot: 'KOYU_1', strong: false }, role, 'YOSHITSUNE')?.symbolUrl;
+    expect(at('WATERMELON_WEAK')).toBe(at('WATERMELON_STRONG'));
+    expect(at('CHANCE_ME')).toBe(at('WATERMELON_WEAK'));
+    expect(at('CHERRY_CORNER')).toBe(at('CHERRY_CENTER'));
+    expect(at('REACH_ME')).toBeTruthy();
+    expect(at('REACH_ME')).not.toBe(at('BELL'));
+    // ハズレは示唆対象外(発生率 0 のため通常は呼ばれない)
+    expect(at('NONE')).toBeUndefined();
+  });
+
+  it('前兆背景では解決しない(素材がない)', () => {
+    expect(koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'ZENCHO')).toBeUndefined();
   });
 });
 

@@ -124,6 +124,28 @@ export const EFFECT_VIDEOS = {
   cutinStrong: effectCutinStrong,
 } as const;
 
+// 予告ムービー(STEP 4c。51 本あるため glob で一括解決。ビルド時に列挙される)
+const yokokuVideoModules = import.meta.glob('./video/yokoku/*.webm', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * 予告ムービー URL(仮素材)。キー = ファイル名 stem(拡張子なし)。
+ * 命名規約は docs/DIRECTION_SPEC.md「4.」:
+ * - 通常背景固有: `yokoku_<bg>_koyu<1-5>_<weak|strong>`(bg = yoshitsune 等 4 種)
+ * - 背景共通:     `yokoku_common<1-4>_<weak|strong>`
+ * - 前兆背景:     `yokoku_zencho<1-3>`(期待度 弱 / 中 / 本前兆確定)
+ * キーからの解決は `src/ui/direction.ts` の `yokokuVideoUrl` を使うこと
+ * (存在しないキーを検知できる)。全 51 キーの存在は direction.test.ts で検証する。
+ */
+export const YOKOKU_VIDEOS: Record<string, string> = Object.fromEntries(
+  Object.entries(yokokuVideoModules).map(([path, url]) => [
+    path.slice('./video/yokoku/'.length, -'.webm'.length),
+    url,
+  ]),
+);
+
 /**
  * 効果音 URL(仮素材)。
  * ゲーム中の SE 再生は本テーブルを直接参照せず、`src/ui/sound.ts` の
