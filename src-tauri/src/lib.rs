@@ -50,10 +50,11 @@ pub fn run() {
       #[cfg(not(all(target_os = "linux", not(debug_assertions))))]
       let url = WebviewUrl::App("index.html".into());
 
+      // 横長 1 画面レイアウト(左 = 筐体 / 右 = 情報・開発用サイドパネル)に合わせる
       WebviewWindowBuilder::new(app, "main", url)
         .title("義経物語")
-        .inner_size(760.0, 1000.0)
-        .min_inner_size(520.0, 720.0)
+        .inner_size(1280.0, 900.0)
+        .min_inner_size(900.0, 640.0)
         .build()?;
 
       Ok(())
