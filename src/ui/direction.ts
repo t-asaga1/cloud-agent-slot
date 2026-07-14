@@ -40,6 +40,11 @@
  *   「これから回すゲーム」のステップ(`stepAt(scenario, phase.game + 1)`)を
  *   レバーオン時に「現在の背景 × スロット × レベル」で具体ムービーへ解決する。
  *   - 通常 4 背景: L1 → スロットの弱素材 / L2・L3 → 強素材。
+ *     ただし**共通 3 はリール消灯演出**(確定 39 = 2026-07-14 指示。ムービーなし):
+ *     画面(液晶)を左中右 3 分割し、リールが停止するたび対応する部分が消灯(黒)する。
+ *     L1(弱)= 左のみ / L2(強)= 左・中 / L3(確定)= 左・中・右(全画面消灯)。
+ *     `blackoutReels` に消灯対象リールを持ち、描画(DirectionLayer)が停止済み
+ *     リールと突き合わせて消灯する(第一停止から順に暗くなる)。
  *   - 前兆背景: スロットを無視し L1 → 固有 1(弱)/ L2 → 固有 2(中)/ L3 → 固有 3(確定)。
  *   - 表示タイミングの解釈: シナリオの gG 目のステップは「gG 目のレバーオン〜次レバーオン」
  *     に表示する(小役示唆予告と同じ時点で決定・競合判定できる)。背景はレバーオン時点の
@@ -53,8 +58,10 @@
  *   `koyakuHintAllowed` を確認して `drawKoyakuHint` を呼ぶ)。前兆背景滞在中は
  *   小役示唆予告なし(前兆背景の固有 1〜3 は期待度ラダー専用)。連続演出・AT・
  *   エンディング中も出さない(AT 中の予告は 4e の `drawAtYokoku` が担う)。
- *   **こぼすベル(左第一こぼし抽せんで 12/13 を引いたゲーム = 確定 35)にも出さない**
- *   (揃うベル = 1/13 には出す。UI 側が bellMiss フラグで抽せん自体をスキップする)。
+ *   **押し順ベルは「ベルが停止する(揃う)」か「ハズレ目が停止する(左第一こぼし =
+ *   確定 35)」かで振分けを変える**(確定 39。`drawKoyakuHint` へ bellMiss を渡すと
+ *   テーブル行が切り替わる。旧「こぼすベルには出さない」規約は廃止)。
+ *   ハズレ時・ベルこぼし時の弱はブランク図柄を表示する(確定 39)。
  *
  * # AT・上位 AT・エンディング演出の解決規約(STEP 4e。docs/DIRECTION_SPEC.md「2.3」「2.5」「3.5」「3.6」)
  *
@@ -94,7 +101,7 @@ import { AT_VIDEOS, EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS 
 import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
-import type { PushOrder, ReelSymbol } from '../core/reel';
+import type { PushOrder, ReelIndex, ReelSymbol } from '../core/reel';
 import { isRareRole, type Role } from '../core/roles';
 import {
   stepAt,
@@ -182,9 +189,24 @@ const ZENCHO_SLOT_LABELS: Record<ZenchoYokokuSlot, string> = {
   KYOTSU_4: '共通予告4',
 };
 
+/** リール消灯演出(共通 3 = 確定 39)のレベル別 消灯対象リール(第一停止から順に消灯) */
+const BLACKOUT_REELS: Record<1 | 2 | 3, readonly ReelIndex[]> = {
+  1: [0], // 弱 = 左のみ
+  2: [0, 1], // 強 = 左・中
+  3: [0, 1, 2], // 確定 = 左・中・右(全画面消灯)
+};
+
+const BLACKOUT_LABELS = ['', '弱', '強', '確定'] as const;
+
 /** 前兆シナリオ予告の表示データ(レバーオン時に解決し、次のレバーオンまで表示) */
 export interface ScenarioYokokuView {
-  videoUrl: string;
+  /** 予告ムービー(リール消灯演出のときは undefined) */
+  videoUrl?: string;
+  /**
+   * リール消灯演出(共通 3 = 確定 39)の消灯対象リール。
+   * 対象リールが停止するたび、画面 3 分割の対応する部分(左/中/右)が消灯する。
+   */
+  blackoutReels?: readonly ReelIndex[];
   /** デバッグ・テスト用(画面には出さない。仮素材ムービー自体に文言が入っている) */
   label: string;
   level: ScenarioLevel;
@@ -201,6 +223,15 @@ function resolveScenarioYokoku(
     return {
       videoUrl: yokokuVideoUrl(`yokoku_zencho${level}`),
       label: `前兆予告${level}(${ZENCHO_LADDER_LABELS[level]})`,
+      level,
+    };
+  }
+  if (slot === 'KYOTSU_3') {
+    // 共通 3 はリール消灯演出(確定 39): L1 = 左 / L2 = 左中 / L3 = 全画面消灯
+    const blackoutLevel = level as 1 | 2 | 3;
+    return {
+      blackoutReels: BLACKOUT_REELS[blackoutLevel],
+      label: `共通予告3 リール消灯(${BLACKOUT_LABELS[level]})`,
       level,
     };
   }
@@ -248,6 +279,8 @@ export function koyakuHintAllowed(state: GameState): boolean {
 
 /** 成立役 → 最終表示する図柄画像(確定 33「小役示唆系は図柄画像を表示」)の対応 */
 const HINT_SYMBOLS: Partial<Record<Role, ReelSymbol>> = {
+  // ハズレ時(の弱)はブランク図柄を表示(確定 39)
+  NONE: 'BLANK',
   REPLAY: 'REPLAY',
   BELL: 'BELL',
   WATERMELON_WEAK: 'WATERMELON',
@@ -281,13 +314,16 @@ export interface KoyakuHintView {
  * 小役示唆予告(`drawKoyakuHint` の結果)を見た目へ解決する。
  * 固有 1〜3 は現在の背景の素材 / 共通 1・2 は 4 背景共通の素材(確定 34)。
  * 前兆背景には小役示唆の素材がない(呼び出し側が `koyakuHintAllowed` で除外)。
+ * 図柄はハズレ = ブランク(確定 39)/ こぼすベル(bellMiss = 確定 35)も
+ * ハズレ目が停止するためブランクを表示する(実装解釈)。
  */
 export function koyakuHintView(
   hint: KoyakuHint,
   role: Role,
   background: Background,
+  bellMiss = false,
 ): KoyakuHintView | undefined {
-  const symbol = HINT_SYMBOLS[role];
+  const symbol = role === 'BELL' && bellMiss ? 'BLANK' : HINT_SYMBOLS[role];
   if (symbol === undefined || background === 'ZENCHO') return undefined;
   const variant = hint.strong ? 'strong' : 'weak';
   const slotNo = Number(hint.slot.slice(-1));

@@ -189,19 +189,32 @@ export function stepAt(scenario: OmenScenario, game: number): ScenarioStep | und
 // ---------------------------------------------------------------------------
 
 /**
- * 小役示唆予告の発生率(3.3)。[なし, 弱, 強] の当選個数(100 中)。
- * 「成立小役が決定した後にどの演出を出すか」(確定 34)のため成立役をキーに引く。
+ * 小役示唆予告のテーブル行キー。押し順ベルは「ベルが停止する(揃う)」か
+ * 「ハズレ目が停止する(左第一こぼし = 確定 35)」かで振分けを分ける(確定 39)。
+ * こぼし判定はレバーオン時の bellMiss フラグ(通常時の想定打ち = 左第一)で行う。
  */
-export const KOYAKU_HINT_TABLE: Record<Role, readonly [number, number, number]> = {
-  NONE: [100, 0, 0],
-  REPLAY: [80, 18, 2],
-  BELL: [85, 13, 2],
-  WATERMELON_WEAK: [40, 40, 20],
-  WATERMELON_STRONG: [20, 30, 50],
-  CHERRY_CORNER: [40, 40, 20],
-  CHERRY_CENTER: [20, 30, 50],
-  CHANCE_ME: [30, 40, 30],
-  REACH_ME: [20, 30, 50],
+export type KoyakuHintKey = Role | 'BELL_MISS';
+
+/**
+ * 小役示唆予告の発生率(3.3 = 確定 39。2026-07-14 調整)。[なし, 弱, 強] の
+ * 当選個数(100 中)。「成立小役が決定した後にどの演出を出すか」(確定 34)のため
+ * 成立役(+ ベルのこぼし区分)をキーに引く。
+ * **強パターンはレア役確定**(ハズレ・リプレイ・ベルの強は 0)。
+ * ハズレ時・ベルこぼし時の弱はブランク図柄を表示する(解決は direction.ts)。
+ */
+export const KOYAKU_HINT_TABLE: Record<KoyakuHintKey, readonly [number, number, number]> = {
+  NONE: [95, 5, 0],
+  REPLAY: [50, 50, 0],
+  /** 押し順ベルのベル停止(揃う。中・右第一 or 左第一 1/13) */
+  BELL: [20, 80, 0],
+  /** 押し順ベルのハズレ目停止(左第一こぼし 12/13 = 確定 35) */
+  BELL_MISS: [95, 5, 0],
+  WATERMELON_WEAK: [20, 40, 40],
+  WATERMELON_STRONG: [5, 15, 80],
+  CHERRY_CORNER: [20, 40, 40],
+  CHERRY_CENTER: [5, 15, 80],
+  CHANCE_ME: [5, 40, 55],
+  REACH_ME: [5, 15, 80],
 };
 
 /** 小役示唆予告のスロット振分け(3.3。固有 12% : 共通 10% の比率を系統内で正規化) */
@@ -215,10 +228,13 @@ export const KOYAKU_HINT_SLOT_TABLE: Record<KoyakuHintSlot, number> = {
 
 /**
  * 小役示唆予告の抽せん(レバーオン時 = 成立役の決定直後に UI が呼ぶ独立関数)。
- * 発生なし(ハズレ等)は乱数を消費せず null。発生時は「強度 → スロット」の順に消費。
+ * 押し順ベルは bellMiss(左第一こぼし = 確定 35)で「ベル停止 / ハズレ目停止」の
+ * 行を切り替える(確定 39)。発生率 100% なし の行は乱数を消費せず null。
+ * 発生時は「強度 → スロット」の順に消費。
  */
-export function drawKoyakuHint(rng: Rng, role: Role): KoyakuHint | null {
-  const [none, weak] = KOYAKU_HINT_TABLE[role];
+export function drawKoyakuHint(rng: Rng, role: Role, bellMiss = false): KoyakuHint | null {
+  const key: KoyakuHintKey = role === 'BELL' && bellMiss ? 'BELL_MISS' : role;
+  const [none, weak] = KOYAKU_HINT_TABLE[key];
   if (none >= SCENARIO_DENOM) return null;
   const value = rng.nextInt(SCENARIO_DENOM);
   if (value < none) return null;

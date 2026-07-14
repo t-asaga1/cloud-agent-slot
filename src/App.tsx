@@ -578,7 +578,8 @@ function App() {
    * - 連続演出中(1G 目 = 前兆最終 G 消化済みを含む)は 4G 構成の全画面表示(STEP 4d)。
    * - それ以外は前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ
    *   小役示唆予告を成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。
-   *   こぼすベル(bellMiss = 確定 35)には小役示唆予告を出さない(揃うベルは出す)。
+   *   押し順ベルはベル停止 / ハズレ目停止(左第一こぼし = 確定 35)で振分けが変わる
+   *   (確定 39。bellMiss を `drawKoyakuHint` へ渡す)。
    * いずれも次のレバーオンまで表示。
    */
   const drawLeverDirection = (won: Role, bellMiss: boolean, naviOrder?: PushOrder) => {
@@ -617,12 +618,11 @@ function App() {
       atYokoku === undefined &&
       renzoku === undefined &&
       yokoku === undefined &&
-      koyakuHintAllowed(state) &&
-      // こぼすベルには小役示唆を出さない(揃うベルには出す = 確定 35 のユーザー指示)
-      !(won === 'BELL' && bellMiss)
+      koyakuHintAllowed(state)
     ) {
-      const drawn = drawKoyakuHint(hintRng, won);
-      if (drawn !== null) hint = koyakuHintView(drawn, won, state.background);
+      // 押し順ベルはベル停止 / ハズレ目停止(左第一こぼし)で振分けが変わる(確定 39)
+      const drawn = drawKoyakuHint(hintRng, won, bellMiss);
+      if (drawn !== null) hint = koyakuHintView(drawn, won, state.background, bellMiss);
     }
     setLeverDirection((prev) => ({
       seq: prev.seq + 1,
@@ -917,6 +917,16 @@ function App() {
                 overlay={overlayForState(gameState)}
                 lever={leverDirection}
                 cutinFrame={play.cutinFrame}
+                // リール消灯演出(確定 39)用の停止済みフラグ。全停止後(レバー待ち)は全 true
+                stoppedReels={
+                  spinUi.mode === 'SPINNING'
+                    ? [
+                        spinUi.cycle.stopped[0] !== undefined,
+                        spinUi.cycle.stopped[1] !== undefined,
+                        spinUi.cycle.stopped[2] !== undefined,
+                      ]
+                    : [true, true, true]
+                }
               />
             </div>
             {REEL_WINDOW_RECTS.map((rect, reel) => {
