@@ -1,0 +1,113 @@
+# Windows デスクトップ版(Tauri)の CI ビルド + 配布(STEP 5b)
+#
+# トリガー 3 本立て:
+#   1. タグ push(v*)      : ビルド + GitHub Release を作成して exe/msi を添付(配布用)
+#   2. workflow_dispatch   : 手動実行。ビルドして Actions の成果物(Artifacts)へアップロード(検証用)
+#   3. pull_request        : このワークフロー or src-tauri/ を変更する PR で自動実行(CI 検証用。
+#                            エージェントの gh は読み取り専用で workflow_dispatch を起動できないため)
+#
+# 実装方式の選定(AGENT #053): tauri-apps/tauri-action は使わず手動ステップ + ランナー標準の
+# gh CLI で構成する。外部 Action への依存が最小(checkout / setup-node / rust-cache /
+# upload-artifact のみ)で、成果物のパス・Release 添付を明示的に制御でき、失敗時の切り分けが容易。
+#
+# Rust は stable(1.97 以上必須。古い 1.83 は依存クレートの edition2024 要求でビルド不可)。
+# ランナーの rustup を stable 最新へ更新して使う。
+# Linux 専用のメディア対策(tauri-plugin-localhost / playbin3)は cfg(target_os = "linux") の
+# 条件コンパイルで Windows ビルドから自動除外される(src-tauri/src/lib.rs 参照)。
+
+name: windows-build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-build.yml"
+      - "src-tauri/**"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: write # タグ push 時の Release 作成・添付に必要(それ以外のトリガーでは未使用)
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Rust stable へ更新
+        shell: bash
+        run: |
+          rustup update stable
+          rustup default stable
+          rustc --version
+
+      - name: Rust ビルドキャッシュ
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: npm 依存インストール
+        run: npm ci
+
+      - name: lint
+        run: npm run lint
+
+      - name: テスト
+        run: npm test
+
+      # バンドル工程が WiX / NSIS のバイナリを外部ダウンロードするため、一時的な
+      # ネットワーク障害(初回ランで DNS 解決失敗を実測)に備えてリトライする。
+      # 2 回目以降は cargo のコンパイルキャッシュが効くため再試行は数分で済む。
+      - name: Tauri ビルド(NSIS インストーラ / MSI / ポータブル exe)
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if npm run tauri:build; then
+              exit 0
+            fi
+            echo "::warning::tauri:build に失敗(試行 $attempt/3)。20 秒後に再試行します"
+            sleep 20
+          done
+          exit 1
+
+      - name: 成果物を収集
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts
+          cp src-tauri/target/release/bundle/nsis/*.exe ci-artifacts/
+          cp src-tauri/target/release/bundle/msi/*.msi ci-artifacts/
+          # ポータブル exe(インストール不要。Tauri v2 はフロントエンド資産を exe へ同梱する)
+          cp src-tauri/target/release/yoshitsune-monogatari.exe \
+            ci-artifacts/yoshitsune-monogatari_portable.exe
+          ls -la ci-artifacts
+
+      - name: Actions 成果物へアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: yoshitsune-monogatari-windows
+          path: ci-artifacts/
+          if-no-files-found: error
+
+      - name: Release へ添付(タグ push 時のみ)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Release が既に存在する場合(手動作成済み等)は作成をスキップして添付だけ行う
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --title "義経物語 $GITHUB_REF_NAME" \
+              --notes "Windows デスクトップ版(自動ビルド)。インストール手順は docs/STEP5_VERIFICATION.md 参照。"
+          gh release upload "$GITHUB_REF_NAME" ci-artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
