@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { BELL_MISS_DENOM } from './lottery';
+import { BELL_MISS_DENOM, drawBellMiss } from './lottery';
 import { BELL_PAYOUT, BET_PER_GAME } from './payout';
-import { decidePush, NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER, playGame } from './play';
+import {
+  decidePush,
+  drawNaviPushOrder,
+  NAVI_PUSH_ORDERS,
+  NORMAL_PUSH_ORDER,
+  playGame,
+} from './play';
+import { KOMA_COUNT } from './reel';
 import { createRng } from './rng';
 import type { GameState } from './state';
 
@@ -42,18 +49,61 @@ describe('decidePush(打ち方ポリシー = 確定 26)', () => {
     expect(decidePush(normalState(), 'NONE', rng).pushOrder).toBe(NORMAL_PUSH_ORDER);
   });
 
-  it('AT 中のベルはナビ遵守(中第一)・ベル以外は左第一のまま', () => {
+  it('AT 中のベルはナビ遵守(正解 4 通りのどれか)・ベル以外は左第一のまま', () => {
     const rng = createRng(1);
-    expect(decidePush(atState(), 'BELL', rng).pushOrder).toBe(NAVI_PUSH_ORDER);
+    expect(NAVI_PUSH_ORDERS).toContain(decidePush(atState(), 'BELL', rng).pushOrder);
     expect(decidePush(atState(), 'REPLAY', rng).pushOrder).toBe(NORMAL_PUSH_ORDER);
     expect(decidePush(atState(), 'CHERRY_CORNER', rng).pushOrder).toBe(NORMAL_PUSH_ORDER);
   });
 
-  it('押下位置は左・中・右の順に乱数 3 個を消費する(押し順によらず固定)', () => {
+  it('押下位置は左・中・右の順に乱数 3 個を消費する(通常時は押し順抽せんなし)', () => {
     const rng = createRng(42);
     const expected = [rng.nextInt(20), rng.nextInt(20), rng.nextInt(20)];
     const decision = decidePush(normalState(), 'BELL', createRng(42));
     expect(decision.pushPositions).toEqual(expected);
+  });
+
+  it('ナビ中のベルはナビ押し順抽せん(1)→ 押下位置(3)の順に乱数を消費する(確定 36)', () => {
+    for (let seed = 0; seed < 10; seed++) {
+      const manual = createRng(seed);
+      const expectedOrder = drawNaviPushOrder(manual);
+      const expectedPositions = [
+        manual.nextInt(KOMA_COUNT),
+        manual.nextInt(KOMA_COUNT),
+        manual.nextInt(KOMA_COUNT),
+      ];
+      const decision = decidePush(atState(), 'BELL', createRng(seed));
+      expect(decision.pushOrder).toBe(expectedOrder);
+      expect(decision.pushPositions).toEqual(expectedPositions);
+    }
+  });
+});
+
+describe('drawNaviPushOrder(ナビ押し順抽せん = 確定 36)', () => {
+  it('候補は正解 4 通り(中左右・中右左・右左中・右中左 = 中・右第一のみ)', () => {
+    expect(NAVI_PUSH_ORDERS).toEqual([
+      [1, 0, 2],
+      [1, 2, 0],
+      [2, 0, 1],
+      [2, 1, 0],
+    ]);
+    for (const order of NAVI_PUSH_ORDERS) expect(order[0]).not.toBe(0);
+  });
+
+  it('4 通りが均等(各 1/4)に抽せんされる(大量試行 ±4σ)', () => {
+    const trials = 40_000;
+    const rng = createRng(123);
+    const counts = new Map<unknown, number>();
+    for (let i = 0; i < trials; i++) {
+      const order = drawNaviPushOrder(rng);
+      expect(NAVI_PUSH_ORDERS).toContain(order);
+      counts.set(order, (counts.get(order) ?? 0) + 1);
+    }
+    const p = 1 / NAVI_PUSH_ORDERS.length;
+    const sigma = Math.sqrt(trials * p * (1 - p));
+    for (const order of NAVI_PUSH_ORDERS) {
+      expect(Math.abs((counts.get(order) ?? 0) - trials * p)).toBeLessThanOrEqual(4 * sigma);
+    }
   });
 });
 
@@ -81,24 +131,47 @@ describe('playGame(ヘッドレス 1G 実行)', () => {
     expect(missed).toBeGreaterThan(aligned);
   });
 
-  it('AT 中のベルはナビ遵守 = 斜め揃い 13 枚(こぼし抽せんの結果に依らない)', () => {
-    for (let seed = 0; seed < 20; seed++) {
+  it('AT 中のベルはナビ遵守 = 4 通りどのナビ押し順でも斜め揃い 13 枚(こぼし抽せんの結果に依らない)', () => {
+    const seenOrders = new Set<unknown>();
+    for (let seed = 0; seed < 80; seed++) {
       const result = playGame(atState(), createRng(seed), 'BELL');
+      expect(NAVI_PUSH_ORDERS).toContain(result.push.pushOrder);
+      seenOrders.add(result.push.pushOrder);
       expect(result.displayedRole).toBe('BELL');
       expect(
         result.spin.lines.some((line) => line === 'DOWN_RIGHT' || line === 'UP_RIGHT'),
       ).toBe(true);
       expect(result.payout.payout).toBe(BELL_PAYOUT);
     }
+    // 80 シードで 4 通りすべてのナビ押し順が出現する(確定 36 の均等抽せん)
+    expect(seenOrders.size).toBe(NAVI_PUSH_ORDERS.length);
   });
 
-  it('ベル当選時は押し順に依らず乱数 1 個(こぼし抽せん)を追加消費する(固定シード再現性)', () => {
-    // 同じシードで通常時(左第一)と AT 中(ナビ)のベルを回しても、
-    // こぼし抽せん + 押下位置 3 個の消費数は同じ = 押下位置が一致する
+  it('ベル当選時の乱数消費 = こぼし 1 +(ナビ中のみ)ナビ押し順 1 + 押下位置 3(固定シード再現性)', () => {
     for (let seed = 0; seed < 10; seed++) {
-      const normal = playGame(normalState(), createRng(seed), 'BELL');
+      // 通常時: こぼし 1 → 押下位置 3
+      const manualNormal = createRng(seed);
+      drawBellMiss(manualNormal);
+      const normalPositions = [
+        manualNormal.nextInt(KOMA_COUNT),
+        manualNormal.nextInt(KOMA_COUNT),
+        manualNormal.nextInt(KOMA_COUNT),
+      ];
+      expect(playGame(normalState(), createRng(seed), 'BELL').push.pushPositions).toEqual(
+        normalPositions,
+      );
+      // AT 中(ナビ): こぼし 1 → ナビ押し順 1 → 押下位置 3
+      const manualAt = createRng(seed);
+      drawBellMiss(manualAt);
+      const expectedOrder = drawNaviPushOrder(manualAt);
+      const atPositions = [
+        manualAt.nextInt(KOMA_COUNT),
+        manualAt.nextInt(KOMA_COUNT),
+        manualAt.nextInt(KOMA_COUNT),
+      ];
       const at = playGame(atState(), createRng(seed), 'BELL');
-      expect(normal.push.pushPositions).toEqual(at.push.pushPositions);
+      expect(at.push.pushOrder).toBe(expectedOrder);
+      expect(at.push.pushPositions).toEqual(atPositions);
     }
     // こぼし抽せんの分母は 13(12/13 こぼし)
     expect(BELL_MISS_DENOM).toBe(13);
