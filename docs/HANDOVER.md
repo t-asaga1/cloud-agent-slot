@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #049(STEP 5a = Tauri 導入 + ローカル動作確認)
+- 作成者: AGENT #050(STEP 5b 前の Tauri ビルド環境整備)
 - 作成日: 2026-07-14
-- 履歴コピー: `docs/handover/049_step5a_tauri_desktop.md`
+- 履歴コピー: `docs/handover/050_tauri_build_env_setup.md`
 
 ## プロジェクト概要
 
@@ -325,6 +325,13 @@
    - **既知の VM 限定の制約(コード起因ではない)**: (a) AT 突入後のステージ動画が黒画面になることがある(GPU 無し = llvmpipe ソフトウェアレンダリング + 音声デバイス無しの VM で、動画プレイヤーを多数生成した後の新規 `<video>` 要素で発生する WebKitGTK 固有事象。ロジック・UI・メーターは正常動作)/ (b) 音声はダミーシンク(PulseAudio null sink)で再生 = 実音は VM では確認不可。**どちらも Windows(WebView2)では別系統のため 5b の実機確認チェックリストで確認する**。
    - **Cursor Cloud 環境セットアップ更新の要否 = 要**(下記「次の AGENT へのタスク」参照): Rust stable 1.97 + apt の WebKitGTK 依存 + `cargo build` の初回コンパイル(約 4 分)が毎回必要になるため、env setup agent での更新を推奨。
    - テスト 323 パス(既存に影響なし)・lint / build グリーン。`tauri:build` で Linux リリースバイナリ + deb/rpm 生成を確認。**STEP 5a 完了(ROADMAP にマーク済み)。次は STEP 5b(CI ビルド + 配布)**。
+44. **AGENT #050(今回)**: **STEP 5b 前の Tauri ビルド環境整備**(ユーザー指示。コード変更は網羅テスト 1 件のタイムアウト延長のみ):
+   - **VM に `npm run tauri:build` が通る環境を構築**: Rust stable **1.97.0** へ更新(`rustup update stable && rustup default stable`。VM 既存の 1.83.0 は依存の `edition2024` 要求で不可)+ apt で `libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev` を導入。追加で `pulseaudio pulseaudio-utils` も導入(実機確認用の null sink。VM は音声デバイス無し)。
+   - **初回 `npm run tauri:build` 実行でキャッシュ作成済み**: クリーンビルド約 2 分 22 秒で Linux バイナリ + deb/rpm/AppImage の 3 バンドル生成に成功。キャッシュ(`src-tauri/target` 1.9GB + `$CARGO_HOME` = `/usr/local/cargo` 223MB)により **2 回目以降の `cargo build --release` は約 23 秒**。
+   - **ビルド成果物の実機確認済み**: リリースバイナリを起動し、筐体描画・背景動画ループ・レバーオン → 停止ボタン 3 つの 1G 消化・メーター表示を computerUse で確認(console 致命エラーなし)。
+   - **テスト 1 件の修正**: `gameCycle.test.ts` の「仮押し順が一致する押し順では resolveSpin と完全一致」テスト(9 役 × 3 押し順 × 20³ の全数比較)がフルスイート並列実行時にデフォルト 5000ms をわずかに超えて flaky だったため(単独実行では約 3 秒でパス)、明示的に `{ timeout: 20_000 }` を指定。テスト内容は無変更。
+   - **注意: VM への環境導入はこのランの VM 限り**。他のエージェントが `tauri:build` を使う場合は同じセットアップが再度必要(AGENTS.md の Cursor Cloud instructions に手順記載済み)。恒久化するには cursor.com/onboard の env setup agent で環境イメージを更新する(#049 から提案済み・下記参照)。
+   - テスト 323 パス(タイムアウト延長後)、lint / build グリーン。
 
 - Phase 1〜2 完了 + Phase 3 の抽せんテーブル層が完了。
 - **背景動画・リール図柄はユーザー入稿の実素材**。BGM/SE・液晶フォールバック・カットイン演出動画は仮素材のまま。
@@ -376,7 +383,7 @@
 
 1. **実素材が `incoming/` に入稿されていたら STEP 4f(実素材の差し替え + 総合確認)に着手**(`docs/ROADMAP.md` の「STEP 4f」参照): `scripts/import_incoming_assets.py` の対応表を拡張して取り込み、`manifest.json` へ出所登録。差し替えポイントは SE = `SOUND_CUES` / BGM = `STAGE_BGMS` / 予告 = `YOKOKU_VIDEOS` / 連続演出 = `RENZOKU_VIDEOS` / AT・エンディング = `AT_VIDEOS`(いずれも同名ファイル置き換え or 対応表の張り替え)。総合ブラウザ確認 + `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式)を作成し、STEP 4 完了マークを付ける。
 2. 入稿がまだの場合は **STEP 5b(CI ビルド + 配布)に着手**(ROADMAP の STEP 5b 参照): GitHub Actions(`windows-latest`)で Windows exe(NSIS インストーラ等)を自動ビルド。トリガーはタグ push(Release 添付)+ `workflow_dispatch`(検証用)の 2 本立て。Windows 実機確認は VM では不可能なため、ユーザー依頼前提の手順書 `docs/STEP5_VERIFICATION.md`(exe 入手方法・起動手順・チェックリスト = STEP3 版の形式)を作成する。
-3. 作業終了時に本ファイルを更新し、`docs/handover/050_*.md` に履歴を残す(049 は使用済み)。
+3. 作業終了時に本ファイルを更新し、`docs/handover/051_*.md` に履歴を残す(050 は使用済み)。
 
 STEP 5b の実装 AGENT への注意(AGENT #049 = 5a の実装より):
 
@@ -385,12 +392,12 @@ STEP 5b の実装 AGENT への注意(AGENT #049 = 5a の実装より):
 - CI では `npm ci && npm run build` → `tauri build` の順(`beforeBuildCommand` は tauri.conf.json に設定済み = `npm run build`)。Rust は stable でよい(1.97 で動作確認済み。古い 1.83 は依存の `edition2024` 要求で不可)。
 - **`src-tauri/target` は `.gitignore` 済み**。CI キャッシュには `~/.cargo` + `src-tauri/target` を使うとビルド時間を短縮できる。
 
-**Cursor Cloud 環境セットアップ更新の要否 = 要(ユーザーへ提案済み)**: STEP 5a で VM へ導入した環境(下記)は現状エージェントごとに毎回セットアップが必要。cursor.com/onboard の env setup agent での更新を推奨:
+**Cursor Cloud 環境セットアップ更新の要否 = 要(ユーザーへ提案済み)**: STEP 5a で VM へ導入した環境(下記)は現状エージェントごとに毎回セットアップが必要。cursor.com/onboard の env setup agent での更新を推奨(AGENT #050 が同手順で再構築し所要時間を実測済み = 経緯 44):
 
-- Rust toolchain stable(1.97 以上。`rustup update stable && rustup default stable`)
-- apt: `libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
-- (実機確認する場合のみ)PulseAudio null sink(`pulseaudio --start` + `pactl load-module module-null-sink`。音声デバイス無しの VM で GStreamer のオーディオパイプラインが失敗しないようにするため)
-- 初回 `cargo build --release` は約 4 分(クリーンビルド)。`src-tauri/target` をイメージへ含めれば 2 回目以降は数十秒
+- Rust toolchain stable(1.97 以上。`rustup update stable && rustup default stable`。約 11 秒)
+- apt: `libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`(約 23 秒)
+- (実機確認する場合のみ)apt: `pulseaudio pulseaudio-utils` + PulseAudio null sink(`pulseaudio --start` + `pactl load-module module-null-sink`。音声デバイス無しの VM で GStreamer のオーディオパイプラインが失敗しないようにするため)
+- 初回 `npm run tauri:build` は約 2 分半(クリーンビルド + バンドル 3 種)。`src-tauri/target`(約 1.9GB)と `$CARGO_HOME`(`/usr/local/cargo`。約 220MB)をイメージへ含めれば 2 回目以降の `cargo build --release` は約 23 秒
 
 STEP 4e の実装で注意した点(4f 以降も維持すること):
 - **バトルルートの保持は `App.tsx` の `battleRef`(useRef)**。設定 = バトル 1G 目のレバーオン(`drawLeverDirection` 内)/ 引き直し・破棄 = 1G の締め(`finishGame` 内)/ リセットで破棄。演出用 rng(`hintRng`)を使うため出玉には影響しない。

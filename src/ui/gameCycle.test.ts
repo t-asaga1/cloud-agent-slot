@@ -123,7 +123,9 @@ describe('遊技サイクルの進行(startSpin / pressStop / finishSpin)', () =
     expect(provisionalPushOrder([2, 1], 0)).toEqual([2, 1, 0]);
   });
 
-  it('仮押し順が実際の押し順と一致する押し順では resolveSpin と完全に同じ出目になる', () => {
+  // 9 役 × 3 押し順 × 20^3 押下位置の全数比較で重いため、フルスイート並列実行時に
+  // デフォルト 5000ms を超えることがある(VM の負荷次第で 5.3 秒前後)。明示的に延長する。
+  it('仮押し順が実際の押し順と一致する押し順では resolveSpin と完全に同じ出目になる', { timeout: 20_000 }, () => {
     // [左→中→右]・[中→左→右]・[右→左→中] は各停止時点の仮押し順
     // (押した順 + 未停止の左→右昇順)が実際の押し順と一致する
     const matchingOrders: PushOrder[] = [PUSH_ORDERS[0], PUSH_ORDERS[2], PUSH_ORDERS[4]];
