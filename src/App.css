@@ -1,27 +1,41 @@
 .app {
-  max-width: 1080px;
+  max-width: 1560px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 14px 16px 20px;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 .app h1 {
-  font-size: 1.4rem;
-  margin-bottom: 4px;
+  font-size: 1.25rem;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .note {
   color: #9aa4b2;
-  font-size: 0.85rem;
-  margin-bottom: 20px;
+  font-size: 0.8rem;
+  margin: 0;
 }
 
 /*
- * 通常プレイ視点のレイアウト(STEP 3e): 筐体 + 遊技パネルを画面中央へ置き、
- * 開発用の情報・操作は下部の折りたたみ(.debug)へ集約する。
+ * 1 画面完結のレイアウト: 左 = 筐体 + 遊技パネル / 右 = 情報・開発用パネル
+ * (.side-panel。内部スクロール)。筐体を見ながら開発用操作ができるよう、
+ * デバッグ類は筐体の下ではなく右側へ置き、ページ全体のスクロールを不要にする。
+ * 筐体の幅はビューポート高さからも制約し(下の遊技パネル込みで縦に収める)、
+ * 画面が狭いときは縦積みへフォールバックする(下のメディアクエリ)。
  */
 .play-area {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  gap: 18px;
 }
 
 /* --- 筐体ビュー --- */
@@ -30,7 +44,44 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: min(100%, 460px);
+  /* 幅上限 440px。ただし「筐体 + メーター + 停止ボタン + 遊技ボタン」が
+     ビューポート縦(100svh)に収まる幅まで縮める(0.5938 = 筐体の横/縦比) */
+  flex: 0 0 auto;
+  width: min(100%, 440px, calc((100svh - 330px) * 0.5938));
+  min-width: 280px;
+}
+
+/* --- 情報・開発用サイドパネル(筐体の右) --- */
+
+.side-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 780px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* ページはスクロールさせず、サイドパネル内部でスクロールする */
+  max-height: calc(100svh - 90px);
+  overflow-y: auto;
+}
+
+/* 縦積みフォールバック(狭い画面 = 従来の 1 カラム相当) */
+@media (max-width: 900px) {
+  .play-area {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cabinet-column {
+    width: min(100%, 460px);
+  }
+
+  .side-panel {
+    width: 100%;
+    max-width: 640px;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 /* レバーオン・オート消化・BGM(遊技パネル。停止ボタンの下) */
@@ -42,8 +93,8 @@
 }
 
 .main-controls button {
-  font-size: 1rem;
-  padding: 10px 16px;
+  font-size: 0.9rem;
+  padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid #3b4252;
   background: #1f2430;
@@ -53,7 +104,7 @@
 
 .main-controls button.lever {
   flex: 1;
-  min-width: 180px;
+  min-width: 150px;
   background: #b91c1c;
   border-color: #dc2626;
   font-weight: 700;
@@ -83,8 +134,8 @@
 }
 
 .bulk-controls select {
-  font-size: 0.95rem;
-  padding: 9px 8px;
+  font-size: 0.9rem;
+  padding: 7px 8px;
   border-radius: 8px;
   border: 1px solid #3b4252;
   background: #1f2430;
@@ -216,10 +267,9 @@
   color: #4ade80;
 }
 
-/* --- デバッグ折りたたみ(開発用。デフォルト閉) --- */
+/* --- デバッグ折りたたみ(開発用。サイドパネル内・デフォルト開) --- */
 
 .debug {
-  margin-top: 20px;
   border: 1px solid #3b4252;
   border-radius: 10px;
   background: #12151c;
