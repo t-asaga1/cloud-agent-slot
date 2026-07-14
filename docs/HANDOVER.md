@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #062(素材アップロード手順の再確認 + 小役別演出振り分けの現状回答)
+- 作成者: AGENT #063(BGM 実素材 4 曲の取り込み + 状態連動の BGM 選曲ロジック実装 = SPEC 確定 38)
 - 作成日: 2026-07-14
-- 履歴コピー: `docs/handover/062_upload_and_direction_qa.md`
+- 履歴コピー: `docs/handover/063_bgm_intake_and_logic.md`
 
 ## プロジェクト概要
 
@@ -410,9 +410,18 @@
    - **(1) 大容量素材のアップロード手順**: 前回(AT確定ムービー = 経緯 55)と同じ手順で OK と回答。GitHub Desktop で Pull origin → クローンフォルダの `incoming/` 配下へファイルをコピー → 左の Changes に出たら Summary 入力 → Commit to main → Push origin。手順の正は `incoming/README.md`「方法 A: GitHub Desktop」。
    - **(2) 小役別の演出振り分けの現状**: 実装済みの抽せん・振り分けテーブルの全体像を回答(詳細は履歴 062)。演出仕様の正は `docs/DIRECTION_SPEC.md`(振分けは全て仮値 = Q14・Q15 回答「実機で見て調整」)、実装は `src/core/scenario.ts`。小役示唆予告 = `KOYAKU_HINT_TABLE`(成立役 → なし/弱/強)+ `KOYAKU_HINT_SLOT_TABLE`(スロット振分け)/ 前兆シナリオ予告 = `SCENARIO_LEVEL_TABLE`(強度カーブ)+ `ZENCHO_SLOT_TABLE` / AT 小役予告 = `AT_YOKOKU_TABLE` / バトル・復活 = ルート表。数値調整の指示が来たらテーブルと DIRECTION_SPEC「3.」をセットで更新する(構造は変えない = 既存ルールどおり)。
    - テスト 358 パス・lint グリーン(コード変更なしのため現状確認)。
+57. **AGENT #063(今回)**: **BGM 実素材 4 曲(2026-07-14 入稿)の取り込み + 状態連動の BGM 選曲ロジックを実装(SPEC 確定 38)**:
+   - **入稿 WAV 4 曲を OGG Vorbis(q4)へ変換して取り込み**: 「Ashen Gate(前兆背景)」= `bgm_zencho` / 「Skyfall Trigger(下位AT中基本)」= `bgm_at_base` / 「頼朝テーマ曲(下位AT継続確定)」= `bgm_at_kakutei` / 「義経テーマ曲(上位AT中基本)」= `bgm_at_upper`。`scripts/import_incoming_assets.py` に BGMS 対応表 + `import_bgm` を追加(再実行可能)。`manifest.json` を user-provided で登録し、`incoming/` の元 WAV は削除(運用どおり)。
+   - **BGM の選曲をステージ単位 → ゲーム状態単位へ変更**: `STAGE_BGMS`(ステージ ID → 仮 BGM 9 本)を廃止し、`src/assets/index.ts` に `BgmTrackId`(4 トラック)+ `BGM_FILES`(差し替えポイント)、`src/ui/bgm.ts`(新設・React 非依存)に `bgmTrackForState` / `bgmUrlForState` を実装。**通常時の義経・静・弁慶・夕方背景は BGM なし(無音 = `stopBgm` フェード停止)/ 前兆背景滞在中(通常・前兆・連続演出フェーズとも)= Ashen Gate / 下位 AT = 小役・バトル一気通貫で Skyfall Trigger / 上位 AT = 一気通貫で義経テーマ曲**。旧仮 BGM 9 本と `gen_placeholder_assets.py` の BGM 生成コードは削除(SE 生成のみ残る)。
+   - **頼朝テーマ曲(継続確定 BGM)の 1/5 抽せん**: `updateKakuteiBgm(flag, result, rng)` を全停止の 1G 締めで毎ゲーム呼ぶ(`App.tsx` の finishGame / runBulk)。契機は (1) セット開始(AT_START / 下位 AT_SET_CONTINUE)時に V ストックあり / (2) バトル 1G 目消化で継続確定(V ストック先消化・率当せん含む)+ 未当せん、の 2 箇所で各 1/5(`KAKUTEI_BGM_DENOM`)。当せんで**そのセットのみ** `AT_KAKUTEI` が掛かり、セット開始でリセット + 再評価。抽せんは演出専用 rng(`hintRng`)= 出玉への影響なし(core 無変更)。
+   - **実装解釈(SPEC 確定 38 に記録)**: 赤7待機・AT 導入 = 無音(ムービー主体)/ エンディング = 直前 AT 階層の基本 BGM 継続(頼朝は持ち越さない)/ 連続演出用 BGM は用意予定(入稿待ち)のため入稿までは滞在背景ベース(`bgm.ts` の RENZOKU 分岐追加で差し替え)。
+   - **UI**: BGM ボタンは状態ベース(`bgmOn`)へ。再生中はゲーム状態の変化で自動的にクロスフェード切替(トラックなし区間はフェード停止)。デバッグパネルに「BGM:」行(現在トラックのラベル。頼朝テーマは accent 表示)を追加。手動ステージセレクトは映像のみ切替(BGM は状態連動で独立)。
+   - 単体テスト `src/ui/bgm.test.ts` 17 件新設(トラック解決の全フェーズ × 背景 / 頼朝抽せんの契機・リセット・維持・乱数消費数(noDrawRng)/ 上位 AT・エンディングで false / BGM_FILES 解決)。
+   - テスト 375 パス(+17)、lint / build グリーン。ブラウザ実機確認 + 録画 2 本: (1) 通常(無音)→ 前兆背景(Ashen Gate)→ 下位 AT(Skyfall Trigger)→ 上位 AT(義経テーマ曲)/ (2) 赤7待機(無音)→ AT 突入(Skyfall Trigger)→ バトル 1G 目の V ストック消費 → 継続確定で頼朝テーマ曲(1/5 当せん)→ バトル 8G 目まで継続 → 次セットで基本 BGM へ復帰。デバッグの「BGM:」行で全遷移を確認(console エラーなし。VM は音声デバイスなしのため実音は Windows 実機確認へ委ねる)。
 
 - Phase 1〜2 完了 + Phase 3 の抽せんテーブル層が完了。
-- **背景動画・リール図柄はユーザー入稿の実素材**。BGM/SE・液晶フォールバック・カットイン演出動画は仮素材のまま。
+- **背景動画・リール図柄・AT確定ムービー・BGM 4 曲はユーザー入稿の実素材**。SE・液晶フォールバック・演出ムービー(予告/連続演出/AT/エンディング)は仮素材のまま。
+- **BGM はゲーム状態単位で選曲(SPEC 確定 38 = AGENT #063)**: 通常 4 背景 = 無音 / 前兆背景 = Ashen Gate / 下位 AT 一気通貫 = Skyfall Trigger / 上位 AT 一気通貫 = 義経テーマ曲 / セット開始時 V ストックあり or バトル開始時継続確定の 1/5 で頼朝テーマ曲がそのセットのみ。選曲 = `src/ui/bgm.ts`(`bgmTrackForState` + `updateKakuteiBgm`)・差し替えポイント = `src/assets/index.ts` の `BGM_FILES`。**旧 `STAGE_BGMS`(ステージ → BGM)は廃止済み**。連続演出用 BGM は入稿待ち(入稿されたら `bgm.ts` の RENZOKU 分岐 + トラック追加)。
 - **STEP 1(リール制御の本対応)は 1a〜1f 全サブステップ完了**: `reel.ts` は図柄 8 種 + Excel 20 コマ配列(左コマ 14 のみリプレイへ変更 = SPEC 確定事項 17)、表示判定・停止制御とも有効 5 ライン対応。全役 × 全 20³ 押下位置 × 押し順 6 通りの網羅テスト済み(skip・TODO 残ゼロ)。リーチ目は赤7 狙いで 100% 7 揃い(外せば取りこぼし)、DDT 黒バー選好あり。
 - **押し順ベルは左第一「こぼし」仕様(SPEC 確定 35 = AGENT #058)**: 左第一 = 12/13 こぼし(ハズレ目・0 枚)/ 1/13 上段揃い 13 枚、中・右第一 = 斜め揃い 13 枚。1/13 抽せんはレバーオン時(`drawBellMiss`。ベル当選なら押し順に依らず乱数 1 個消費)で、`resolveSpin` / `resolveStop` / `startSpin` の `bellMiss` 引数へ渡す。**旧 bellSuccess(1 枚 / 13 枚の払出区分)は廃止済み**。こぼすベルに小役示唆予告は出さない(`App.tsx` の `drawLeverDirection` がスキップ)。
 - **ベルナビの押し順は正解 4 通り均等(SPEC 確定 36 = AGENT #059)**: ナビ中(AT・エンディング)のベル当選時、レバーオンで `drawNaviPushOrder`(`play.ts`。候補 = `NAVI_PUSH_ORDERS` の中左右・中右左・右左中・右中左)を乱数 1 個で抽せん。旧 `NAVI_PUSH_ORDER`(中左右固定)は廃止。UI はこの値を `SpinUi.naviOrder` に保持してナビ数字・AT 予告の押し順テキストへ反映する(表示と抽せん値を必ず一致させること)。
@@ -437,7 +446,7 @@
 - **STEP 3a 完了(AGENT #035)**: 遊技サイクルの純ロジックは `src/ui/gameCycle.ts`(レバーオン → 停止ボタンで 1 リールずつ `resolveStop` → 全停止 → `advanceGame`。押し順 = 押した順、仮押し順の扱いはファイルヘッダー参照)。
 - **STEP 3b 完了(AGENT #036)**: リール回転アニメーションの純ロジックは `src/ui/reelAnimation.ts`(連続位置 `continuousPosition` / スベリ計画 `planSlip`・`slipPosition` / コマ帯 `reelStrip`)。描画は `App.tsx` の `requestAnimationFrame` + `.reel-strip`(App.css)の translateY スクロール。**「描画に使う時刻」と「押下位置の計算に使う時刻」は同一**(floor(連続位置) = `spinningPosition` をテストで固定)なので、以後の UI 変更でもこの関係を壊さないこと。
 - **STEP 3c 完了(AGENT #037)**: メーター管理の純ロジックは `src/ui/counters.ts`(`meterOnLever` = BET 徴収・自動補充 / `meterOnFinish` = 払出加算 + AT 獲得枚数。呼び出しタイミングはファイルヘッダー参照)。UI は 7seg 風メーターパネル(CREDIT / BET + REPLAY ランプ / WIN / AT 中のみ AT獲得)+ リール窓上のナビ数字(`navi-digit`。停止で消灯)。
-- **STEP 3d 完了(AGENT #038)**: 演出マッピング層は `src/ui/direction.ts`(state → `StateOverlay` / events → `Cutin` の対応表。**STEP 4 のシナリオテーブルへの差し替えはこのファイルの置き換えだけ**)、描画は `src/ui/DirectionLayer.tsx`(液晶へ重ねる表示専用 + カットインキュー)。**SE はサウンドキュー `src/ui/sound.ts`(`playCue`)経由・BGM は `STAGE_BGMS` + クロスフェード(`platform/audio.ts`)で、実素材の差し替えは対応表 or 同名ファイル置き換えで完結**(ユーザー指示による要件)。
+- **STEP 3d 完了(AGENT #038)**: 演出マッピング層は `src/ui/direction.ts`(state → `StateOverlay` / events → `Cutin` の対応表。**STEP 4 のシナリオテーブルへの差し替えはこのファイルの置き換えだけ**)、描画は `src/ui/DirectionLayer.tsx`(液晶へ重ねる表示専用 + カットインキュー)。**SE はサウンドキュー `src/ui/sound.ts`(`playCue`)経由・BGM は `BGM_FILES` + `src/ui/bgm.ts`(旧 `STAGE_BGMS` は #063 で廃止)+ クロスフェード(`platform/audio.ts`)で、実素材の差し替えは対応表 or 同名ファイル置き換えで完結**(ユーザー指示による要件)。
 - **STEP 3e 完了(AGENT #039)= STEP 3 全サブステップ完了**: デバッグ系 UI は `App.tsx` の `<details className="debug">` へ集約(デフォルト閉)。通常プレイ視点は中央 1 カラム(筐体 → メーター → 停止ボタン → レバーオン・オート消化・BGM)。通しフロー(通常 → 前兆 → AT → 上位AT → エンディング → 通常復帰)のブラウザ総合確認・録画済み(経緯 33 参照)。
 - **ユーザーが自分でアプリの動作確認をする手順は `docs/STEP3_VERIFICATION.md`**(STEP 3 完了時点版。AGENT #039 が同手順の実機確認済み)。STEP 1 時点版は `docs/STEP1_VERIFICATION.md`。
 - **未マージ PR の扱い**: PR #15(Step1 ラン ERROR 1 回目の調査ドキュメント)は main と競合中だが、内容は履歴 014 が包含するため**クローズしてよい**。
@@ -465,12 +474,19 @@
 ユーザーの指示内容を最優先とした上で、次を実施:
 
 0. ~~押し順ベル左第一「こぼし」化~~ → **AGENT #058 で実装完了(SPEC 確定 35。経緯 52 参照)**。~~ベルナビ押し順の 4 通り均等化~~ → **AGENT #059 で実装完了(SPEC 確定 36。経緯 53 参照)**。~~AT確定ムービー取り込み + 赤7待機・AT導入フロー~~ → **AGENT #061 で実装完了(SPEC 確定 37。経緯 55 参照)**。PR マージ後の残タスクなし。AT 導入ムービー(`at_intro`)は仮素材のため、実素材が入稿されたら同名差し替え(STEP 4f と同じ手順)。
-1. **実素材が `incoming/` に入稿されていたら STEP 4f(実素材の差し替え + 総合確認)に着手**(`docs/ROADMAP.md` の「STEP 4f」参照): `scripts/import_incoming_assets.py` の対応表を拡張して取り込み、`manifest.json` へ出所登録。差し替えポイントは SE = `SOUND_CUES` / BGM = `STAGE_BGMS` / 予告 = `YOKOKU_VIDEOS` / 連続演出 = `RENZOKU_VIDEOS` / AT・エンディング = `AT_VIDEOS`(いずれも同名ファイル置き換え or 対応表の張り替え)。総合ブラウザ確認 + `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式)を作成し、STEP 4 完了マークを付ける。
+1. **実素材が `incoming/` に入稿されていたら STEP 4f(実素材の差し替え + 総合確認)に着手**(`docs/ROADMAP.md` の「STEP 4f」参照): `scripts/import_incoming_assets.py` の対応表を拡張して取り込み、`manifest.json` へ出所登録。差し替えポイントは SE = `SOUND_CUES` / BGM = `BGM_FILES` + `src/ui/bgm.ts`(4 曲取り込み済み = 確定 38。残りは連続演出用 BGM)/ 予告 = `YOKOKU_VIDEOS` / 連続演出 = `RENZOKU_VIDEOS` / AT・エンディング = `AT_VIDEOS`(いずれも同名ファイル置き換え or 対応表の張り替え)。総合ブラウザ確認 + `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式)を作成し、STEP 4 完了マークを付ける。
 2. 入稿がまだの場合は **STEP 6 の残り(6b〜6d)のうちユーザーが指示した項目に着手**(ROADMAP の STEP 6 参照。優先順はユーザー指示で決めるルール): 6b 永続化(保存対象候補 = `GameState` + `MeterState` + `PlayStats`。`src/platform/` 経由で Web = localStorage / exe = ファイル)/ 6c ペナルティ(確定 7 の解禁)/ 6d 白バー・ブランク役割(ユーザーの構想確定待ち = SPEC 未確定 2)。6a は完了済み。
 3. **Windows 実機確認の結果がユーザーから届いたら対応**: `docs/STEP5_VERIFICATION.md` のチェックリスト(特に #1 AT ステージ動画 / #2 実音再生)の NG 報告があれば調査・修正する。
 4. **ユーザーが Release 配布(タグ v0.1.0 の publish)を実施した場合**: Actions の `windows-build` が失敗していたら `gh run list --workflow windows-build.yml` + `gh run view <id> --log` で調査・修正する(既知の一過性障害 = NSIS/WiX ダウンロードの DNS 失敗は 3 回リトライ済み)。
 5. **ユーザーが GitHub Desktop で `incoming/` へ大容量素材を main 直接プッシュする予定あり(2026-07-14 の質問 1)**。入稿を確認したら上記 1.(STEP 4f)の手順で取り込むこと。
-6. 作業終了時に本ファイルを更新し、`docs/handover/063_*.md` に履歴を残す(062 は使用済み)。
+6. 作業終了時に本ファイルを更新し、`docs/handover/064_*.md` に履歴を残す(063 は使用済み)。
+
+BGM 状態連動(確定 38 = AGENT #063)の実装で注意した点(以後も維持すること):
+
+- **BGM の選曲は必ず `bgmTrackForState`(`src/ui/bgm.ts`)を通す**。UI からファイル URL を直接参照しない(トラック追加・差し替えを 1 箇所で完結させるため)。トラックなし = 無音区間は `stopBgm()`(フェード停止)で表現する。
+- **頼朝テーマ再生フラグ(`kakuteiBgm`)の更新は全停止の 1G 締めで 1 回だけ**(`updateKakuteiBgm`。`meterOnFinish` と同タイミング)。抽せんは演出専用 rng(`hintRng`)を使い、`advanceGame` の乱数列を汚さない(出玉への影響なし = DIRECTION_SPEC「6.」の規約)。一括消化(`runBulk`)でもループ内で更新して最終値を反映する。
+- **連続演出用 BGM が入稿されたら**: `import_incoming_assets.py` の BGMS へ追加 → `BgmTrackId` / `BGM_FILES` へトラック追加 → `bgmTrackForState` の NORMAL/OMEN/RENZOKU 分岐から RENZOKU を分離して新トラックを返す、の 3 箇所で対応できる(`bgm.ts` ヘッダーにも記載)。
+- VM は音声デバイスなしのため実音は未確認(トラック遷移はデバッグパネルの「BGM:」行で確認済み)。**Windows 実機確認(`docs/STEP5_VERIFICATION.md` #2)で BGM 4 曲の実音再生も確認対象に含めること**。
 
 赤7待機・AT 導入(確定 37 = AGENT #061)の実装で注意した点(以後も維持すること):
 

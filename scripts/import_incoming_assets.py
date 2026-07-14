@@ -9,6 +9,8 @@
     → WebM(VP9・音声なし)で src/assets/video/stage/ へ出力
 - 演出ムービー: incoming/*.mp4 — 2026-07-14 入稿分(AT確定)
     → 背景動画と同じ変換で src/assets/video/at/ へ出力
+- BGM: incoming/*.wav — 2026-07-14 入稿分(4 曲)
+    → OGG Vorbis(q4)へ変換し src/assets/audio/bgm/ へ出力
 
 incoming/ の元ファイルは取り込み後に削除される運用のため、
 存在しない入稿ファイルはスキップする(再実行可能)。
@@ -57,6 +59,15 @@ AT_MOVIES = {
     "AT確定.mp4": "at_kakutei",
 }
 
+# 入稿ファイル名 → 素材 ID(BGM。2026-07-14 入稿分 = 4 曲。
+# 使用箇所の仕様は docs/SPEC.md 確定 38 / トラック解決は src/ui/bgm.ts)
+BGMS = {
+    "Ashen Gate（前兆背景）.wav": "bgm_zencho",
+    "Skyfall Trigger（下位AT中基本）.wav": "bgm_at_base",
+    "義経テーマ曲（上位AT中基本）.wav": "bgm_at_upper",
+    "頼朝テーマ曲（下位AT継続確定）.wav": "bgm_at_kakutei",
+}
+
 # リール窓 1 コマは横長(約 2:1)。全図柄を同一キャンバスに揃える
 SYMBOL_CANVAS = (400, 200)
 
@@ -95,6 +106,17 @@ def import_stage_video(src: Path, dst: Path) -> None:
     print(f"{src.name} -> {dst.relative_to(ROOT)}  {dst.stat().st_size / 1024 / 1024:.1f} MB")
 
 
+def import_bgm(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    # ループ再生用 BGM。WAV(PCM)を OGG Vorbis q4(約 128kbps)へ圧縮する
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(src), "-c:a", "libvorbis", "-q:a", "4", str(dst)],
+        check=True,
+        capture_output=True,
+    )
+    print(f"{src.name} -> {dst.relative_to(ROOT)}  {dst.stat().st_size / 1024 / 1024:.1f} MB")
+
+
 def main() -> None:
     # 取り込み済みの入稿ファイルは incoming/ から削除される運用のためスキップ
     def each(mapping: dict[str, str], subdir: str) -> list[tuple[Path, str]]:
@@ -113,6 +135,8 @@ def main() -> None:
         import_stage_video(src, ASSETS / f"video/stage/{asset_id}.webm")
     for src, asset_id in each(AT_MOVIES, ""):
         import_stage_video(src, ASSETS / f"video/at/{asset_id}.webm")
+    for src, asset_id in each(BGMS, ""):
+        import_bgm(src, ASSETS / f"audio/bgm/{asset_id}.ogg")
 
 
 if __name__ == "__main__":

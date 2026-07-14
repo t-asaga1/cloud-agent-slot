@@ -2,7 +2,6 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import './App.css';
 import {
   CABINET_FRAME_URL,
-  STAGE_BGMS,
   STAGE_IDS,
   STAGE_LABELS,
   STAGE_VIDEOS,
@@ -53,7 +52,8 @@ import {
   type GameState,
   type Phase,
 } from './core/state';
-import { isBgmPlaying, playBgm, stopBgm } from './platform/audio';
+import { playBgm, stopBgm } from './platform/audio';
+import { BGM_LABELS, bgmTrackForState, bgmUrlForState, updateKakuteiBgm } from './ui/bgm';
 import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
 import {
   cloneStats,
@@ -338,6 +338,8 @@ interface PlayState {
   cutinFrame: CutinFrame;
   /** 遊技データ(スランプグラフ・AT 履歴 = STEP 6a) */
   stats: PlayStats;
+  /** 頼朝テーマ曲(継続確定 BGM)の再生フラグ(確定 38。`updateKakuteiBgm` で毎 G 更新) */
+  kakuteiBgm: boolean;
 }
 
 function makePlayState(gameState: GameState): PlayState {
@@ -351,6 +353,7 @@ function makePlayState(gameState: GameState): PlayState {
     meter: initMeter(),
     cutinFrame: { seq: 0, cutins: [] },
     stats: initPlayStats(),
+    kakuteiBgm: false,
   };
 }
 
@@ -363,13 +366,15 @@ type Action =
       pushOrder: string;
       /** このゲームのカットイン列(復活告知の差し込みがあるため呼び出し側で確定させる) */
       cutins: readonly Cutin[];
+      /** 更新後の頼朝テーマ再生フラグ(1/5 抽せんは hintRng のため呼び出し側で確定させる) */
+      kakuteiBgm: boolean;
     }
   | {
       /** オートプレイ(高速一括消化 = STEP 6a)の結果を一括反映する */
       type: 'BULK';
       update: Pick<
         PlayState,
-        'gameState' | 'positions' | 'lines' | 'displayed' | 'meter' | 'stats'
+        'gameState' | 'positions' | 'lines' | 'displayed' | 'meter' | 'stats' | 'kakuteiBgm'
       > & { lastLog: GameLog; logs: GameLog[]; eventLog: EventLogEntry[] };
     }
   | { type: 'RESET'; gameState: GameState };
@@ -418,6 +423,7 @@ function reducer(prev: PlayState, action: Action): PlayState {
     eventLog: [...newEvents, ...prev.eventLog].slice(0, 14),
     meter: meterOnFinish(prev.meter, wasAtGame, result),
     cutinFrame: { seq: game, cutins: action.cutins },
+    kakuteiBgm: action.kakuteiBgm,
     stats: statsOnFinish(prev.stats, {
       game,
       netCoins: result.state.netCoins,
@@ -555,8 +561,11 @@ function App() {
       battleRef.current = undefined;
     }
 
+    // 頼朝テーマ(継続確定 BGM = 確定 38)の 1/5 抽せん・更新(演出専用 rng)
+    const kakuteiBgm = updateKakuteiBgm(play.kakuteiBgm, result, hintRng);
+
     const pushOrder = cycle.pressed.map((reel) => REEL_NAMES[reel]).join('→');
-    dispatch({ type: 'FINISH', spin, result, pushOrder, cutins });
+    dispatch({ type: 'FINISH', spin, result, pushOrder, cutins, kakuteiBgm });
     setSpinUi({ mode: 'IDLE' });
   };
 
@@ -715,6 +724,7 @@ function App() {
     setAutoPlay(false);
     let state = play.gameState;
     let meter = play.meter;
+    let kakuteiBgm = play.kakuteiBgm;
     const stats = cloneStats(play.stats);
     const logs: GameLog[] = [];
     const eventLog: EventLogEntry[] = [];
@@ -724,6 +734,7 @@ function App() {
       meter = meterOnLever(meter, state.replayCarry);
       const result = playGame(state, rng, forcedRole === 'DRAW' ? undefined : forcedRole);
       meter = meterOnFinish(meter, wasAtGame, result);
+      kakuteiBgm = updateKakuteiBgm(kakuteiBgm, result, hintRng);
       const game = result.state.totalGames;
       pushGameStats(stats, {
         game,
@@ -763,6 +774,7 @@ function App() {
         displayed: lastSpin.displayed,
         meter,
         stats,
+        kakuteiBgm,
         lastLog: logs[0],
         logs,
         eventLog,
@@ -800,17 +812,23 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // ステージ(状態連動 or 手動)に合わせて BGM を自動切替
+  // BGM はゲーム状態に連動(確定 38。ステージの手動切替とは独立)。
+  // トラックなし(通常 4 背景・赤7待機等)は無音 = stopBgm(フェード付き)
+  const bgmTrack = bgmTrackForState(play.gameState, play.kakuteiBgm);
+  const bgmUrl = bgmUrlForState(play.gameState, play.kakuteiBgm);
   useEffect(() => {
-    if (bgmOn) playBgm(STAGE_BGMS[stage]);
-  }, [bgmOn, stage]);
+    if (!bgmOn) return;
+    if (bgmUrl !== undefined) playBgm(bgmUrl);
+    else stopBgm();
+  }, [bgmOn, bgmUrl]);
 
   const onToggleBgm = () => {
-    if (isBgmPlaying()) {
+    if (bgmOn) {
       stopBgm();
       setBgmOn(false);
     } else {
-      playBgm(STAGE_BGMS[stage]);
+      // 再生開始はユーザー操作起点(自動再生ポリシー)。以後の切替は上の useEffect
+      if (bgmUrl !== undefined) playBgm(bgmUrl);
       setBgmOn(true);
     }
   };
@@ -1056,6 +1074,16 @@ function App() {
                   <strong className="accent">押し順ナビ中(ベル = 正解 4 通り均等)</strong>
                 ) : (
                   'なし'
+                )}
+              </div>
+              <div>
+                BGM:{' '}
+                {bgmTrack !== undefined ? (
+                  <strong className={bgmTrack === 'AT_KAKUTEI' ? 'accent' : undefined}>
+                    {BGM_LABELS[bgmTrack]}
+                  </strong>
+                ) : (
+                  'なし(無音)'
                 )}
               </div>
               <div>

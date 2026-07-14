@@ -29,14 +29,9 @@ import stageZencho from './video/stage/stage_zencho.webm';
 import effectCutinStrong from './video/effect/effect_cutin_strong.webm';
 import effectCutinWeak from './video/effect/effect_cutin_weak.webm';
 
-import bgmAtBattle from './audio/bgm/bgm_at_battle.ogg';
-import bgmAtKoyaku from './audio/bgm/bgm_at_koyaku.ogg';
-import bgmAtUpperBattle from './audio/bgm/bgm_at_upper_battle.ogg';
-import bgmAtUpperKoyaku from './audio/bgm/bgm_at_upper_koyaku.ogg';
-import bgmBenkei from './audio/bgm/bgm_benkei.ogg';
-import bgmShizuka from './audio/bgm/bgm_shizuka.ogg';
-import bgmYoshitsune from './audio/bgm/bgm_yoshitsune.ogg';
-import bgmYugata from './audio/bgm/bgm_yugata.ogg';
+import bgmAtBase from './audio/bgm/bgm_at_base.ogg';
+import bgmAtKakutei from './audio/bgm/bgm_at_kakutei.ogg';
+import bgmAtUpper from './audio/bgm/bgm_at_upper.ogg';
 import bgmZencho from './audio/bgm/bgm_zencho.ogg';
 
 import seBonus from './audio/se/se_bonus.ogg';
@@ -105,17 +100,25 @@ export const STAGE_VIDEOS: Record<StageId, string> = {
   STAGE_AT_UPPER_BATTLE: stageAtUpper,
 };
 
-/** ステージ → BGM URL(仮素材) */
-export const STAGE_BGMS: Record<StageId, string> = {
-  STAGE_YOSHITSUNE: bgmYoshitsune,
-  STAGE_SHIZUKA: bgmShizuka,
-  STAGE_BENKEI: bgmBenkei,
-  STAGE_YUGATA: bgmYugata,
-  STAGE_ZENCHO: bgmZencho,
-  STAGE_AT_KOYAKU: bgmAtKoyaku,
-  STAGE_AT_BATTLE: bgmAtBattle,
-  STAGE_AT_UPPER_KOYAKU: bgmAtUpperKoyaku,
-  STAGE_AT_UPPER_BATTLE: bgmAtUpperBattle,
+/**
+ * BGM トラック ID(SPEC 確定 38 = 2026-07-14 のユーザー入稿・指示)。
+ * 通常時の 4 背景(義経・静・弁慶・夕方)は BGM なし(無音)のためトラックを持たない。
+ * - ZENCHO: 「Ashen Gate」= 前兆背景滞在中(連続演出用は別 BGM を用意予定 = 入稿待ち)
+ * - AT_BASE: 「Skyfall Trigger」= 下位 AT 中基本(小役・バトル一気通貫)
+ * - AT_KAKUTEI: 「頼朝テーマ曲」= 下位 AT 継続確定時に 1/5 でそのセットのみ
+ * - AT_UPPER: 「義経テーマ曲」= 上位 AT 中基本(一気通貫)
+ */
+export type BgmTrackId = 'ZENCHO' | 'AT_BASE' | 'AT_KAKUTEI' | 'AT_UPPER';
+
+/**
+ * BGM トラック → ファイル URL(ユーザー入稿素材。差し替えポイント)。
+ * ゲーム状態からのトラック解決は `src/ui/bgm.ts` の `bgmTrackForState` を使うこと。
+ */
+export const BGM_FILES: Record<BgmTrackId, string> = {
+  ZENCHO: bgmZencho,
+  AT_BASE: bgmAtBase,
+  AT_KAKUTEI: bgmAtKakutei,
+  AT_UPPER: bgmAtUpper,
 };
 
 /** 演出動画 URL */

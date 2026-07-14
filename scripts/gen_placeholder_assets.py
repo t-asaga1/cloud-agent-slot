@@ -2,7 +2,7 @@
 """仮素材(プレースホルダー)の一括生成スクリプト。
 
 ユーザー入稿済みの素材(筐体画像・リール図柄・背景動画)以外の素材
-(液晶フォールバック静止画・演出動画・BGM・SE)を
+(液晶フォールバック静止画・演出動画・SE)を
 「黒背景 + 白文字の ●●（仮)」形式で生成する。実素材が入稿されたら同名ファイルを
 差し替えるだけで置き換えられる。
 ※ ユーザー入稿素材の取り込み(変換)は scripts/import_incoming_assets.py 参照。
@@ -30,20 +30,6 @@ FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 # ---------------------------------------------------------------------------
 # 定義(SPEC.md と一致させること)
 # ---------------------------------------------------------------------------
-
-# 演出ステージ(背景)9 種(id, 表示ラベル)— SPEC.md「5. 背景と背景移行抽せん」
-# 図柄・背景動画はユーザー入稿済みのため、本スクリプトでは BGM の仮素材のみ生成する
-STAGES = [
-    ("yoshitsune", "義経背景"),
-    ("shizuka", "静背景"),
-    ("benkei", "弁慶背景"),
-    ("yugata", "夕方背景"),
-    ("zencho", "前兆背景"),
-    ("at_koyaku", "AT(小役パート)"),
-    ("at_battle", "AT(バトルパート)"),
-    ("at_upper_koyaku", "上位AT(小役パート)"),
-    ("at_upper_battle", "上位AT(バトルパート)"),
-]
 
 # 演出動画(id, 表示ラベル, 秒数)
 EFFECTS = [
@@ -259,19 +245,6 @@ SES = [
     ("se_fail", [(494, 0.14), (330, 0.28)]),
 ]
 
-# BGM のステージ別ベース周波数(単純な 2 音コードのループ。区別が付けばよい)
-BGM_BASE_HZ = {
-    "yoshitsune": 220,
-    "shizuka": 233,
-    "benkei": 247,
-    "yugata": 262,
-    "zencho": 196,
-    "at_koyaku": 330,
-    "at_battle": 349,
-    "at_upper_koyaku": 370,
-    "at_upper_battle": 392,
-}
-
 
 def run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True, capture_output=True)
@@ -394,25 +367,11 @@ def gen_se(path: Path, notes: list[tuple[float, float]]) -> None:
     _ = filters, offset
 
 
-def gen_bgm(path: Path, base_hz: float, duration: int = 8) -> None:
-    """base_hz + 完全5度の 2 音をゆっくり揺らしたループ。ステージ区別用の仮 BGM。"""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fifth = base_hz * 1.5
-    expr = (
-        f"aevalsrc='0.18*sin(2*PI*{base_hz}*t)+0.12*sin(2*PI*{fifth}*t)*"
-        f"(0.6+0.4*sin(2*PI*t/{duration}))':d={duration}:s=44100"
-    )
-    run([
-        "ffmpeg", "-y", "-f", "lavfi", "-i", expr,
-        "-c:a", "libvorbis", "-q:a", "2", str(path),
-    ])
-
-
 def gen_audio() -> None:
+    # BGM はユーザー入稿済み(2026-07-14 の 4 曲 = scripts/import_incoming_assets.py)のため
+    # 本スクリプトでは SE の仮素材のみ生成する
     for se_id, notes in SES:
         gen_se(ASSETS / f"audio/se/{se_id}.ogg", notes)
-    for stage_id, _ in STAGES:
-        gen_bgm(ASSETS / f"audio/bgm/bgm_{stage_id}.ogg", BGM_BASE_HZ[stage_id])
 
 
 def main() -> None:
