@@ -375,7 +375,10 @@
   box-shadow: 0 0 22px rgba(248, 113, 113, 0.85);
 }
 
-/* リール消灯演出(共通 3 = 確定 39): 画面 3 分割の左/中/右が停止に合わせて消灯 */
+/*
+ * リール消灯演出(共通 3 = 確定 39): 画面 3 分割の左/中/右が停止に合わせて消灯。
+ * 黒は透過率 50%(後ろの画面が薄っすら見える)。
+ */
 .reel-blackout {
   position: absolute;
   inset: 0;
@@ -390,7 +393,7 @@
 }
 
 .blackout-section.blackout-on {
-  opacity: 1;
+  opacity: 0.5;
 }
 
 @keyframes yokoku-in {
