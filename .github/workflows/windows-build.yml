@@ -66,8 +66,20 @@ jobs:
       - name: テスト
         run: npm test
 
+      # バンドル工程が WiX / NSIS のバイナリを外部ダウンロードするため、一時的な
+      # ネットワーク障害(初回ランで DNS 解決失敗を実測)に備えてリトライする。
+      # 2 回目以降は cargo のコンパイルキャッシュが効くため再試行は数分で済む。
       - name: Tauri ビルド(NSIS インストーラ / MSI / ポータブル exe)
-        run: npm run tauri:build
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if npm run tauri:build; then
+              exit 0
+            fi
+            echo "::warning::tauri:build に失敗(試行 $attempt/3)。20 秒後に再試行します"
+            sleep 20
+          done
+          exit 1
 
       - name: 成果物を収集
         shell: bash
