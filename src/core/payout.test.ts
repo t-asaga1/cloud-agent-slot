@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BELL_PAYOUT_FAIL,
-  BELL_PAYOUT_SUCCESS,
-  BET_PER_GAME,
-  PAYOUT_TABLE,
-  calcPayout,
-} from './payout';
+import { BELL_MISS_DENOM } from './lottery';
+import { BELL_PAYOUT, BET_PER_GAME, PAYOUT_TABLE, calcPayout } from './payout';
 import { ROLES } from './roles';
 
 describe('PAYOUT_TABLE(docs/SPEC.md「2.」と一致)', () => {
-  it('ベル以外の全役にエントリが定義されている', () => {
+  it('全役にエントリが定義されている', () => {
     for (const role of ROLES) {
-      if (role === 'BELL') continue;
       expect(PAYOUT_TABLE[role]).toBeDefined();
       expect(PAYOUT_TABLE[role]).toBeGreaterThanOrEqual(0);
     }
@@ -26,24 +20,24 @@ describe('PAYOUT_TABLE(docs/SPEC.md「2.」と一致)', () => {
     expect(PAYOUT_TABLE.REACH_ME).toBe(3);
   });
 
-  it('押し順ベルは正解 13 枚 / 不正解 1 枚', () => {
-    expect(BELL_PAYOUT_SUCCESS).toBe(13);
-    expect(BELL_PAYOUT_FAIL).toBe(1);
+  it('押し順ベルは停止形に依らず常に 13 枚(確定 35。こぼしは表示役 NONE = 0 枚)', () => {
+    expect(BELL_PAYOUT).toBe(13);
+    expect(PAYOUT_TABLE.BELL).toBe(BELL_PAYOUT);
   });
 });
 
 describe('calcPayout', () => {
-  it('押し順ベル正解(通常 BET): 13 枚払い出し・収支 +10', () => {
-    const result = calcPayout('BELL', true, true);
+  it('押し順ベル揃い(通常 BET): 13 枚払い出し・収支 +10', () => {
+    const result = calcPayout('BELL', true);
     expect(result.payout).toBe(13);
     expect(result.isReplay).toBe(false);
     expect(result.net).toBe(13 - BET_PER_GAME);
   });
 
-  it('押し順ベル不正解(左第一停止): 1 枚払い出し・収支 -2', () => {
-    const result = calcPayout('BELL', true, false);
-    expect(result.payout).toBe(1);
-    expect(result.net).toBe(1 - BET_PER_GAME);
+  it('押し順ベルこぼし(左第一 12/13): 表示役 NONE = 払い出し 0・収支 -3', () => {
+    const result = calcPayout('NONE', true);
+    expect(result.payout).toBe(0);
+    expect(result.net).toBe(-BET_PER_GAME);
   });
 
   it('リプレイ: 払い出し 0・再遊技フラグが立つ', () => {
@@ -54,7 +48,7 @@ describe('calcPayout', () => {
   });
 
   it('リプレイ後のゲーム(betPaid=false)は投入 0 で計算される', () => {
-    const result = calcPayout('BELL', false, true);
+    const result = calcPayout('BELL', false);
     expect(result.net).toBe(13);
   });
 
@@ -65,12 +59,16 @@ describe('calcPayout', () => {
     expect(result.net).toBe(-BET_PER_GAME);
   });
 
-  it('通常時(全役の期待値)純増は約 -1.8 枚/G(左押しベル 1 枚)', () => {
+  it('通常時(全役の期待値)純増は約 -1.8 枚/G(左押しベルの期待値 = 1/13 × 13 = 1 枚)', () => {
     // SPEC.md「2.」の参考試算の検算。リプレイはハズレ扱いの投入 3 枚で近似せず、
-    // 当選個数で加重平均: (Σ 個数×払出 − リプレイ以外の投入) / 65536
+    // 当選個数で加重平均: (Σ 個数×払出 − リプレイ以外の投入) / 65536。
+    // 左第一ベルの期待払出は (1/13) × 13 = 1 枚/G で旧仕様(必ず 1 枚)と同一(確定 35)
     const denom = 65536;
+    const bellExpected = (1 / BELL_MISS_DENOM) * BELL_PAYOUT;
+    expect(bellExpected).toBe(1);
     // リプレイ(8970 個)は払出 0
-    const totalPayout = 45000 * 1 + 600 * 2 + 344 * 2 + 667 * 3 + 194 * 3 + 369 * 3 + 8 * 3;
+    const totalPayout =
+      45000 * bellExpected + 600 * 2 + 344 * 2 + 667 * 3 + 194 * 3 + 369 * 3 + 8 * 3;
     const totalBet = (denom - 8970) * BET_PER_GAME;
     const net = (totalPayout - totalBet) / denom;
     expect(net).toBeCloseTo(-1.8, 1);

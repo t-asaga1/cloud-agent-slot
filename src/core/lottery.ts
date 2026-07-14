@@ -51,3 +51,19 @@ export function drawRole(rng: Rng): Role {
 export function theoreticalDenominator(role: Exclude<Role, 'NONE'>): number {
   return LOTTERY_DENOM / ROLE_WEIGHTS[role];
 }
+
+/**
+ * 押し順ベル左第一停止の「こぼし」抽せん分母(確定 35):
+ * 12/13 = こぼし(ベル非揃い・0 枚)/ 1/13 = 上段揃い・13 枚。
+ * 期待値は 1 枚/G で旧仕様(必ず上段揃い 1 枚)と同一 = 機械割への影響なし。
+ */
+export const BELL_MISS_DENOM = 13;
+
+/**
+ * 押し順ベルの左第一「こぼし」抽せん(確定 35)。
+ * レバーオン時にベル当選なら押し順に依らず常に 1 回呼ぶ(固定シード再現性のため)。
+ * true = こぼし(12/13)。結果は左第一停止のときのみ停止制御(`reel.ts` の bellMiss)に効く。
+ */
+export function drawBellMiss(rng: Rng): boolean {
+  return rng.nextInt(BELL_MISS_DENOM) !== 0;
+}

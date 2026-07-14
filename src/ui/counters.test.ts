@@ -53,7 +53,7 @@ describe('メーター管理(クレジット・払出・AT 獲得枚数。STEP 3
 
   it('全停止: 払出をクレジットへ加算し、払出枚数を表示する', () => {
     const meter: MeterState = { credit: 47, payout: 0, autoBet: false, atGained: 0 };
-    const result = { events: [], payout: calcPayout('BELL', true, true) };
+    const result = { events: [], payout: calcPayout('BELL', true) };
     expect(meterOnFinish(meter, false, result)).toEqual({
       credit: 60,
       payout: 13,
@@ -70,8 +70,8 @@ describe('メーター管理(クレジット・払出・AT 獲得枚数。STEP 3
 
   it('AT 中(ゲーム開始時点のフェーズが AT / ENDING)のゲームは純増を獲得枚数へ加算する', () => {
     const meter: MeterState = { credit: 100, payout: 0, autoBet: false, atGained: 10 };
-    // ベル正解 13 枚 − BET 3 枚 = +10
-    const bell = meterOnFinish(meter, true, { events: [], payout: calcPayout('BELL', true, true) });
+    // ベル揃い 13 枚 − BET 3 枚 = +10
+    const bell = meterOnFinish(meter, true, { events: [], payout: calcPayout('BELL', true) });
     expect(bell.atGained).toBe(20);
     // ハズレ = −3
     const none = meterOnFinish(meter, true, { events: [], payout: calcPayout('NONE', true) });
@@ -86,7 +86,7 @@ describe('メーター管理(クレジット・払出・AT 獲得枚数。STEP 3
 
   it('通常時のゲームは獲得枚数を変えない(AT 終了後は最終値のまま凍結)', () => {
     const meter: MeterState = { credit: 100, payout: 0, autoBet: false, atGained: 123 };
-    const result = { events: [], payout: calcPayout('BELL', true, false) };
+    const result = { events: [], payout: calcPayout('BELL', true) };
     expect(meterOnFinish(meter, false, result).atGained).toBe(123);
   });
 
@@ -97,7 +97,7 @@ describe('メーター管理(クレジット・払出・AT 獲得枚数。STEP 3
     const games = [
       calcPayout('NONE', true),
       calcPayout('REPLAY', true),
-      calcPayout('BELL', false, true), // リプレイ持越しで BET 不要
+      calcPayout('BELL', false), // リプレイ持越しで BET 不要
       calcPayout('WATERMELON_STRONG', true),
     ];
     for (const payout of games) {

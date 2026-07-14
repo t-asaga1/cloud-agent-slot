@@ -16,9 +16,15 @@
  * (`provisionalPushOrder`)。第二停止以降は全順序が確定する。
  * 押し順ベルの停止形は第一停止のリールだけで決まる(`reel.ts` の `bellTargetFor` が
  * pushOrder[0] のみ参照)ため仮確定の影響を受けない。残り 2 リールの順序の仮確定が
- * 出目の合法性(スベリ 4 コマ以内 / 非当選図柄を揃えない / リプレイ・ベル 100%
- * 引き込み / ベルの押し順別停止形 / 取りこぼしはクリーンなハズレ目)を壊さないことは
+ * 出目の合法性(スベリ 4 コマ以内 / 非当選図柄を揃えない / リプレイ 100% 引き込み /
+ * ベルの押し順別停止形 / 取りこぼしはクリーンなハズレ目)を壊さないことは
  * `gameCycle.test.ts` で全役 × 全押し順 6 通り × 全 20³ 押下位置の網羅検証済み。
+ *
+ * # 押し順ベルの左第一「こぼし」(確定 35)
+ *
+ * ベル当選時の 1/13 抽せん(揃い / こぼし)はレバーオン時に App 側で行い、
+ * `startSpin` の `bellMiss` で受け取ってサイクル中保持する(第一停止まで押し順が
+ * 未確定のため、左第一で押されたときだけ `resolveStop` 経由で停止制御に効く)。
  *
  * # 回転の時間モデル
  *
@@ -60,6 +66,8 @@ export function spinningPosition(startPosition: number, elapsedMs: number): numb
 export interface SpinCycle {
   /** このゲームの内部当選役(レバーオン時に確定) */
   readonly wonRole: Role;
+  /** 押し順ベルの左第一こぼし抽せん結果(レバーオン時に確定 = 確定 35。ベル当選時のみ意味を持つ) */
+  readonly bellMiss: boolean;
   /** 停止ボタンを押した順(確定分。長さ 0〜3) */
   readonly pressed: readonly ReelIndex[];
   /** 各リールの押下位置(押下瞬間に中段にあったコマ。未停止は undefined) */
@@ -69,9 +77,10 @@ export interface SpinCycle {
 }
 
 /** レバーオン: 全リール回転開始(押下・停止とも未確定の初期サイクル) */
-export function startSpin(wonRole: Role): SpinCycle {
+export function startSpin(wonRole: Role, bellMiss = false): SpinCycle {
   return {
     wonRole,
+    bellMiss,
     pressed: [],
     pushPositions: [undefined, undefined, undefined],
     stopped: [undefined, undefined, undefined],
@@ -96,13 +105,14 @@ export function pressStop(cycle: SpinCycle, reel: ReelIndex, pushPosition: numbe
   if (cycle.stopped[reel] !== undefined) return cycle;
   const push = ((pushPosition % KOMA_COUNT) + KOMA_COUNT) % KOMA_COUNT;
   const order = provisionalPushOrder(cycle.pressed, reel);
-  const position = resolveStop(reel, push, cycle.wonRole, cycle.stopped, order);
+  const position = resolveStop(reel, push, cycle.wonRole, cycle.stopped, order, cycle.bellMiss);
   const stopped = cycle.stopped.slice();
   stopped[reel] = position;
   const pushPositions = cycle.pushPositions.slice();
   pushPositions[reel] = push;
   return {
     wonRole: cycle.wonRole,
+    bellMiss: cycle.bellMiss,
     pressed: [...cycle.pressed, reel],
     pushPositions,
     stopped,
@@ -116,7 +126,7 @@ export function isAllStopped(cycle: SpinCycle): boolean {
 
 /**
  * 全停止後の表示判定。`resolveSpin` と同じ形(`SpinResult`)を返すため、
- * `advanceGame` への入力(displayedRole / bellSuccess)と UI 表示(lines)へそのまま使える。
+ * `advanceGame` への入力(displayedRole)と UI 表示(lines)へそのまま使える。
  */
 export function finishSpin(cycle: SpinCycle): SpinResult {
   if (!isAllStopped(cycle)) {
@@ -128,6 +138,5 @@ export function finishSpin(cycle: SpinCycle): SpinResult {
     positions,
     displayed: detail.role,
     lines: detail.lines,
-    bellSuccess: detail.bellSuccess,
   };
 }

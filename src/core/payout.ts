@@ -6,13 +6,17 @@ import type { Role } from './roles';
  */
 export const BET_PER_GAME = 3;
 
-/** 押し順ベルの払出: 押し順正解(AT 中のナビ準拠 or 変則押し)で 13 枚、不正解(左第一)で 1 枚 */
-export const BELL_PAYOUT_SUCCESS = 13;
-export const BELL_PAYOUT_FAIL = 1;
+/**
+ * 押し順ベルの払出は停止形(上段 / 斜め)に依らず常に 13 枚(確定 35)。
+ * 左第一停止時は 12/13 でベルが揃わず表示役 NONE(= 0 枚)になるため、
+ * 1 枚 / 13 枚の払出区分(旧 bellSuccess)は廃止した。
+ */
+export const BELL_PAYOUT = 13;
 
 /** 役別の払い出し枚数(リプレイは再遊技なので 0 枚 + 次ゲーム BET 不要) */
-export const PAYOUT_TABLE: Record<Exclude<Role, 'BELL'>, number> = {
+export const PAYOUT_TABLE: Record<Role, number> = {
   REPLAY: 0,
+  BELL: BELL_PAYOUT,
   CHERRY_CORNER: 2,
   CHERRY_CENTER: 2,
   WATERMELON_WEAK: 3,
@@ -32,13 +36,11 @@ export interface PayoutResult {
 }
 
 /**
- * @param role 揃った役(取りこぼし時は 'NONE' を渡す)
+ * @param role 揃った役(取りこぼし・ベルこぼし時は 'NONE' を渡す)
  * @param betPaid このゲームで実際にメダルを投入したか(前ゲームがリプレイなら false)
- * @param bellSuccess 押し順ベルの押し順正解か(role が 'BELL' のときのみ参照)
  */
-export function calcPayout(role: Role, betPaid: boolean, bellSuccess = false): PayoutResult {
-  const payout =
-    role === 'BELL' ? (bellSuccess ? BELL_PAYOUT_SUCCESS : BELL_PAYOUT_FAIL) : PAYOUT_TABLE[role];
+export function calcPayout(role: Role, betPaid: boolean): PayoutResult {
+  const payout = PAYOUT_TABLE[role];
   const bet = betPaid ? BET_PER_GAME : 0;
   return {
     payout,

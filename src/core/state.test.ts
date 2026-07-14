@@ -272,18 +272,19 @@ describe('advanceGame: ゲーム数・差枚・リプレイ持越しの集計', 
     }
   });
 
-  it('差枚: ハズレは −3(BET のみ)、押し順ベル正解は +10(13 − 3)', () => {
+  it('差枚: ハズレは −3(BET のみ)、押し順ベル揃いは +10(13 − 3。確定 35)', () => {
     const rng = createRng(7);
     const miss = advanceGame(normalState(), input('NONE'), rng);
     expect(miss.payout.net).toBe(-BET_PER_GAME);
     expect(miss.state.netCoins).toBe(-BET_PER_GAME);
 
-    const bell = advanceGame(normalState(), input('BELL', { bellSuccess: true }), rng);
+    const bell = advanceGame(normalState(), input('BELL'), rng);
     expect(bell.payout.net).toBe(10);
     expect(bell.state.netCoins).toBe(10);
 
-    const bellFail = advanceGame(normalState(), input('BELL', { bellSuccess: false }), rng);
-    expect(bellFail.payout.net).toBe(1 - BET_PER_GAME);
+    // ベルこぼし(左第一 12/13)は表示役 NONE = ハズレと同じ −3
+    const bellMiss = advanceGame(normalState(), input('BELL', { displayedRole: 'NONE' }), rng);
+    expect(bellMiss.payout.net).toBe(-BET_PER_GAME);
   });
 
   it('リプレイの次ゲームは BET 不要(replayCarry)', () => {
@@ -1012,7 +1013,7 @@ describe('advanceGame: AT 小役パート・V ストック(確定 11・27)', () 
     // ベル: 0 → 獲得(1/1000)
     const bell = advanceGame(
       normalState({ phase: atPhase({ partGame: 3 }) }),
-      input('BELL', { bellSuccess: true }),
+      input('BELL'),
       seqRng([0]),
     );
     expect(bell.state.phase).toEqual(atPhase({ partGame: 4, vStock: 1 }));
@@ -1393,11 +1394,7 @@ describe('advanceGame: AT 終了処理の本前兆リドロー・ナビ・分布
     const totalGames = 200000;
     while (games < totalGames) {
       const role = drawRole(rng);
-      const result = advanceGame(
-        state,
-        { wonRole: role, displayedRole: role, bellSuccess: role === 'BELL' },
-        rng,
-      );
+      const result = advanceGame(state, { wonRole: role, displayedRole: role }, rng);
       net += result.payout.net;
       games++;
       state = result.state;
