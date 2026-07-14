@@ -681,9 +681,10 @@ function App() {
     if (spinUi.mode !== 'IDLE') return;
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
-    // 赤7待機中は REACH_ME 強制(確定 37)+ 目押しは赤7 狙い(playGame のポリシーと同じ)
-    const sevenWait = isSevenFlagForced(play.gameState);
-    const won: Role = sevenWait
+    // 赤7待機中は REACH_ME 強制(確定 37)。目押しはセレクトを尊重する
+    // (適当押し = 揃えられず待機継続 / 赤7 狙い = 揃う、の両方をデバッグで再現できる。
+    // ヘッドレスの playGame / オートプレイ(一括)は常に赤7 狙いで 1G で揃う)
+    const won: Role = isSevenFlagForced(play.gameState)
       ? 'REACH_ME'
       : forcedRole === 'DRAW'
         ? drawRole(rng)
@@ -692,7 +693,7 @@ function App() {
     const naviOrder =
       isNaviActive(play.gameState) && won === 'BELL' ? drawNaviPushOrder(rng) : undefined;
     drawLeverDirection(won, bellMiss, naviOrder);
-    const pushes = pickPushes(sevenWait ? 'SEVEN' : aim, rng);
+    const pushes = pickPushes(aim, rng);
     const order: PushOrder =
       pushOrderSelect === 'AUTO'
         ? (naviOrder ?? NORMAL_PUSH_ORDER)
