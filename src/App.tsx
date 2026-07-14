@@ -15,7 +15,7 @@ import type { Background, BackgroundTrigger } from './core/background';
 import { drawRole } from './core/lottery';
 import type { Mode } from './core/mode';
 import { RENZOKU_GAMES } from './core/omen';
-import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER } from './core/play';
+import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER, playGame } from './core/play';
 import {
   drawAtYokoku,
   drawBattleRoute,
@@ -53,6 +53,14 @@ import {
 } from './core/state';
 import { isBgmPlaying, playBgm, stopBgm } from './platform/audio';
 import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
+import {
+  cloneStats,
+  initPlayStats,
+  pushGameStats,
+  statsOnFinish,
+  type PlayStats,
+} from './ui/playStats';
+import { StatsPanel } from './ui/StatsPanel';
 import {
   atYokokuAllowed,
   atYokokuView,
@@ -318,6 +326,8 @@ interface PlayState {
   meter: MeterState;
   /** 直近ゲームのカットイン演出列(STEP 3d。DirectionLayer がキューへ積む) */
   cutinFrame: CutinFrame;
+  /** 遊技データ(スランプグラフ・AT 履歴 = STEP 6a) */
+  stats: PlayStats;
 }
 
 function makePlayState(gameState: GameState): PlayState {
@@ -330,6 +340,7 @@ function makePlayState(gameState: GameState): PlayState {
     eventLog: [],
     meter: initMeter(),
     cutinFrame: { seq: 0, cutins: [] },
+    stats: initPlayStats(),
   };
 }
 
@@ -343,6 +354,14 @@ type Action =
       /** このゲームのカットイン列(復活告知の差し込みがあるため呼び出し側で確定させる) */
       cutins: readonly Cutin[];
     }
+  | {
+      /** オートプレイ(高速一括消化 = STEP 6a)の結果を一括反映する */
+      type: 'BULK';
+      update: Pick<
+        PlayState,
+        'gameState' | 'positions' | 'lines' | 'displayed' | 'meter' | 'stats'
+      > & { lastLog: GameLog; logs: GameLog[]; eventLog: EventLogEntry[] };
+    }
   | { type: 'RESET'; gameState: GameState };
 
 function reducer(prev: PlayState, action: Action): PlayState {
@@ -350,6 +369,17 @@ function reducer(prev: PlayState, action: Action): PlayState {
   if (action.type === 'LEVER') {
     // レバーオン = BET 徴収(リプレイ持越しなら自動 BET)+ 払出枚数表示のリセット
     return { ...prev, meter: meterOnLever(prev.meter, prev.gameState.replayCarry) };
+  }
+  if (action.type === 'BULK') {
+    const { update } = action;
+    return {
+      ...prev,
+      ...update,
+      logs: [...update.logs, ...prev.logs].slice(0, 8),
+      eventLog: [...update.eventLog, ...prev.eventLog].slice(0, 14),
+      // 高速消化中のカットインは表示しない(seq だけ進めて古いキューを無効化)
+      cutinFrame: { seq: update.gameState.totalGames, cutins: [] },
+    };
   }
   const { spin, result } = action;
   // AT 獲得枚数の加算対象か = ゲーム開始時点(advanceGame 前)のフェーズが AT / エンディング
@@ -378,6 +408,13 @@ function reducer(prev: PlayState, action: Action): PlayState {
     eventLog: [...newEvents, ...prev.eventLog].slice(0, 14),
     meter: meterOnFinish(prev.meter, wasAtGame, result),
     cutinFrame: { seq: game, cutins: action.cutins },
+    stats: statsOnFinish(prev.stats, {
+      game,
+      netCoins: result.state.netCoins,
+      net: result.payout.net,
+      wasAtGame,
+      events: result.events,
+    }),
   };
 }
 
@@ -431,6 +468,7 @@ function App() {
   const [aim, setAim] = useState<AimMode>('RANDOM');
   const [forcedRole, setForcedRole] = useState<'DRAW' | Role>('DRAW');
   const [autoPlay, setAutoPlay] = useState(false);
+  const [bulkGames, setBulkGames] = useState(500);
   const [resetCount, setResetCount] = useState(0);
 
   const stage = stageSelect === 'AUTO' ? stageForState(play.gameState) : stageSelect;
@@ -616,6 +654,73 @@ function App() {
     let cycle = startSpin(won);
     for (const reel of order) cycle = pressStop(cycle, reel, pushes[reel]);
     finishGame(cycle);
+  };
+
+  /**
+   * オートプレイ = 高速一括消化(STEP 6a。シミュレーションモード)。
+   * `playGame`(確定 26 の打ち方ポリシー = 通常時 左第一・適当押し / AT 中 ナビ遵守)を
+   * ヘッドレスで N ゲーム回し、結果(状態・メーター・遊技データ・直近ログ)を一括反映する。
+   * リール描画・演出は出さない(終了後に最終ゲームの出目を表示)。成立役の強制指定は
+   * オート消化と同様に尊重する。乱数は通常プレイと同じ `rng` を消費する(続きから遊技可能)。
+   */
+  const runBulk = (games: number) => {
+    if (spinUi.mode !== 'IDLE') return;
+    setAutoPlay(false);
+    let state = play.gameState;
+    let meter = play.meter;
+    const stats = cloneStats(play.stats);
+    const logs: GameLog[] = [];
+    const eventLog: EventLogEntry[] = [];
+    let lastSpin: SpinResult | undefined;
+    for (let i = 0; i < games; i++) {
+      const wasAtGame = state.phase.type === 'AT' || state.phase.type === 'ENDING';
+      meter = meterOnLever(meter, state.replayCarry);
+      const result = playGame(state, rng, forcedRole === 'DRAW' ? undefined : forcedRole);
+      meter = meterOnFinish(meter, wasAtGame, result);
+      const game = result.state.totalGames;
+      pushGameStats(stats, {
+        game,
+        netCoins: result.state.netCoins,
+        net: result.payout.net,
+        wasAtGame,
+        events: result.events,
+      });
+      logs.push({
+        game,
+        won: result.wonRole,
+        displayed: result.spin.displayed,
+        lines: result.spin.lines,
+        payout: result.payout.payout,
+        net: result.state.netCoins,
+        phase: phaseLabel(result.state.phase),
+        pushOrder: result.push.pushOrder.map((reel) => REEL_NAMES[reel]).join('→'),
+      });
+      if (logs.length > 8) logs.shift();
+      for (const event of result.events) eventLog.push({ game, text: formatEvent(event) });
+      if (eventLog.length > 14) eventLog.splice(0, eventLog.length - 14);
+      state = result.state;
+      lastSpin = result.spin;
+    }
+    if (lastSpin === undefined) return;
+    logs.reverse();
+    eventLog.reverse();
+    // 高速消化中のレバーオン演出・バトルルートは無効化(最終ゲームの状態から再開)
+    battleRef.current = undefined;
+    setLeverDirection((prev) => ({ seq: prev.seq + 1 }));
+    dispatch({
+      type: 'BULK',
+      update: {
+        gameState: state,
+        positions: lastSpin.positions,
+        lines: lastSpin.lines,
+        displayed: lastSpin.displayed,
+        meter,
+        stats,
+        lastLog: logs[0],
+        logs,
+        eventLog,
+      },
+    });
   };
 
   // オート消化(30G 背景移行・AT の通し確認用)
@@ -846,7 +951,24 @@ function App() {
             <button type="button" onClick={onToggleBgm}>
               BGM {bgmOn ? '停止' : '再生'}
             </button>
+            <span className="bulk-controls">
+              <select
+                aria-label="オートプレイのゲーム数"
+                value={bulkGames}
+                onChange={(e) => setBulkGames(Number(e.target.value))}
+              >
+                {[100, 500, 1000, 5000].map((n) => (
+                  <option key={n} value={n}>
+                    {n}G
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={() => runBulk(bulkGames)} disabled={spinning}>
+                オートプレイ(一括)
+              </button>
+            </span>
           </div>
+          <StatsPanel stats={play.stats} />
         </section>
       </div>
 
