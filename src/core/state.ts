@@ -281,13 +281,12 @@ export interface GameState {
 /**
  * 1 ゲームの入力。リール制御・打ち方ポリシーとの結合はラッパー側(STEP 2e)で行う。
  * - `wonRole`: 内部当選役。モード移行・前兆・AT 中抽せんの契機に使う。
- * - `displayedRole`: 表示役(取りこぼし時は 'NONE')。払出計算に使う。
- * - `bellSuccess`: 押し順ベルの押し順正解か(表示役が BELL のときのみ参照)。
+ * - `displayedRole`: 表示役(取りこぼし・ベルこぼし時は 'NONE')。払出計算に使う。
+ *   表示役 BELL の払出は停止形に依らず 13 枚(確定 35。旧 bellSuccess は廃止)。
  */
 export interface GameInput {
   wonRole: Role;
   displayedRole: Role;
-  bellSuccess?: boolean;
 }
 
 /**
@@ -541,7 +540,7 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
   const events: GameEvent[] = [];
 
   // 1. 払出計算(前ゲームがリプレイなら BET 不要 = 投入 0)
-  const payout = calcPayout(input.displayedRole, !state.replayCarry, input.bellSuccess ?? false);
+  const payout = calcPayout(input.displayedRole, !state.replayCarry);
 
   // 2. モード移行抽せん(本前兆滞在中の停止・ハズレ維持は drawModeTransition 内で処理)
   let mode = state.mode;

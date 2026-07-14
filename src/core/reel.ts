@@ -23,8 +23,11 @@ import type { Role } from './roles';
  *     押し順([中→右→左]・[右→中→左])で理論限界の取りこぼしが発生していたが、
  *     2026-07-11 のユーザー指示で左リール コマ 14 をブランク → リプレイへ配列変更し
  *     (最大間隔 6 → 5 コマ)、全押し順で 100% 引き込み可能となった
- *   - 押し順ベル: 左第一停止=上段揃い 1 枚 / 中・右第一停止=斜め揃い 13 枚
- *     (第一停止リールは pushOrder 引数の先頭で判定)
+ *   - 押し順ベル(2026-07-14 の左第一「こぼし」仕様 = SPEC 確定 35):
+ *     中・右第一停止=斜め揃い 13 枚 / 左第一停止=上流(レバーオン時)の 1/13 抽せんで
+ *     「揃い(上段揃い 13 枚)」か「こぼし(ハズレ目・0 枚)」が決まる。
+ *     本エンジンは乱数を持たないため、抽せん結果は bellMiss フラグで受け取る
+ *     (bellMiss は左第一のときのみ効く。第一停止リールは pushOrder 引数の先頭で判定)
  *
  * 【STEP 1d 完了】レア役(チェリー / スイカ / チャンス目)の停止制御を確定。
  * - 角チェリー: 左リール上段 or 下段のチェリー停止(中段は禁止出目)。引き込めなければ取りこぼし
@@ -214,27 +217,12 @@ function leftCherryState(position: number): 'none' | 'corner' | 'center' {
 
 export type StopPositions = [number, number, number];
 
-/**
- * 押し順ベルの払出区分(payout.ts の bellSuccess)との対応。
- * - 押し順正解(中・右第一停止)= 斜めライン揃い = 13 枚(bellSuccess: true)
- * - 押し順不正解(左第一停止)= 上段(横)揃い = 1 枚(bellSuccess: false)
- * 停止形の作り分けと payout への実配線は STEP 1c(SPEC「3.」挙動表)。
- */
-export function bellSuccessFromLines(lines: readonly LineId[]): boolean {
-  return lines.some((line) => DIAGONAL_LINES.includes(line));
-}
-
 /** 表示役の判定結果(揃ったラインつき) */
 export interface DisplayJudge {
   /** 表示役(取りこぼし・ハズレは NONE) */
   role: Role;
   /** role がライン役のとき、その図柄が揃った有効ライン(複数同時揃いあり)。それ以外は空 */
   lines: LineId[];
-  /**
-   * 押し順ベルの払出区分(role が BELL のときのみ意味を持つ)。
-   * 斜め揃い = 押し順正解 13 枚 / 横揃い(上段等)= 不正解 1 枚(bellSuccessFromLines 参照)
-   */
-  bellSuccess: boolean;
 }
 
 /**
@@ -262,11 +250,7 @@ export function judgeDisplayDetail(positions: StopPositions, wonRole: Role = 'NO
   if (isLineRole(wonRole)) {
     const lines = linesWithSymbol(positions, LINE_ROLE_SYMBOL[wonRole]);
     if (lines.length > 0) {
-      return {
-        role: wonRole,
-        lines,
-        bellSuccess: wonRole === 'BELL' && bellSuccessFromLines(lines),
-      };
+      return { role: wonRole, lines };
     }
   }
   // 非当選図柄の揃い(固定優先順位。スイカは弱・強を区別できないため対象外)
@@ -274,18 +258,18 @@ export function judgeDisplayDetail(positions: StopPositions, wonRole: Role = 'NO
     if (role === wonRole) continue;
     const lines = linesWithSymbol(positions, LINE_ROLE_SYMBOL[role]);
     if (lines.length > 0) {
-      return { role, lines, bellSuccess: role === 'BELL' && bellSuccessFromLines(lines) };
+      return { role, lines };
     }
   }
   // ライン役なし → チャンス目(内部当選時のみ。スイカテンパイはずし目が停止形)
   if (wonRole === 'CHANCE_ME' && watermelonTenpai(positions)) {
-    return { role: 'CHANCE_ME', lines: [], bellSuccess: false };
+    return { role: 'CHANCE_ME', lines: [] };
   }
   // 左リール窓内のチェリー(ライン非依存)
   const cherry = leftCherryState(positions[0]);
-  if (cherry === 'center') return { role: 'CHERRY_CENTER', lines: [], bellSuccess: false };
-  if (cherry === 'corner') return { role: 'CHERRY_CORNER', lines: [], bellSuccess: false };
-  return { role: 'NONE', lines: [], bellSuccess: false };
+  if (cherry === 'center') return { role: 'CHERRY_CENTER', lines: [] };
+  if (cherry === 'corner') return { role: 'CHERRY_CORNER', lines: [] };
+  return { role: 'NONE', lines: [] };
 }
 
 /** 全リール停止後の表示役のみを返す(詳細は judgeDisplayDetail) */
@@ -357,11 +341,12 @@ function roleLineSymbol(role: Role): ReelSymbol | undefined {
 // ---------------------------------------------------------------------------
 
 /**
- * 押し順ベルの目標停止形。
- * 左第一停止 = 'TOP'(上段揃い 1 枚)/ 中・右第一停止 = 'DIAGONAL'(斜め揃い 13 枚)。
- * SPEC「3.」リール挙動表。
+ * 押し順ベルの目標停止形(SPEC「3.」リール挙動表 + 確定 35)。
+ * - 'DIAGONAL': 中・右第一停止(押し順正解)= 斜め揃い 13 枚
+ * - 'TOP': 左第一停止 + こぼし抽せんで 1/13 を引いた = 上段揃い 13 枚
+ * - 'MISS': 左第一停止 + こぼし(12/13)= ベルを揃えずクリーンなハズレ目(0 枚)
  */
-type BellTarget = 'TOP' | 'DIAGONAL';
+type BellTarget = 'TOP' | 'DIAGONAL' | 'MISS';
 
 /** 全停止形の評価ランク(小さいほど良い。RANK_ILLEGAL は禁止出目) */
 const RANK_WIN = 0;
@@ -383,6 +368,9 @@ const RANK_ILLEGAL = Number.POSITIVE_INFINITY;
  * - チェリー非当選時の左窓チェリーは、100% 引き込み役(ベル・リプレイ)の
  *   完成形と同時のときのみ許容(RANK_WIN_WITH_CHERRY。表示判定はライン役優先)。
  * - 押し順ベルは bellTarget の停止形(上段 or 斜め)以外での揃いを禁止出目とする。
+ *   bellTarget = 'MISS'(左第一のこぼし = 確定 35)はベル揃いを含む全ての揃いが禁止で、
+ *   クリーンなハズレ目のみ許容(= ハズレと同一の分類。蹴飛ばし全域可能性はハズレの
+ *   網羅テストで証明済み)。
  * - スイカは弱=斜め優先 / 強=平行(横)優先(SPEC「3.」挙動表)。優先方向でない揃いは
  *   RANK_WIN_FALLBACK として「揃えられるなら方向不問で揃える(取りこぼしよりよい)」を表す。
  *   引き込めない押下位置は RANK_LOSS(取りこぼし許容)。
@@ -397,7 +385,9 @@ const RANK_ILLEGAL = Number.POSITIVE_INFINITY;
  *   「狙えば揃う」の保証は aimedRank(目押し保証ランク)が担う(STEP 1e)。
  */
 function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: BellTarget): number {
-  const wonSymbol = roleLineSymbol(wonRole);
+  // ベルこぼし(MISS)は「当選図柄なし」= ハズレと同一の分類になる
+  // (ベル揃いは非当選図柄の揃いとして禁止され、クリーンなハズレ目のみ WIN)
+  const wonSymbol = bellTarget === 'MISS' ? undefined : roleLineSymbol(wonRole);
   const cherry = leftCherryState(positions[0]);
 
   const wonLines: LineId[] = [];
@@ -446,7 +436,7 @@ function classifyFinal(positions: StopPositions, wonRole: Role, bellTarget?: Bel
     if (cherry !== 'none') return RANK_ILLEGAL;
     return watermelonTenpai(positions) ? RANK_WIN : RANK_LOSS;
   }
-  // ハズレ: クリーンなハズレ目のみ許容
+  // ハズレ・ベルこぼし(MISS): クリーンなハズレ目のみ許容
   return cherry === 'none' ? RANK_WIN : RANK_ILLEGAL;
 }
 
@@ -660,9 +650,15 @@ function pickBestPosition(
   return bestPosition;
 }
 
-function bellTargetFor(wonRole: Role, pushOrder: PushOrder): BellTarget | undefined {
+/**
+ * 押し順ベルの目標停止形を決める(第一停止リールのみ参照)。
+ * 左第一停止時の揃い(1/13)/ こぼし(12/13)の抽せんはエンジン外(レバーオン時)で
+ * 行い、結果を bellMiss で受け取る(確定 35。中・右第一では bellMiss は効かない)。
+ */
+function bellTargetFor(wonRole: Role, pushOrder: PushOrder, bellMiss: boolean): BellTarget | undefined {
   if (wonRole !== 'BELL') return undefined;
-  return pushOrder[0] === 0 ? 'TOP' : 'DIAGONAL';
+  if (pushOrder[0] !== 0) return 'DIAGONAL';
+  return bellMiss ? 'MISS' : 'TOP';
 }
 
 /**
@@ -675,6 +671,8 @@ function bellTargetFor(wonRole: Role, pushOrder: PushOrder): BellTarget | undefi
  * @param wonRole 内部当選役(取りこぼし判定は judgeDisplay で行う)
  * @param stopped 停止済みリールの停止位置([左, 中, 右]、未停止は undefined)
  * @param pushOrder 押し順(押し順ベルの停止形と残りリールの停止順の決定に使う)
+ * @param bellMiss 押し順ベルの左第一こぼし抽せん結果(確定 35。レバーオン時に 12/13 で
+ *   true。ベル当選 + 左第一停止のときのみ効く)
  * @returns 停止位置(中段のコマ番号)
  */
 export function resolveStop(
@@ -683,12 +681,20 @@ export function resolveStop(
   wonRole: Role,
   stopped: readonly (number | undefined)[] = [undefined, undefined, undefined],
   pushOrder: PushOrder = PUSH_ORDERS[0],
+  bellMiss = false,
 ): number {
   const push = ((pushPosition % KOMA_COUNT) + KOMA_COUNT) % KOMA_COUNT;
   const remaining = pushOrder.filter(
     (r): r is ReelIndex => r !== reel && stopped[r] === undefined,
   );
-  return pickBestPosition(stopped, reel, push, remaining, wonRole, bellTargetFor(wonRole, pushOrder));
+  return pickBestPosition(
+    stopped,
+    reel,
+    push,
+    remaining,
+    wonRole,
+    bellTargetFor(wonRole, pushOrder, bellMiss),
+  );
 }
 
 export type PushOrder = readonly [ReelIndex, ReelIndex, ReelIndex];
@@ -706,16 +712,10 @@ export const PUSH_ORDERS: readonly PushOrder[] = [
 export interface SpinResult {
   /** 各リールの停止位置([左, 中, 右]、中段のコマ番号) */
   positions: StopPositions;
-  /** 停止後の表示役(取りこぼし時は NONE) */
+  /** 停止後の表示役(取りこぼし・ベルこぼし時は NONE) */
   displayed: Role;
   /** 表示役が揃った有効ライン(ライン役以外は空) */
   lines: LineId[];
-  /**
-   * 押し順ベルの払出区分(displayed が BELL のときのみ意味を持つ)。
-   * 斜め揃い = 押し順正解 13 枚 / 上段(横)揃い = 不正解 1 枚。
-   * calcPayout(displayed, betPaid, bellSuccess) へそのまま渡す。
-   */
-  bellSuccess: boolean;
 }
 
 /**
@@ -724,15 +724,17 @@ export interface SpinResult {
  * @param wonRole 内部当選役
  * @param pushPositions 各リールの押下位置([左, 中, 右])
  * @param pushOrder 押し順(デフォルトは順押し)
+ * @param bellMiss 押し順ベルの左第一こぼし抽せん結果(確定 35。resolveStop 参照)
  */
 export function resolveSpin(
   wonRole: Role,
   pushPositions: readonly [number, number, number],
   pushOrder: PushOrder = PUSH_ORDERS[0],
+  bellMiss = false,
 ): SpinResult {
   const stopped: (number | undefined)[] = [undefined, undefined, undefined];
   for (const reel of pushOrder) {
-    stopped[reel] = resolveStop(reel, pushPositions[reel], wonRole, stopped, pushOrder);
+    stopped[reel] = resolveStop(reel, pushPositions[reel], wonRole, stopped, pushOrder, bellMiss);
   }
   const positions = stopped as StopPositions;
   const detail = judgeDisplayDetail(positions, wonRole);
@@ -740,6 +742,5 @@ export function resolveSpin(
     positions,
     displayed: detail.role,
     lines: detail.lines,
-    bellSuccess: detail.bellSuccess,
   };
 }

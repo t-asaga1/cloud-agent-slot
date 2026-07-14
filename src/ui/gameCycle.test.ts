@@ -30,8 +30,9 @@ function interactiveSpin(
   wonRole: Role,
   pushes: readonly [number, number, number],
   order: PushOrder,
+  bellMiss = false,
 ): SpinCycle {
-  let cycle = startSpin(wonRole);
+  let cycle = startSpin(wonRole, bellMiss);
   for (const reel of order) {
     cycle = pressStop(cycle, reel, pushes[reel]);
   }
@@ -192,8 +193,12 @@ describe('対話式停止の網羅検証(全役 × 全押し順 6 通り × 全 
                 if (result.displayed !== 'BELL') {
                   throw new Error(`ベル取りこぼし: order=${order} pushes=${pushes}`);
                 }
-                // 押し順ベルの停止形は第一停止のリールで決まる(左第一=上段 1 枚 / 中・右第一=斜め 13 枚)
-                if (result.bellSuccess !== (order[0] !== 0)) {
+                // 押し順ベル(揃い側)の停止形は第一停止のリールで決まる
+                // (左第一 = 上段揃い / 中・右第一 = 斜め揃い。払出はどちらも 13 枚 = 確定 35)
+                const diagonal = result.lines.some(
+                  (line) => line === 'DOWN_RIGHT' || line === 'UP_RIGHT',
+                );
+                if (diagonal !== (order[0] !== 0)) {
                   throw new Error(
                     `ベル停止形不一致: order=${order} pushes=${pushes} positions=${positions}`,
                   );
@@ -232,5 +237,38 @@ describe('対話式停止の網羅検証(全役 × 全押し順 6 通り × 全 
       REACH_ME: 46790,
       NONE: 48000,
     });
+  });
+
+  it('押し順ベルのこぼし(bellMiss = 確定 35): 左第一はクリーンなハズレ目 / 中・右第一は斜め揃いのまま', () => {
+    for (const order of PUSH_ORDERS) {
+      const leftFirst = order[0] === 0;
+      for (let p0 = 0; p0 < KOMA_COUNT; p0++) {
+        for (let p1 = 0; p1 < KOMA_COUNT; p1++) {
+          for (let p2 = 0; p2 < KOMA_COUNT; p2++) {
+            const pushes: [number, number, number] = [p0, p1, p2];
+            const cycle = interactiveSpin('BELL', pushes, order, true);
+            const result = finishSpin(cycle);
+            if (leftFirst) {
+              if (
+                result.displayed !== 'NONE' ||
+                alignedSymbols(result.positions).length > 0 ||
+                windowAt(0, result.positions[0]).includes('CHERRY')
+              ) {
+                throw new Error(
+                  `こぼしの出目不正: order=${order} pushes=${pushes} positions=${result.positions} displayed=${result.displayed}`,
+                );
+              }
+            } else if (
+              result.displayed !== 'BELL' ||
+              !result.lines.some((line) => line === 'DOWN_RIGHT' || line === 'UP_RIGHT')
+            ) {
+              throw new Error(
+                `変則押しベルの停止形不一致: order=${order} pushes=${pushes} positions=${result.positions}`,
+              );
+            }
+          }
+        }
+      }
+    }
   });
 });

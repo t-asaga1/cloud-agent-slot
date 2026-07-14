@@ -1,4 +1,4 @@
-import { drawRole } from './lottery';
+import { drawBellMiss, drawRole } from './lottery';
 import {
   KOMA_COUNT,
   PUSH_ORDERS,
@@ -20,13 +20,15 @@ import { advanceGame, isNaviActive, type AdvanceResult, type GameState } from '.
  *
  * - 通常時: 左第一・適当押し(押下位置は全リール一様ランダム)。
  *   チェリー・スイカ・リーチ目はタイミング押し依存のため取りこぼしあり。
+ *   押し順ベルは左第一のため 12/13 でこぼし(0 枚)/ 1/13 で上段揃い 13 枚(確定 35)。
  * - AT 中・エンディング中(`isNaviActive`。確定 31): ナビ遵守。押し順ベルはナビの
  *   押し順(中第一 = 斜め揃い 13 枚)に従う。ベル以外はナビなし = 左第一・適当押しの
  *   まま(レア役の取りこぼしは通常時と同様に発生する)。
  *
  * # 乱数の消費順序(1 ゲームあたり)
  *
- * 役抽せん(1)→ 押下位置(3。左・中・右の順)→ `advanceGame` 内部の各抽せん。
+ * 役抽せん(1)→ ベルこぼし抽せん(ベル当選時のみ 1。押し順に依らず消費 = 確定 35)→
+ * 押下位置(3。左・中・右の順)→ `advanceGame` 内部の各抽せん。
  * `playGame` はこの順序で単一の `rng` を消費する(固定シードで完全再現可能)。
  */
 
@@ -73,16 +75,15 @@ export interface PlayResult extends AdvanceResult {
 /**
  * 1 ゲームをヘッドレスで実行する(レバーオン 1 回分)。
  * @param forcedRole 内部当選役の強制指定(テスト・デモ用。省略時は `drawRole` で抽せん)。
- *   強制時は役抽せんの乱数を消費しない。
+ *   強制時は役抽せんの乱数を消費しない(ベルこぼし抽せんは強制時も消費する)。
  */
 export function playGame(state: GameState, rng: Rng, forcedRole?: Role): PlayResult {
   const wonRole = forcedRole ?? drawRole(rng);
+  // ベル当選時は押し順に依らず常に 1/13 のこぼし抽せんを消費(確定 35。
+  // 結果はナビ遵守(中第一)では効かず、左第一停止のときのみ停止制御に効く)
+  const bellMiss = wonRole === 'BELL' ? drawBellMiss(rng) : false;
   const push = decidePush(state, wonRole, rng);
-  const spin = resolveSpin(wonRole, push.pushPositions, push.pushOrder);
-  const result = advanceGame(
-    state,
-    { wonRole, displayedRole: spin.displayed, bellSuccess: spin.bellSuccess },
-    rng,
-  );
+  const spin = resolveSpin(wonRole, push.pushPositions, push.pushOrder, bellMiss);
+  const result = advanceGame(state, { wonRole, displayedRole: spin.displayed }, rng);
   return { ...result, spin, push };
 }

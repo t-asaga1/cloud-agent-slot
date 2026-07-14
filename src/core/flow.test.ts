@@ -11,13 +11,14 @@ import { ENDING_GAMES, initGameState, type GameEvent } from './state';
  * 上位 AT → 10 連勝利 → エンディング 10G → AT 終了後の再抽せん → 通常」の
  * 一連遷移をイベント列と毎 G のフェーズで検証する。
  *
- * シード 30 は 489G 目までにエンディング(上位 AT 10 連)経由の AT 終了へ到達する
+ * シード 73 は 398G 目までにエンディング(上位 AT 10 連)経由の AT 終了へ到達する
  * (`scripts/run_simulation.ts` と同じ乱数消費順序。乱数消費を変える変更をしたら
- * このシード・G 数は取り直すこと。4b のシナリオ抽せん追加でシード 62 から取り直し済み)。
+ * このシード・G 数は取り直すこと。ベルこぼし抽せん(確定 35)の追加でシード 30 から
+ * 取り直し済み = 2026-07-14。その前は 4b のシナリオ抽せん追加でシード 62 から取り直し)。
  */
 
-const SEED = 30;
-const MAX_GAMES = 520;
+const SEED = 73;
+const MAX_GAMES = 430;
 
 interface TimelineEntry extends PlayResult {
   /** 0 始まりのゲーム番号 */

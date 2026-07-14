@@ -18,17 +18,18 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   const stats = simulate(GAMES, SEED);
 
   it('固定値: 投入・払出・初当り・セット・上位 AT・エンディング(回帰検出)', () => {
-    // 4b でシナリオ抽せんが scheduleOmen の乱数列へ加わったため取り直し(2026-07-13)
-    expect(stats.coinsIn).toBe(258771);
-    expect(stats.coinsOut).toBe(346202);
-    expect(stats.normal.games).toBe(66674);
-    expect(stats.at.games).toBe(GAMES - 66674);
-    expect(stats.atCount).toBe(304);
-    expect(stats.totalSets).toBe(1812);
+    // ベルこぼし抽せん(確定 35)が playGame の乱数列へ加わったため取り直し(2026-07-14。
+    // 前回は 4b のシナリオ抽せん追加 = 2026-07-13)
+    expect(stats.coinsIn).toBe(258948);
+    expect(stats.coinsOut).toBe(333529);
+    expect(stats.normal.games).toBe(68399);
+    expect(stats.at.games).toBe(GAMES - 68399);
+    expect(stats.atCount).toBe(302);
+    expect(stats.totalSets).toBe(1716);
     expect(stats.upperAtCount).toBe(46);
-    expect(stats.endingCount).toBe(71);
-    expect(stats.endingCompleteCount).toBe(25);
-    expect(stats.vStockGains).toBe(292);
+    expect(stats.endingCount).toBe(73);
+    expect(stats.endingCompleteCount).toBe(27);
+    expect(stats.vStockGains).toBe(299);
   });
 
   it('通常時純増 ≒ -1.8 枚/G(SPEC 想定)', () => {
@@ -73,9 +74,17 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
       const sigma = Math.sqrt(GAMES * p * (1 - p));
       expect(Math.abs(count - mean)).toBeLessThan(4 * sigma);
     }
-    // リプレイ・ベルは 100% 引き込み(取りこぼしなし)
+    // リプレイは 100% 引き込み(取りこぼしなし)
     expect(stats.roleDisplayed.REPLAY).toBe(stats.roleWon.REPLAY);
-    expect(stats.roleDisplayed.BELL).toBe(stats.roleWon.BELL);
+    // ベルは通常時(左第一)の 12/13 がこぼしになる(確定 35)。表示率 ≒
+    // AT 区間割合 + 通常区間割合 × 1/13 で、当選数より確実に少ない
+    expect(stats.roleDisplayed.BELL).toBeLessThan(stats.roleWon.BELL);
+    const atRatio = stats.at.games / stats.games;
+    const expectedBellDisplayRatio = atRatio + (1 - atRatio) / 13;
+    expect(stats.roleDisplayed.BELL / stats.roleWon.BELL).toBeCloseTo(
+      expectedBellDisplayRatio,
+      1,
+    );
     // 適当押しのレア役は取りこぼしが発生する
     expect(stats.roleDisplayed.CHERRY_CORNER).toBeLessThan(stats.roleWon.CHERRY_CORNER);
   });

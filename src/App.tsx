@@ -12,7 +12,7 @@ import {
 import { CABINET_SIZE, LCD_RECT, REEL_WINDOW_RECTS, rectToPercent } from './assets/layout';
 import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from './core/at';
 import type { Background, BackgroundTrigger } from './core/background';
-import { drawRole } from './core/lottery';
+import { drawBellMiss, drawRole } from './core/lottery';
 import type { Mode } from './core/mode';
 import { RENZOKU_GAMES } from './core/omen';
 import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER, playGame } from './core/play';
@@ -28,6 +28,7 @@ import {
   type ZenchoYokokuSlot,
 } from './core/scenario';
 import {
+  DIAGONAL_LINES,
   KOMA_COUNT,
   LINES,
   PUSH_ORDERS,
@@ -503,7 +504,7 @@ function App() {
     const spin = finishSpin(cycle);
     const result = advanceGame(
       play.gameState,
-      { wonRole: cycle.wonRole, displayedRole: spin.displayed, bellSuccess: spin.bellSuccess },
+      { wonRole: cycle.wonRole, displayedRole: spin.displayed },
       rng,
     );
     // 基本 SE(レア役 > 払出)。告知系の SE はカットイン表示時に DirectionLayer が鳴らす
@@ -557,9 +558,10 @@ function App() {
    * - 連続演出中(1G 目 = 前兆最終 G 消化済みを含む)は 4G 構成の全画面表示(STEP 4d)。
    * - それ以外は前兆シナリオ予告(このゲームのステップ)を優先し、ない場合のみ
    *   小役示唆予告を成立役から抽せんする(競合規約 = DIRECTION_SPEC 2.1)。
+   *   こぼすベル(bellMiss = 確定 35)には小役示唆予告を出さない(揃うベルは出す)。
    * いずれも次のレバーオンまで表示。
    */
-  const drawLeverDirection = (won: Role) => {
+  const drawLeverDirection = (won: Role, bellMiss: boolean) => {
     const state = play.gameState;
     const { phase: currentPhase } = state;
     // バトルパート(STEP 4e)
@@ -592,7 +594,9 @@ function App() {
       atYokoku === undefined &&
       renzoku === undefined &&
       yokoku === undefined &&
-      koyakuHintAllowed(state)
+      koyakuHintAllowed(state) &&
+      // こぼすベルには小役示唆を出さない(揃うベルには出す = 確定 35 のユーザー指示)
+      !(won === 'BELL' && bellMiss)
     ) {
       const drawn = drawKoyakuHint(hintRng, won);
       if (drawn !== null) hint = koyakuHintView(drawn, won, state.background);
@@ -606,10 +610,12 @@ function App() {
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
-    drawLeverDirection(won);
+    // ベル当選時は 1/13 のこぼし抽せん(確定 35。playGame と同じ乱数消費順序)
+    const bellMiss = won === 'BELL' ? drawBellMiss(rng) : false;
+    drawLeverDirection(won, bellMiss);
     setSpinUi({
       mode: 'SPINNING',
-      cycle: startSpin(won),
+      cycle: startSpin(won, bellMiss),
       startPositions: play.positions,
       startAt: performance.now(),
       slips: [undefined, undefined, undefined],
@@ -643,7 +649,8 @@ function App() {
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
-    drawLeverDirection(won);
+    const bellMiss = won === 'BELL' ? drawBellMiss(rng) : false;
+    drawLeverDirection(won, bellMiss);
     const pushes = pickPushes(aim, rng);
     const order: PushOrder =
       pushOrderSelect === 'AUTO'
@@ -651,7 +658,7 @@ function App() {
           ? NAVI_PUSH_ORDER
           : NORMAL_PUSH_ORDER
         : PUSH_ORDERS[pushOrderSelect];
-    let cycle = startSpin(won);
+    let cycle = startSpin(won, bellMiss);
     for (const reel of order) cycle = pressStop(cycle, reel, pushes[reel]);
     finishGame(cycle);
   };
@@ -1085,14 +1092,20 @@ function App() {
                   {play.lastLog.displayed !== play.lastLog.won && (
                     <span className="miss">
                       (出目: {ROLE_LABELS[play.lastLog.displayed]}
-                      {play.lastLog.displayed === 'NONE' ? ' = 取りこぼし/未成立' : ''})
+                      {play.lastLog.displayed === 'NONE'
+                        ? play.lastLog.won === 'BELL'
+                          ? ' = ベルこぼし(12/13)'
+                          : ' = 取りこぼし/未成立'
+                        : ''})
                     </span>
                   )}
                   {play.lastLog.lines.length > 0 && (
                     <span className="miss">
                       ライン: {play.lastLog.lines.map((line) => LINE_LABELS[line]).join('・')}
                       {play.lastLog.displayed === 'BELL' &&
-                        `(押し順${play.lastLog.payout >= 13 ? '正解 13 枚' : '不正解 1 枚'})`}
+                        (play.lastLog.lines.some((line) => DIAGONAL_LINES.includes(line))
+                          ? '(押し順正解 13 枚)'
+                          : '(左第一 1/13 揃い 13 枚)')}
                     </span>
                   )}
                   <span className="miss">押し順: {play.lastLog.pushOrder}</span>

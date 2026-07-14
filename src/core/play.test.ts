@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BELL_PAYOUT_FAIL, BELL_PAYOUT_SUCCESS, BET_PER_GAME } from './payout';
+import { BELL_MISS_DENOM } from './lottery';
+import { BELL_PAYOUT, BET_PER_GAME } from './payout';
 import { decidePush, NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER, playGame } from './play';
 import { createRng } from './rng';
 import type { GameState } from './state';
@@ -57,22 +58,50 @@ describe('decidePush(打ち方ポリシー = 確定 26)', () => {
 });
 
 describe('playGame(ヘッドレス 1G 実行)', () => {
-  it('通常時のベルは左第一 = 上段揃い 1 枚(押し順不正解)', () => {
-    for (let seed = 0; seed < 20; seed++) {
+  it('通常時のベルは左第一 = 12/13 こぼし(0 枚)/ 1/13 上段揃い 13 枚(確定 35)', () => {
+    let aligned = 0;
+    let missed = 0;
+    for (let seed = 0; seed < 400; seed++) {
       const result = playGame(normalState(), createRng(seed), 'BELL');
-      expect(result.displayedRole).toBe('BELL');
-      expect(result.spin.bellSuccess).toBe(false);
-      expect(result.payout.payout).toBe(BELL_PAYOUT_FAIL);
+      if (result.displayedRole === 'BELL') {
+        // 揃い側(1/13): 上段揃い 13 枚
+        expect(result.spin.lines).toEqual(['TOP']);
+        expect(result.payout.payout).toBe(BELL_PAYOUT);
+        aligned += 1;
+      } else {
+        // こぼし側(12/13): ハズレ目・払出 0
+        expect(result.displayedRole).toBe('NONE');
+        expect(result.spin.displayed).toBe('NONE');
+        expect(result.payout.payout).toBe(0);
+        missed += 1;
+      }
     }
+    // 400 シードで揃い・こぼしの両方が発生する(期待値 揃い ≒ 400/13 ≒ 31)
+    expect(aligned).toBeGreaterThan(0);
+    expect(missed).toBeGreaterThan(aligned);
   });
 
-  it('AT 中のベルはナビ遵守 = 斜め揃い 13 枚(押し順正解)', () => {
+  it('AT 中のベルはナビ遵守 = 斜め揃い 13 枚(こぼし抽せんの結果に依らない)', () => {
     for (let seed = 0; seed < 20; seed++) {
       const result = playGame(atState(), createRng(seed), 'BELL');
       expect(result.displayedRole).toBe('BELL');
-      expect(result.spin.bellSuccess).toBe(true);
-      expect(result.payout.payout).toBe(BELL_PAYOUT_SUCCESS);
+      expect(
+        result.spin.lines.some((line) => line === 'DOWN_RIGHT' || line === 'UP_RIGHT'),
+      ).toBe(true);
+      expect(result.payout.payout).toBe(BELL_PAYOUT);
     }
+  });
+
+  it('ベル当選時は押し順に依らず乱数 1 個(こぼし抽せん)を追加消費する(固定シード再現性)', () => {
+    // 同じシードで通常時(左第一)と AT 中(ナビ)のベルを回しても、
+    // こぼし抽せん + 押下位置 3 個の消費数は同じ = 押下位置が一致する
+    for (let seed = 0; seed < 10; seed++) {
+      const normal = playGame(normalState(), createRng(seed), 'BELL');
+      const at = playGame(atState(), createRng(seed), 'BELL');
+      expect(normal.push.pushPositions).toEqual(at.push.pushPositions);
+    }
+    // こぼし抽せんの分母は 13(12/13 こぼし)
+    expect(BELL_MISS_DENOM).toBe(13);
   });
 
   it('リプレイは 100% 引き込み + 次ゲームの BET 不要(replayCarry)', () => {
@@ -101,7 +130,7 @@ describe('playGame(ヘッドレス 1G 実行)', () => {
     expect(missed).toBeGreaterThan(0);
   });
 
-  it('advanceGame へ表示役・bellSuccess が配線される(取りこぼし時は displayedRole = NONE で払出 0)', () => {
+  it('advanceGame へ表示役が配線される(取りこぼし時は displayedRole = NONE で払出 0)', () => {
     const result = playGame(normalState(), createRng(3), 'CHERRY_CORNER');
     expect(result.wonRole).toBe('CHERRY_CORNER');
     expect(result.displayedRole).toBe(result.spin.displayed);
