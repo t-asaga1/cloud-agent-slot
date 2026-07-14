@@ -77,6 +77,18 @@
  *   `revivalCutin` をカットイン列の先頭へ差し込む(第 3 リール停止 = 全停止時の告知)。
  * - **エンディング**: フェーズ ENDING の常時表示(`overlayForState`)に全画面ムービーを
  *   追加(`EndingPhase.after` で `ending_to_upper` / `ending_complete` を描き分け = Q20)。
+ *
+ * # 赤7待機・AT 導入の解決規約(確定 37 = 2026-07-14 のユーザー指示)
+ *
+ * - **赤7待機**(フェーズ SEVEN_WAIT): レバーオン時に `sevenWaitAtLeverOn` で解決。
+ *   AT確定ムービー(`at_kakutei` = ユーザー入稿素材)を全画面表示し、待機 1G 目
+ *   (phase.game 0 のレバーオン)のみ再生 → 最終フレームで停止。2G 目以降
+ *   (揃えられなかった場合)は最終フレーム固定のまま(`freeze: true`)。
+ *   ムービー終了後(または freeze 時)に赤7 図柄 3 つ + 目押し指示を重ねて表示する。
+ *   表示側(DirectionLayer)はゲームを跨いで video 要素を維持する(再生し直さない)。
+ * - **AT 導入**(フェーズ AT_INTRO): 赤7 が揃った次ゲームのレバーオンに
+ *   `atIntroAtLeverOn` で AT 導入ムービー(`at_intro`)を全画面表示する(1G)。
+ * - 赤7 が揃ったゲームの全停止で `SEVEN_ALIGNED` イベント → 「赤7揃い!」カットイン。
  */
 import { AT_VIDEOS, EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
 import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
@@ -591,6 +603,62 @@ export function revivalCutin(pattern: RevivalPattern): Cutin {
   };
 }
 
+// ---------------------------------------------------------------------------
+// 赤7待機・AT 導入(確定 37)
+// ---------------------------------------------------------------------------
+
+/** 赤7待機 1G 分の表示データ(レバーオン時に解決。次のレバーオンまで全画面表示) */
+export interface SevenWaitView {
+  /** AT確定ムービー(ユーザー入稿素材 at_kakutei) */
+  videoUrl: string;
+  /**
+   * ムービー再生済み(待機 2G 目以降 = 前ゲームで揃えられなかった)。
+   * true のときは再生せず最終フレーム固定で表示する(新規マウント時はシークで再現)。
+   */
+  freeze: boolean;
+  /** 画面に表示する赤7 図柄の画像 URL(3 つ並べる = 確定 37) */
+  sevenUrl: string;
+  /** 待機何 G 目か(1〜。デバッグ・テスト用) */
+  game: number;
+  /** デバッグ・テスト用(画面には出さない) */
+  label: string;
+}
+
+/**
+ * これから回すゲームの赤7待機表示(レバーオン時に UI が呼ぶ)。
+ * フェーズ SEVEN_WAIT のとき: AT 確定ゲーム(game 0)の次のレバーオン = 待機 1G 目で
+ * ムービー再生、2G 目以降は最終フレーム固定(freeze)。それ以外は undefined。
+ */
+export function sevenWaitAtLeverOn(state: GameState): SevenWaitView | undefined {
+  const { phase } = state;
+  if (phase.type !== 'SEVEN_WAIT') return undefined;
+  const game = phase.game + 1;
+  return {
+    videoUrl: atVideoUrl('at_kakutei'),
+    freeze: phase.game >= 1,
+    sevenUrl: SYMBOL_IMAGES.SEVEN_RED,
+    game,
+    label: `赤7待機 ${game}G目(AT確定ムービー${phase.game >= 1 ? '・最終フレーム' : ''})`,
+  };
+}
+
+/** AT 導入 1G の表示データ(レバーオン時に解決。次のレバーオンまで全画面表示) */
+export interface AtIntroView {
+  /** AT 導入ムービー(at_intro) */
+  videoUrl: string;
+  /** デバッグ・テスト用(画面には出さない) */
+  label: string;
+}
+
+/**
+ * これから回すゲームの AT 導入表示(レバーオン時に UI が呼ぶ)。
+ * フェーズ AT_INTRO(= 赤7 が揃った次ゲーム)のとき AT 導入ムービーを返す(確定 37)。
+ */
+export function atIntroAtLeverOn(state: GameState): AtIntroView | undefined {
+  if (state.phase.type !== 'AT_INTRO') return undefined;
+  return { videoUrl: atVideoUrl('at_intro'), label: 'AT導入ムービー(1G)' };
+}
+
 /** レバーオン時に決定する 1G 分の演出(seq = レバーオンの通し番号) */
 export interface LeverDirection {
   seq: number;
@@ -604,6 +672,10 @@ export interface LeverDirection {
   atYokoku?: AtYokokuView;
   /** バトルパート 8G の全画面表示(STEP 4e。あるとき他は undefined) */
   battle?: BattleView;
+  /** 赤7待機の全画面表示(確定 37。あるとき他は undefined) */
+  sevenWait?: SevenWaitView;
+  /** AT 導入ムービーの全画面表示(確定 37。あるとき他は undefined) */
+  atIntro?: AtIntroView;
 }
 
 // ---------------------------------------------------------------------------
@@ -655,6 +727,16 @@ export function cutinsForEvents(events: readonly GameEvent[]): Cutin[] {
                 durationMs: 2000,
               },
         );
+        break;
+      case 'SEVEN_ALIGNED':
+        // 赤7 揃い(確定 37)。次ゲームが AT 導入ムービー 1G
+        cutins.push({
+          title: '赤7揃い!',
+          sub: '次ゲームからATへ',
+          style: 'WIN',
+          sound: 'BIG_WIN',
+          durationMs: 1800,
+        });
         break;
       case 'AT_START':
         cutins.push({

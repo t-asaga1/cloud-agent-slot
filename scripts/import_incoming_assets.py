@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""ユーザー入稿素材(incoming/)の取り込み変換スクリプト(2026-07-10 入稿分)。
+"""ユーザー入稿素材(incoming/)の取り込み変換スクリプト。
 
-- 図柄画像: incoming/図柄画像/*.png(透過 PNG)
+- 図柄画像: incoming/図柄画像/*.png(透過 PNG)— 2026-07-10 入稿分
     → 透過余白をトリム → 400x200 の透過キャンバスへコンテインフィット
     → WebP で src/assets/images/reels/ へ出力
-- 背景動画: incoming/背景動画/*.mp4(H.264 720p/1080p)
+- 背景動画: incoming/背景動画/*.mp4(H.264 720p/1080p)— 2026-07-10 入稿分
     → 1280x720 へスケール(アスペクト違いは中央クロップ)
     → WebM(VP9・音声なし)で src/assets/video/stage/ へ出力
+- 演出ムービー: incoming/*.mp4 — 2026-07-14 入稿分(AT確定)
+    → 背景動画と同じ変換で src/assets/video/at/ へ出力
+
+incoming/ の元ファイルは取り込み後に削除される運用のため、
+存在しない入稿ファイルはスキップする(再実行可能)。
 
 実行: python3 scripts/import_incoming_assets.py
 依存: pip install pillow / ffmpeg
@@ -44,6 +49,12 @@ STAGE_VIDEOS = {
     "前兆背景1.mp4": "stage_zencho",
     "AT背景1.mp4": "stage_at",
     "上位AT背景1.mp4": "stage_at_upper",
+}
+
+# 入稿ファイル名 → 素材 ID(演出ムービー。2026-07-14 入稿分 = AT確定ムービー。
+# 通常時 AT 確定後の赤7待機画面で再生し最終フレームで停止する = SPEC 確定 37)
+AT_MOVIES = {
+    "AT確定.mp4": "at_kakutei",
 }
 
 # リール窓 1 コマは横長(約 2:1)。全図柄を同一キャンバスに揃える
@@ -85,10 +96,23 @@ def import_stage_video(src: Path, dst: Path) -> None:
 
 
 def main() -> None:
-    for name, asset_id in SYMBOLS.items():
-        import_symbol(INCOMING / "図柄画像" / name, ASSETS / f"images/reels/{asset_id}.webp")
-    for name, asset_id in STAGE_VIDEOS.items():
-        import_stage_video(INCOMING / "背景動画" / name, ASSETS / f"video/stage/{asset_id}.webm")
+    # 取り込み済みの入稿ファイルは incoming/ から削除される運用のためスキップ
+    def each(mapping: dict[str, str], subdir: str) -> list[tuple[Path, str]]:
+        found = []
+        for name, asset_id in mapping.items():
+            src = INCOMING / subdir / name if subdir else INCOMING / name
+            if src.exists():
+                found.append((src, asset_id))
+            else:
+                print(f"skip(入稿なし): {name}")
+        return found
+
+    for src, asset_id in each(SYMBOLS, "図柄画像"):
+        import_symbol(src, ASSETS / f"images/reels/{asset_id}.webp")
+    for src, asset_id in each(STAGE_VIDEOS, "背景動画"):
+        import_stage_video(src, ASSETS / f"video/stage/{asset_id}.webm")
+    for src, asset_id in each(AT_MOVIES, ""):
+        import_stage_video(src, ASSETS / f"video/at/{asset_id}.webm")
 
 
 if __name__ == "__main__":

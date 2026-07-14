@@ -18,18 +18,18 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   const stats = simulate(GAMES, SEED);
 
   it('固定値: 投入・払出・初当り・セット・上位 AT・エンディング(回帰検出)', () => {
-    // ナビ押し順抽せん(確定 36)が playGame の乱数列へ加わったため取り直し(2026-07-14。
-    // 前回はベルこぼし抽せん = 確定 35 の追加時)
-    expect(stats.coinsIn).toBe(258675);
-    expect(stats.coinsOut).toBe(328477);
-    expect(stats.normal.games).toBe(68606);
-    expect(stats.at.games).toBe(GAMES - 68606);
-    expect(stats.atCount).toBe(283);
-    expect(stats.totalSets).toBe(1703);
-    expect(stats.upperAtCount).toBe(49);
-    expect(stats.endingCount).toBe(74);
-    expect(stats.endingCompleteCount).toBe(25);
-    expect(stats.vStockGains).toBe(280);
+    // 赤7待機・AT 導入(確定 37)が advanceGame のタイムラインと playGame の乱数列へ
+    // 加わったため取り直し(2026-07-14。前回はナビ押し順抽せん = 確定 36 の追加時)
+    expect(stats.coinsIn).toBe(258873);
+    expect(stats.coinsOut).toBe(310462);
+    expect(stats.normal.games).toBe(71664);
+    expect(stats.at.games).toBe(GAMES - 71664);
+    expect(stats.atCount).toBe(293);
+    expect(stats.totalSets).toBe(1543);
+    expect(stats.upperAtCount).toBe(37);
+    expect(stats.endingCount).toBe(58);
+    expect(stats.endingCompleteCount).toBe(21);
+    expect(stats.vStockGains).toBe(241);
   });
 
   it('通常時純増 ≒ -1.8 枚/G(SPEC 想定)', () => {
@@ -48,8 +48,10 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   });
 
   it('機械割・初当りは計測値基準の回帰範囲(設計想定値なし = 確定 26)', () => {
-    // 2026-07-12 計測(docs/SIMULATION_REPORT.md。確定 29〜31 反映後): 機械割 ≒ 138% / 初当り ≒ 1/215
-    expect(stats.payoutRate).toBeGreaterThan(1.25);
+    // 2026-07-14 計測(docs/SIMULATION_REPORT.md。確定 37 反映後): 機械割の中心値 ≒ 131.6%
+    // (1000 万 G)/ 初当り ≒ 1/219。10 万 G の固定シードはシード分散が大きい
+    // (本シードの実測 119.9%)ため範囲は広めに取る
+    expect(stats.payoutRate).toBeGreaterThan(1.1);
     expect(stats.payoutRate).toBeLessThan(1.55);
     expect(stats.hitDenominator).toBeGreaterThan(180);
     expect(stats.hitDenominator).toBeLessThan(280);

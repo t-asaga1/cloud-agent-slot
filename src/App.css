@@ -551,6 +551,56 @@
   }
 }
 
+/* 赤7待機画面(確定 37。AT確定ムービー + 赤7 図柄 3 つの目押し指示) */
+.seven-wait-screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.92);
+  border: 2px solid rgba(248, 113, 113, 0.85);
+}
+
+.seven-aim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2%;
+  animation: yokoku-in 0.3s ease-out;
+}
+
+.seven-aim-symbols {
+  display: flex;
+  gap: 4%;
+  justify-content: center;
+  width: 100%;
+}
+
+.seven-aim-symbols img {
+  width: 18%;
+  filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.9));
+  animation: seven-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.seven-aim-text {
+  color: #f87171;
+  font-size: clamp(0.85rem, 2.2vw, 1.5rem);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.8);
+}
+
+@keyframes seven-pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+
 /* エンディングの全画面ムービー(STEP 4e。バナーの下に敷く) */
 .ending-screen {
   position: absolute;

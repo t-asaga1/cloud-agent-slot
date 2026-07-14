@@ -69,7 +69,8 @@ import { drawOmenScenario, type OmenScenario, type RenzokuChanceUps } from './sc
  *   スケジュール開始と進行の両方は行わない。
  * - 前兆 G 数(`totalGames`)消化後の次ゲームが連続演出 1G 目(`RENZOKU_START`)。
  *   連続演出 4G 目(`RENZOKU_GAMES`)に成否告知(`RENZOKU_RESULT`)し、同ゲームの返り state で
- *   本 = AT スタブフェーズ(partGame: 0。次 G から AT 1G 目 = 確定 19)/
+ *   本 = 赤7待機フェーズ(SEVEN_WAIT { game: 0 }。確定 37。赤7 揃い → AT 導入 1G →
+ *   AT 小役 1G 目)/
  *   偽 = NORMAL へ戻し `FAKE_OMEN_FAIL` を予約(次 G に背景移行 = 契機 3)。
  * - 偽→本書き換え(確定 21)はスロット 3 で行う: kind のみ FAKE → REAL に書き換え、
  *   前兆 G 数・経過 G・連続演出種別は引き継ぐ(a・b)。連続演出中(最終 G 含む)も有効で、
@@ -121,11 +122,30 @@ import { drawOmenScenario, type OmenScenario, type RenzokuChanceUps } from './sc
  *   通常フェーズか連続演出の解決で、いずれも次ゲームに消化されるため)。AT 終了時の
  *   モード・背景再抽せん(2d)では `backgroundGames` を 0 へリセットする(実装済み)。
  *
+ * # 赤7待機・AT 導入の実装規約(2026-07-14 のユーザー指示 = 確定 37)
+ *
+ * - 通常時の AT 確定(連続演出成功 = RENZOKU_RESULT success)では AT へ直行せず、
+ *   `SEVEN_WAIT { game: 0 }` へ遷移する。次ゲームから赤7待機:
+ *   AT確定ムービー(初回のみ再生 → 最終フレームで停止)+ 画面に赤7 図柄 3 つを表示し、
+ *   遊技者が赤7 を狙って揃えるまで同じ画面のまま毎ゲーム継続する。
+ * - **赤7 待機中は内部当選役を REACH_ME(リーチ目 = 赤7 揃い)へ強制する**
+ *   (`isSevenFlagForced`。役抽せんは行わない = 上流の play.ts / UI が判定する)。
+ *   停止制御は通常のリーチ目と同一(目押し必須・取りこぼしあり・スベリ 4 コマ以内)。
+ * - 赤7 が揃った(表示役 REACH_ME の)ゲームで `SEVEN_ALIGNED` イベント + `AT_INTRO` へ。
+ *   次ゲームが AT 導入ムービー 1G(役抽せんは通常どおり・ベルナビあり)。
+ * - AT 導入ゲームの消化で `drawContinueRate` を抽せんし `AT { partGame: 0 }` +
+ *   `AT_START` イベント。その次ゲームが AT 小役パート 1G 目。
+ * - 赤7待機・AT 導入中はモード移行・偽前兆・背景移行の抽せんをすべて停止
+ *   (AT 中 = 確定 11 と同じ扱い。モードは本前兆のまま AT 終了処理で再抽せんされる)。
+ * - エンディング経由の上位 AT 移行(UPPER_AT_ENTER)は「通常時の AT 確定」ではないため
+ *   赤7待機を挟まない(従来どおり直行)。
+ *
  * # AT 管理の実装規約(2d で確定・2026-07-12 のユーザー回答 = 確定 29〜31 で更新。
  * SPEC「7.」「8.」+ 確定 11・12・27・29〜31 準拠)
  *
- * - タイムライン: 連続演出成功ゲーム(RENZOKU_RESULT success)で `drawContinueRate` を
- *   抽せんし `AT { partGame: 0 }` + `AT_START` イベント。次ゲームが小役パート 1G 目。
+ * - タイムライン: 連続演出成功ゲーム(RENZOKU_RESULT success)→ 赤7待機(確定 37)→
+ *   AT 導入ゲームで `drawContinueRate` を抽せんし `AT { partGame: 0 }` +
+ *   `AT_START` イベント。次ゲームが小役パート 1G 目。
  *   小役 10G → バトル 8G の順(確定 27)で、パート切替・セット継続も partGame: 0 を
  *   経由せず「次ゲームが次パート 1G 目」として直接進む(小役 10G 目の次ゲームが
  *   バトル 1G 目、バトル 8G 目(継続)の次ゲームが次セット小役 1G 目)。
@@ -246,8 +266,35 @@ export interface EndingPhase {
 /** エンディングのゲーム数(10G・押し順ナビあり = 確定 31) */
 export const ENDING_GAMES = 10;
 
+/**
+ * 赤7待機(確定 37)。通常時の AT 確定(連続演出成功)ゲームは game: 0 で、
+ * 次ゲームから赤7待機 1G 目(AT確定ムービー再生 → 最終フレーム停止 + 赤7 図柄表示)。
+ * 待機中は内部当選役が REACH_ME へ強制され(`isSevenFlagForced`)、
+ * 赤7 を揃える(表示役 REACH_ME)まで毎ゲーム継続する(揃えられないと同じ画面のまま)。
+ */
+export interface SevenWaitPhase {
+  type: 'SEVEN_WAIT';
+  /** 経過 G(AT 確定ゲームは 0。次ゲームが待機 1G 目。ムービー再生は待機 1G 目のみ) */
+  game: number;
+}
+
+/**
+ * AT 導入 1G(確定 37)。赤7 が揃ったゲームの次ゲームに AT 導入ムービーを流し、
+ * その消化で継続率抽せん + `AT_START`(次ゲームが AT 小役パート 1G 目)。
+ */
+export interface AtIntroPhase {
+  type: 'AT_INTRO';
+}
+
 /** 全フェーズの判別可能ユニオン(2a で確定。以後のサブステップは骨格を変えない) */
-export type Phase = NormalPhase | OmenPhase | RenzokuPhase | AtPhase | EndingPhase;
+export type Phase =
+  | NormalPhase
+  | OmenPhase
+  | RenzokuPhase
+  | SevenWaitPhase
+  | AtIntroPhase
+  | AtPhase
+  | EndingPhase;
 
 /** ゲーム全体の状態(単一オブジェクト)。`advanceGame` は毎回新しいオブジェクトを返す */
 export interface GameState {
@@ -294,7 +341,7 @@ export interface GameInput {
  * 2a: MODE_CHANGE / HONZENCHO_ENTER。2b: FAKE_OMEN_ENTER / OMEN_REWRITE /
  * RENZOKU_START / RENZOKU_RESULT。2c: BACKGROUND_CHANGE。
  * 2d: AT_START / V_STOCK_GAIN / V_STOCK_USE / AT_SET_CONTINUE / UPPER_AT_ENTER /
- * ENDING_START / AT_END。
+ * ENDING_START / AT_END。確定 37: SEVEN_ALIGNED。
  */
 export type GameEvent =
   | { type: 'MODE_CHANGE'; from: Mode; to: Mode; trigger: Role }
@@ -341,7 +388,14 @@ export type GameEvent =
       to: Background;
     }
   | {
-      /** AT 当選確定 = 連続演出成功ゲームに発行(AT 1G 目は次ゲーム)。継続率抽せん済み */
+      /**
+       * 赤7待機中に赤7 が揃った(表示役 REACH_ME = 確定 37)。
+       * 次ゲームが AT 導入ムービー 1G(その次ゲームから AT 小役パート)。
+       */
+      type: 'SEVEN_ALIGNED';
+    }
+  | {
+      /** AT 開始確定 = AT 導入ゲーム(確定 37)に発行(AT 1G 目は次ゲーム)。継続率抽せん済み */
       type: 'AT_START';
       continueRate: number;
     }
@@ -413,7 +467,7 @@ function scheduleOmen(rng: Rng, kind: OmenKind): OmenPhase {
 }
 
 /**
- * 連続演出成功時の AT 突入(継続率をここで抽せん = SPEC「7.」)。
+ * AT 導入ゲーム消化時の AT 突入(継続率をここで抽せん = SPEC「7.」・確定 37)。
  * partGame: 0 = 次ゲームが AT 小役パート 1G 目(確定 19)。初回セット = 1 連目(確定 11)。
  */
 function enterAt(rng: Rng): AtPhase {
@@ -431,10 +485,23 @@ function enterAt(rng: Rng): AtPhase {
 
 /**
  * 押し順ナビ(全ナビ = 確定 26)が有効か。2e の打ち方ポリシーはこれで分岐する。
- * AT 中(上位含む)に加えエンディング中もナビあり(確定 31)。
+ * AT 中(上位含む)に加えエンディング中(確定 31)・AT 導入ゲーム(確定 37。
+ * AT 確定済みのため)もナビあり。赤7待機中は内部当選役が REACH_ME 固定で
+ * ベルが成立しないため対象外(ナビの代わりに赤7 図柄の目押し指示を表示する)。
  */
 export function isNaviActive(state: GameState): boolean {
-  return state.phase.type === 'AT' || state.phase.type === 'ENDING';
+  return (
+    state.phase.type === 'AT' || state.phase.type === 'ENDING' || state.phase.type === 'AT_INTRO'
+  );
+}
+
+/**
+ * 赤7 強制フラグ(確定 37)。AT 確定後、赤7 を揃えるまで内部当選役を
+ * REACH_ME(リーチ目 = 赤7 揃い)へ強制する。役抽せんの上流(play.ts / UI の
+ * レバーオン)がこれを見て役抽せん自体をスキップする(乱数消費なし)。
+ */
+export function isSevenFlagForced(state: GameState): boolean {
+  return state.phase.type === 'SEVEN_WAIT';
 }
 
 /**
@@ -526,9 +593,17 @@ export function initGameState(rng: Rng): GameState {
   };
 }
 
-/** このフェーズでモード移行抽せんを実施するか(AT 中・エンディング中は停止 = 確定 11) */
+/**
+ * このフェーズでモード移行抽せんを実施するか(AT 中・エンディング中は停止 = 確定 11。
+ * 赤7待機・AT 導入中も AT 確定済みのため停止 = 確定 37)。
+ */
 function modeLotteryActive(phase: Phase): boolean {
-  return phase.type !== 'AT' && phase.type !== 'ENDING';
+  return (
+    phase.type !== 'AT' &&
+    phase.type !== 'ENDING' &&
+    phase.type !== 'SEVEN_WAIT' &&
+    phase.type !== 'AT_INTRO'
+  );
 }
 
 /**
@@ -645,15 +720,29 @@ export function advanceGame(state: GameState, input: GameInput, rng: Rng): Advan
           success,
         });
         if (success) {
-          // AT 当選(次ゲームから AT 小役パート 1G 目)。継続率をここで抽せん
-          phase = enterAt(rng);
-          events.push({ type: 'AT_START', continueRate: phase.continueRate });
+          // AT 確定(確定 37): AT へは直行せず赤7待機へ。次ゲームから AT確定ムービー +
+          // 赤7 図柄表示で、赤7 を揃えるまで待機(継続率抽せん・AT_START は AT 導入ゲーム)
+          phase = { type: 'SEVEN_WAIT', game: 0 };
         } else {
           // 偽前兆の演出失敗 → 通常へ戻り、次ゲームの背景移行(契機 3)を予約
           phase = { type: 'NORMAL' };
           reservedTrigger = 'FAKE_OMEN_FAIL';
         }
       }
+    } else if (phase.type === 'SEVEN_WAIT') {
+      // 赤7待機(確定 37): 内部当選役は REACH_ME 強制(上流で保証 = isSevenFlagForced)。
+      // 揃えた(表示役 REACH_ME)ら次ゲームが AT 導入 1G。揃えられなければ同じ画面のまま継続
+      if (input.displayedRole === 'REACH_ME') {
+        events.push({ type: 'SEVEN_ALIGNED' });
+        phase = { type: 'AT_INTRO' };
+      } else {
+        phase = { ...phase, game: phase.game + 1 };
+      }
+    } else if (phase.type === 'AT_INTRO') {
+      // AT 導入ゲーム(確定 37)の消化 = AT 開始確定。継続率をここで抽せんし、
+      // 次ゲームが AT 小役パート 1G 目
+      phase = enterAt(rng);
+      events.push({ type: 'AT_START', continueRate: phase.continueRate });
     } else if (phase.type === 'AT') {
       phase = advanceAt(phase, input.wonRole, rng, events, finishAt);
     } else if (phase.type === 'ENDING') {

@@ -5,20 +5,21 @@ import { createRng } from './rng';
 import { ENDING_GAMES, initGameState, type GameEvent } from './state';
 
 /**
- * 通しフロー統合テスト(STEP 2e。確定 29〜31 反映済み)。
+ * 通しフロー統合テスト(STEP 2e。確定 29〜31・37 反映済み)。
  * ヘッドレス 1G 実行(`playGame`)で実際に遊技を回し、
- * 「通常 → 前兆 → 連続演出 → AT → セット継続 → 10 連勝利 → エンディング 10G →
- * 上位 AT → 10 連勝利 → エンディング 10G → AT 終了後の再抽せん → 通常」の
- * 一連遷移をイベント列と毎 G のフェーズで検証する。
+ * 「通常 → 前兆 → 連続演出 → 赤7待機 → AT 導入 → AT → セット継続 → 10 連勝利 →
+ * エンディング 10G → 上位 AT → 10 連勝利 → エンディング 10G →
+ * AT 終了後の再抽せん → 通常」の一連遷移をイベント列と毎 G のフェーズで検証する。
  *
- * シード 1 は 403G 目までにエンディング(上位 AT 10 連)経由の AT 終了へ到達する
+ * シード 115 は 432G 目までにエンディング(上位 AT 10 連)経由の AT 終了へ到達する
  * (`scripts/run_simulation.ts` と同じ乱数消費順序。乱数消費を変える変更をしたら
- * このシード・G 数は取り直すこと。ナビ押し順抽せん(確定 36)の追加でシード 73 から
- * 取り直し済み = 2026-07-14。その前はベルこぼし抽せん(確定 35)でシード 30 から取り直し)。
+ * このシード・G 数は取り直すこと。赤7待機・AT 導入(確定 37)の追加でシード 1 から
+ * 取り直し済み = 2026-07-14。その前はナビ押し順抽せん(確定 36)でシード 73 から、
+ * ベルこぼし抽せん(確定 35)でシード 30 から取り直し)。
  */
 
-const SEED = 1;
-const MAX_GAMES = 430;
+const SEED = 115;
+const MAX_GAMES = 450;
 
 interface TimelineEntry extends PlayResult {
   /** 0 始まりのゲーム番号 */
@@ -91,11 +92,9 @@ describe('通しフロー統合(通常 → 前兆 → AT → エンディング 
     });
   });
 
-  it('AT 突入ゲーム = 連続演出成功の告知ゲーム(次 G から AT 1G 目 = 確定 19)', () => {
+  it('AT 突入 = 成功告知 → 赤7待機(1G で揃う)→ AT 導入 1G → 次 G から AT 1G 目(確定 19・37)', () => {
+    // AT_START = AT 導入ゲーム(次 G から AT 小役 1G 目)
     const entry = timeline[atStartIdx];
-    expect(entry.events).toContainEqual(
-      expect.objectContaining({ type: 'RENZOKU_RESULT', success: true }),
-    );
     expect(entry.state.phase).toMatchObject({
       type: 'AT',
       tier: 'NORMAL',
@@ -103,9 +102,21 @@ describe('通しフロー統合(通常 → 前兆 → AT → エンディング 
       partGame: 0,
       renchan: 1,
     });
-    // 直前の RENZOKU_GAMES - 1 ゲームは連続演出中(1〜3G 目)
+    // 1 つ前 = 赤7待機ゲーム(打ち方ポリシーの赤7 狙いで 1G で揃う = SEVEN_ALIGNED)
+    const alignedEntry = timeline[atStartIdx - 1];
+    expect(alignedEntry.wonRole).toBe('REACH_ME');
+    expect(alignedEntry.displayedRole).toBe('REACH_ME');
+    expect(alignedEntry.events).toContainEqual({ type: 'SEVEN_ALIGNED' });
+    expect(alignedEntry.state.phase).toEqual({ type: 'AT_INTRO' });
+    // 2 つ前 = 連続演出成功の告知ゲーム(AT 確定 → 赤7待機へ)
+    const successEntry = timeline[atStartIdx - 2];
+    expect(successEntry.events).toContainEqual(
+      expect.objectContaining({ type: 'RENZOKU_RESULT', success: true }),
+    );
+    expect(successEntry.state.phase).toEqual({ type: 'SEVEN_WAIT', game: 0 });
+    // その前の RENZOKU_GAMES - 1 ゲームは連続演出中(1〜3G 目)
     for (let g = 1; g < RENZOKU_GAMES; g++) {
-      expect(timeline[atStartIdx - g].state.phase).toMatchObject({
+      expect(timeline[atStartIdx - 2 - g].state.phase).toMatchObject({
         type: 'RENZOKU',
         game: RENZOKU_GAMES - g,
       });
@@ -113,7 +124,7 @@ describe('通しフロー統合(通常 → 前兆 → AT → エンディング 
   });
 
   it('連続演出の前は前兆(OMEN)を全 G 消化している(前兆 → 連続演出 = 確定 19)', () => {
-    const renzokuStartIdx = atStartIdx - (RENZOKU_GAMES - 1);
+    const renzokuStartIdx = atStartIdx - 2 - (RENZOKU_GAMES - 1);
     expect(timeline[renzokuStartIdx].events).toContainEqual(
       expect.objectContaining({ type: 'RENZOKU_START' }),
     );

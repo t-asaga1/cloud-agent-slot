@@ -2,13 +2,20 @@ import { drawBellMiss, drawRole } from './lottery';
 import {
   KOMA_COUNT,
   PUSH_ORDERS,
+  REEL_LAYOUT,
   resolveSpin,
   type PushOrder,
   type SpinResult,
 } from './reel';
 import type { Rng } from './rng';
 import type { Role } from './roles';
-import { advanceGame, isNaviActive, type AdvanceResult, type GameState } from './state';
+import {
+  advanceGame,
+  isNaviActive,
+  isSevenFlagForced,
+  type AdvanceResult,
+  type GameState,
+} from './state';
 
 /**
  * ヘッドレス 1 ゲーム実行(STEP 2e)。
@@ -21,16 +28,22 @@ import { advanceGame, isNaviActive, type AdvanceResult, type GameState } from '.
  * - 通常時: 左第一・適当押し(押下位置は全リール一様ランダム)。
  *   チェリー・スイカ・リーチ目はタイミング押し依存のため取りこぼしあり。
  *   押し順ベルは左第一のため 12/13 でこぼし(0 枚)/ 1/13 で上段揃い 13 枚(確定 35)。
- * - AT 中・エンディング中(`isNaviActive`。確定 31): ナビ遵守。押し順ベルはナビの
- *   押し順(正解 4 通り = 中・右第一から均等抽せん = 確定 36。斜め揃い 13 枚)に従う。
- *   ベル以外はナビなし = 左第一・適当押しのまま(レア役の取りこぼしは通常時と
- *   同様に発生する)。
+ * - AT 中・エンディング中・AT 導入ゲーム(`isNaviActive`。確定 31・37): ナビ遵守。
+ *   押し順ベルはナビの押し順(正解 4 通り = 中・右第一から均等抽せん = 確定 36。
+ *   斜め揃い 13 枚)に従う。ベル以外はナビなし = 左第一・適当押しのまま
+ *   (レア役の取りこぼしは通常時と同様に発生する)。
+ * - 赤7待機中(`isSevenFlagForced`。確定 37): 内部当選役は REACH_ME 強制
+ *   (役抽せんの乱数は消費しない)。押下位置は**赤7 狙い**(各リール赤7 の
+ *   0〜4 コマ手前から一様抽せん = 目押し成功想定。全リール赤7 狙いは 100% 7 揃い =
+ *   STEP 1e の網羅テスト済み)で、1 ゲームで揃う。
  *
  * # 乱数の消費順序(1 ゲームあたり)
  *
- * 役抽せん(1)→ ベルこぼし抽せん(ベル当選時のみ 1。押し順に依らず消費 = 確定 35)→
+ * 役抽せん(1。赤7待機中は消費なし = REACH_ME 強制)→
+ * ベルこぼし抽せん(ベル当選時のみ 1。押し順に依らず消費 = 確定 35)→
  * ナビ押し順抽せん(ナビ中のベル当選時のみ 1 = 確定 36)→
- * 押下位置(3。左・中・右の順)→ `advanceGame` 内部の各抽せん。
+ * 押下位置(3。左・中・右の順。赤7待機中は赤7 狙いの位置抽せんで同じく 3)→
+ * `advanceGame` 内部の各抽せん。
  * `playGame` はこの順序で単一の `rng` を消費する(固定シードで完全再現可能)。
  */
 
@@ -64,20 +77,29 @@ export interface PushDecision {
   pushPositions: [number, number, number];
 }
 
+/** 各リールの赤7 のコマ index(赤7 は各リール 1 個 = SPEC「3.」) */
+const SEVEN_INDEXES: readonly [number, number, number] = [
+  REEL_LAYOUT[0].indexOf('SEVEN_RED'),
+  REEL_LAYOUT[1].indexOf('SEVEN_RED'),
+  REEL_LAYOUT[2].indexOf('SEVEN_RED'),
+];
+
 /**
  * 打ち方ポリシー(確定 26): 通常時 = 左第一・適当押し / AT 中のベル = ナビ遵守
- * (ナビ押し順は正解 4 通りから均等抽せん = 確定 36。乱数 1 個消費)。
- * 押下位置は左・中・右の順に乱数 3 個を消費する(押し順によらず固定)。
+ * (ナビ押し順は正解 4 通りから均等抽せん = 確定 36。乱数 1 個消費)/
+ * 赤7待機中(確定 37)= 全リール赤7 狙い(0〜4 コマ手前 = 目押し成功想定で 100% 揃う)。
+ * 押下位置は左・中・右の順に乱数 3 個を消費する(押し順・狙いによらず固定)。
  * 消費順序はナビ押し順 → 押下位置 3(ヘッダーの「乱数の消費順序」参照)。
  */
 export function decidePush(state: GameState, wonRole: Role, rng: Rng): PushDecision {
   const pushOrder =
     isNaviActive(state) && wonRole === 'BELL' ? drawNaviPushOrder(rng) : NORMAL_PUSH_ORDER;
-  const pushPositions: [number, number, number] = [
-    rng.nextInt(KOMA_COUNT),
-    rng.nextInt(KOMA_COUNT),
-    rng.nextInt(KOMA_COUNT),
-  ];
+  const aimSeven = isSevenFlagForced(state);
+  const position = (reel: 0 | 1 | 2): number =>
+    aimSeven
+      ? (SEVEN_INDEXES[reel] - rng.nextInt(5) + KOMA_COUNT) % KOMA_COUNT
+      : rng.nextInt(KOMA_COUNT);
+  const pushPositions: [number, number, number] = [position(0), position(1), position(2)];
   return { pushOrder, pushPositions };
 }
 
@@ -93,9 +115,10 @@ export interface PlayResult extends AdvanceResult {
  * 1 ゲームをヘッドレスで実行する(レバーオン 1 回分)。
  * @param forcedRole 内部当選役の強制指定(テスト・デモ用。省略時は `drawRole` で抽せん)。
  *   強制時は役抽せんの乱数を消費しない(ベルこぼし抽せんは強制時も消費する)。
+ *   赤7待機中(確定 37)は仕様上の REACH_ME 強制が最優先(forcedRole より優先)。
  */
 export function playGame(state: GameState, rng: Rng, forcedRole?: Role): PlayResult {
-  const wonRole = forcedRole ?? drawRole(rng);
+  const wonRole: Role = isSevenFlagForced(state) ? 'REACH_ME' : (forcedRole ?? drawRole(rng));
   // ベル当選時は押し順に依らず常に 1/13 のこぼし抽せんを消費(確定 35。
   // 結果はナビ遵守(中・右第一)では効かず、左第一停止のときのみ停止制御に効く)
   const bellMiss = wonRole === 'BELL' ? drawBellMiss(rng) : false;

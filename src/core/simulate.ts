@@ -12,8 +12,9 @@ import { initGameState, type GameState } from './state';
  *
  * # 区間の分類(ゲーム開始時点のフェーズで分類)
  *
- * - 通常区間 = NORMAL / OMEN / RENZOKU(前兆・連続演出は通常時の一部。
- *   連続演出成功 = AT_START のゲームまでが通常区間で、次ゲームから AT 区間)
+ * - 通常区間 = NORMAL / OMEN / RENZOKU / SEVEN_WAIT / AT_INTRO(前兆・連続演出・
+ *   赤7待機・AT 導入は通常時の一部。AT_START = AT 導入ゲーム(確定 37)までが
+ *   通常区間で、次ゲームから AT 区間)
  * - AT 区間 = AT / ENDING(エンディングは AT 区間に含める)
  *
  * # 指標の定義

@@ -1591,5 +1591,23 @@
     "tool": "コード生成(scripts/gen_placeholder_assets.py)",
     "license": "project-original",
     "note": "AT・エンディング演出ムービー仮素材「エンディング 完全制覇」(STEP 4e。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+  },
+  {
+    "id": "at_kakutei",
+    "path": "video/at/at_kakutei.webm",
+    "type": "video",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/AT確定.mp4 を WebM/VP9 720p 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "AT確定ムービー(2026-07-14 入稿。元 1280x720/24fps/15 秒)。通常時 AT 確定後の赤7待機画面で再生し最終フレームで停止する(SPEC 確定 37)"
+  },
+  {
+    "id": "at_intro",
+    "path": "video/at/at_intro.webm",
+    "type": "video",
+    "origin": "generated",
+    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "license": "project-original",
+    "note": "AT 導入ムービー仮素材(SPEC 確定 37: 赤7 揃いの次ゲーム 1G に流して AT へ繋ぐ)。実素材入稿で差し替え予定"
   }
 ]

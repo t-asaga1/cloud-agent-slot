@@ -20,7 +20,7 @@
  * キューを破棄する。
  */
 import { useEffect, useRef, useState } from 'react';
-import type { Cutin, LeverDirection, StateOverlay } from './direction';
+import type { Cutin, LeverDirection, SevenWaitView, StateOverlay } from './direction';
 import { playCue } from './sound';
 
 /** 1 ゲーム分のカットイン列(seq = ゲーム通し番号。同じ seq は一度だけキューへ積む) */
@@ -46,6 +46,53 @@ interface Props {
   /** レバーオン時に決定した 1G 分の予告演出(STEP 4c) */
   lever: LeverDirection;
   cutinFrame: CutinFrame;
+}
+
+/**
+ * 赤7待機画面(確定 37)。AT確定ムービーを待機 1G 目に再生 → 最終フレームで停止し、
+ * 赤7 図柄 3 つ + 目押し指示を重ねる。揃えられずに待機が続いても video 要素は
+ * 親側で安定キー(seq 非依存)によりマウント維持され、再生し直さない。
+ * 一括消化後など freeze 状態で新規マウントされた場合は最終フレームへシークする。
+ */
+function SevenWaitScreen({ view }: { view: SevenWaitView }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [ended, setEnded] = useState(view.freeze);
+  useEffect(() => {
+    if (view.freeze) setEnded(true);
+  }, [view.freeze]);
+  const seekToEnd = () => {
+    const video = videoRef.current;
+    if (view.freeze && video && Number.isFinite(video.duration)) {
+      video.currentTime = Math.max(video.duration - 0.05, 0);
+    }
+  };
+  return (
+    <div className="seven-wait-screen" data-label={view.label}>
+      <video
+        ref={videoRef}
+        className="renzoku-video"
+        src={view.videoUrl}
+        autoPlay={!view.freeze}
+        muted
+        playsInline
+        onLoadedMetadata={seekToEnd}
+        onEnded={() => setEnded(true)}
+      />
+      <div className="renzoku-header">
+        <span className="renzoku-title">AT確定!</span>
+      </div>
+      {ended && (
+        <div className="seven-aim">
+          <div className="seven-aim-symbols">
+            {[0, 1, 2].map((i) => (
+              <img key={i} src={view.sevenUrl} alt="赤7" />
+            ))}
+          </div>
+          <div className="seven-aim-text">赤7を狙え!</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
@@ -155,6 +202,25 @@ export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
           <div className="renzoku-footer">
             <span className="renzoku-stage">{lever.renzoku.stage}</span>
             {lever.renzoku.chanceUp && <span className="renzoku-chance-badge">CHANCE UP!</span>}
+          </div>
+        </div>
+      )}
+      {lever.sevenWait !== undefined && (
+        // 安定キー(seq 非依存)= 待機が複数ゲーム続いてもムービーを再生し直さない
+        <SevenWaitScreen key="seven-wait" view={lever.sevenWait} />
+      )}
+      {lever.atIntro !== undefined && (
+        <div key={`at-intro-${lever.seq}`} className="renzoku-screen" data-label={lever.atIntro.label}>
+          <video
+            className="renzoku-video"
+            src={lever.atIntro.videoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          <div className="renzoku-header">
+            <span className="renzoku-title">AT突入</span>
           </div>
         </div>
       )}
