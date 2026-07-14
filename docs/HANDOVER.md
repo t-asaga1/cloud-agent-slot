@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #056(GitHub Release 配布の操作手順 Q&A)
+- 作成者: AGENT #057(押し順ベル左第一「こぼし」仕様変更の検討・見積もり Q&A)
 - 作成日: 2026-07-14
-- 履歴コピー: `docs/handover/056_release_distribution_walkthrough_qa.md`
+- 履歴コピー: `docs/handover/057_bell_kobore_estimate_qa.md`
 
 ## プロジェクト概要
 
@@ -369,6 +369,13 @@
    - 代替 2 通りも案内: GitHub Desktop(History → コミット右クリック → Create Tag → Push origin)/ コマンドライン(`git tag v0.1.0 && git push origin v0.1.0`)。
    - 補足事項: ビルド所要は実績 5〜8.5 分(`gh run list` で確認。初回はキャッシュなしで長め)/ 添付完了まで Release ページの Assets はソース zip のみ / 共有 URL は `https://github.com/t-asaga1/cloud-agent-slot/releases/tag/v0.1.0`(リポジトリが public のためリンクだけでダウンロード可)/ 受け取り側は SmartScreen 警告を「詳細情報 → 実行」で回避(コード署名なし = 正常)/ 次回リリース時は `package.json`・`src-tauri/tauri.conf.json`・`src-tauri/Cargo.toml` の 3 箇所のバージョンを揃えて上げてからタグを打つ(HANDOVER 既記載ルール)。
    - テスト 337 パス・lint グリーン(コード変更なしのため現状確認)。
+51. **AGENT #057(今回)**: **ユーザーからの「押し順ベル左第一こぼし化の修正規模見積もり」への回答**(コード変更なし。詳細は履歴 `docs/handover/057_bell_kobore_estimate_qa.md`):
+   - **依頼内容**: 押し順ベル成立・左第一停止時を「12/13 こぼし(ハズレ目・0 枚)/ 1/13 上段揃い・13 枚」へ変更したい(現行は必ず上段揃い・1 枚)。
+   - **出玉検証**: 左第一時の期待値は現行 1 枚/G = 変更後 (1/13)×13 = 1 枚/G で一致。**ユーザーの「機械割・出率に影響なし」は正しい**(分散のみ増加)。表示役ベルの払出は停止形に依らず常に 13 枚となり `bellSuccess`(1/13 枚の払出区分)は不要になる。
+   - **実装方針**: 停止エンジンは乱数なしの純関数のため、1/13 抽せんはレバーオン時に上流(`play.ts` / `App.tsx`。対話式は `SpinCycle` にフラグ保持)で実施。`reel.ts` の `BellTarget` へ `'MISS'` を追加し `classifyFinal` で「ベル揃い = 禁止 / クリーンなハズレ目 = WIN」の 1 分岐を足すだけでエンジンは対応可能。蹴飛ばし全域可能性はハズレ網羅テストで既証明のためリスク低。
+   - **規模 = 1 AGENT ラン・1 PR で完結する中規模**: 実装 6 ファイル(reel / payout / play / state / gameCycle / App)+ テスト更新(ベル網羅の 2 分岐化 + **乱数消費順序変更に伴う flow シード・simulate 固定値の取り直し** = STEP 4b で実績のある既知手順)+ 100 万 G シミュレーション検算(機械割 129〜131% 維持の確認)+ SPEC 追記。
+   - **実装時に確認する点(推奨案付き)**: AT 中のナビ無視左押しにも適用(推奨: 適用)/ 抽せんはベル当選時に押し順へ依らず乱数 1 個消費(推奨どおり)/ こぼしゲームでも小役示唆予告は出てよい(推奨: 出す)。
+   - テスト 337 パス・lint グリーン(コード変更なしのため現状確認)。
 
 - Phase 1〜2 完了 + Phase 3 の抽せんテーブル層が完了。
 - **背景動画・リール図柄はユーザー入稿の実素材**。BGM/SE・液晶フォールバック・カットイン演出動画は仮素材のまま。
@@ -420,6 +427,7 @@
 
 ユーザーの指示内容を最優先とした上で、次を実施:
 
+0. **ユーザーが押し順ベル左第一「こぼし」化(12/13 こぼし 0 枚 / 1/13 上段 13 枚)の実装を指示したら着手**: 実装方針・変更ファイル・確認事項(推奨案付き)は履歴 `docs/handover/057_bell_kobore_estimate_qa.md` が正。乱数消費順序が変わるため flow.test のシード・simulate.test の固定値の取り直しを忘れないこと。完了後に SPEC「2.」「3.」と確定事項へ追記する。
 1. **実素材が `incoming/` に入稿されていたら STEP 4f(実素材の差し替え + 総合確認)に着手**(`docs/ROADMAP.md` の「STEP 4f」参照): `scripts/import_incoming_assets.py` の対応表を拡張して取り込み、`manifest.json` へ出所登録。差し替えポイントは SE = `SOUND_CUES` / BGM = `STAGE_BGMS` / 予告 = `YOKOKU_VIDEOS` / 連続演出 = `RENZOKU_VIDEOS` / AT・エンディング = `AT_VIDEOS`(いずれも同名ファイル置き換え or 対応表の張り替え)。総合ブラウザ確認 + `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式)を作成し、STEP 4 完了マークを付ける。
 2. 入稿がまだの場合は **STEP 6 の残り(6b〜6d)のうちユーザーが指示した項目に着手**(ROADMAP の STEP 6 参照。優先順はユーザー指示で決めるルール): 6b 永続化(保存対象候補 = `GameState` + `MeterState` + `PlayStats`。`src/platform/` 経由で Web = localStorage / exe = ファイル)/ 6c ペナルティ(確定 7 の解禁)/ 6d 白バー・ブランク役割(ユーザーの構想確定待ち = SPEC 未確定 2)。6a は完了済み。
 3. **Windows 実機確認の結果がユーザーから届いたら対応**: `docs/STEP5_VERIFICATION.md` のチェックリスト(特に #1 AT ステージ動画 / #2 実音再生)の NG 報告があれば調査・修正する。
