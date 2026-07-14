@@ -46,6 +46,11 @@ interface Props {
   /** レバーオン時に決定した 1G 分の予告演出(STEP 4c) */
   lever: LeverDirection;
   cutinFrame: CutinFrame;
+  /**
+   * 各リールの停止済みフラグ(リール消灯演出 = 確定 39 用)。
+   * 回転中は停止したリールから順に true になり、全停止後(レバー待ち)は全 true。
+   */
+  stoppedReels: readonly [boolean, boolean, boolean];
 }
 
 /**
@@ -95,7 +100,7 @@ function SevenWaitScreen({ view }: { view: SevenWaitView }) {
   );
 }
 
-export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
+export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Props) {
   const [queue, setQueue] = useState<QueuedCutin[]>([]);
   const seenSeqRef = useRef(cutinFrame.seq);
   const keyRef = useRef(0);
@@ -128,9 +133,10 @@ export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
   }, [headKey]);
 
   // 前兆シナリオ予告・AT 小役パート予告の表示開始時に予告音を鳴らす(小役示唆予告は無音。
-  // 専用 SE は実素材入稿時にキュー追加を検討)
+  // 専用 SE は実素材入稿時にキュー追加を検討)。リール消灯演出(ムービーなし = 確定 39)は
+  // レバーオン時点で悟らせないため鳴らさない(消灯は停止時から始まる)
   const leverSeq = lever.seq;
-  const hasYokoku = lever.yokoku !== undefined || lever.atYokoku !== undefined;
+  const hasYokoku = lever.yokoku?.videoUrl !== undefined || lever.atYokoku !== undefined;
   useEffect(() => {
     if (leverSeq > 0 && hasYokoku) playCue('TELOP');
   }, [leverSeq, hasYokoku]);
@@ -232,13 +238,33 @@ export function DirectionLayer({ overlay, lever, cutinFrame }: Props) {
           </span>
         </div>
       )}
-      {lever.yokoku !== undefined && (
+      {lever.yokoku?.videoUrl !== undefined && (
         <div
           key={`yokoku-${lever.seq}`}
           className={`yokoku yokoku-l${lever.yokoku.level}`}
           data-label={lever.yokoku.label}
         >
           <video className="yokoku-video" src={lever.yokoku.videoUrl} autoPlay muted playsInline />
+        </div>
+      )}
+      {lever.yokoku?.blackoutReels !== undefined && (
+        // リール消灯演出(共通 3 = 確定 39): 画面 3 分割の左/中/右が、対応する
+        // 消灯対象リールの停止に合わせて黒くなる(次のレバーオンまで維持)
+        <div
+          key={`blackout-${lever.seq}`}
+          className="reel-blackout"
+          data-label={lever.yokoku.label}
+        >
+          {([0, 1, 2] as const).map((reel) => (
+            <div
+              key={reel}
+              className={
+                lever.yokoku?.blackoutReels?.includes(reel) && stoppedReels[reel]
+                  ? 'blackout-section blackout-on'
+                  : 'blackout-section'
+              }
+            />
+          ))}
         </div>
       )}
       {lever.hint !== undefined && (

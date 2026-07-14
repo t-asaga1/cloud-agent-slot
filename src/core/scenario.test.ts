@@ -66,14 +66,32 @@ describe('テーブルの整合性(全行合計 = 分母 100)', () => {
     for (const kind of ['FAKE', 'REAL'] as const) {
       expect(RENZOKU_CHANCE_TABLE[kind].reduce((a, b) => a + b, 0)).toBe(SCENARIO_DENOM);
     }
-    for (const role of ROLES) {
+    for (const key of [...ROLES, 'BELL_MISS'] as const) {
       expect(
-        KOYAKU_HINT_TABLE[role].reduce((a, b) => a + b, 0),
-        `小役示唆 ${role}`,
+        KOYAKU_HINT_TABLE[key].reduce((a, b) => a + b, 0),
+        `小役示唆 ${key}`,
       ).toBe(SCENARIO_DENOM);
+    }
+    for (const role of ROLES) {
       expect(AT_YOKOKU_TABLE[role].reduce((a, b) => a + b, 0), `AT 予告 ${role}`).toBe(
         SCENARIO_DENOM,
       );
+    }
+  });
+
+  it('小役示唆の強パターンはレア役確定(確定 39: ハズレ・リプレイ・ベル揃い/こぼしの強 = 0)', () => {
+    for (const key of ['NONE', 'REPLAY', 'BELL', 'BELL_MISS'] as const) {
+      expect(KOYAKU_HINT_TABLE[key][2], key).toBe(0);
+    }
+    for (const role of [
+      'WATERMELON_WEAK',
+      'WATERMELON_STRONG',
+      'CHERRY_CORNER',
+      'CHERRY_CENTER',
+      'CHANCE_ME',
+      'REACH_ME',
+    ] as const) {
+      expect(KOYAKU_HINT_TABLE[role][2], role).toBeGreaterThan(0);
     }
   });
 
@@ -192,33 +210,65 @@ describe('drawOmenScenario(前兆シナリオの一括抽せん)', () => {
   });
 });
 
-describe('drawKoyakuHint(小役示唆予告 = 確定 34。成立役ベースの独立抽せん)', () => {
-  it('ハズレは発生なし(乱数消費なし)', () => {
-    expect(drawKoyakuHint(seqRng([]), 'NONE')).toBeNull();
+describe('drawKoyakuHint(小役示唆予告 = 確定 34・39。成立役ベースの独立抽せん)', () => {
+  it('ハズレ [95, 5, 0]: 94 → なし / 95〜99 → 弱(ブランク図柄表示は direction 側)。強は出ない', () => {
+    expect(drawKoyakuHint(seqRng([94]), 'NONE')).toBeNull();
+    expect(drawKoyakuHint(seqRng([95, 0]), 'NONE')).toEqual({ slot: 'KOYU_1', strong: false });
+    expect(drawKoyakuHint(seqRng([99, 99]), 'NONE')).toEqual({ slot: 'KYOTSU_2', strong: false });
   });
 
-  it('リプレイ: 発生値 → 弱 / 強 + スロット(固定値)', () => {
-    // リプレイ [80, 18, 2]: 79 → なし(消費 1)/ 80〜97 → 弱 / 98〜99 → 強
-    expect(drawKoyakuHint(seqRng([79]), 'REPLAY')).toBeNull();
-    expect(drawKoyakuHint(seqRng([80, 0]), 'REPLAY')).toEqual({ slot: 'KOYU_1', strong: false });
+  it('リプレイ [50, 50, 0]: 発生値 → 弱 + スロット(固定値)。強は出ない', () => {
+    expect(drawKoyakuHint(seqRng([49]), 'REPLAY')).toBeNull();
     // スロット累計: KOYU_1 22 / KOYU_2 44 / KOYU_3 66 / KYOTSU_1 83 / KYOTSU_2 100
-    expect(drawKoyakuHint(seqRng([98, 66]), 'REPLAY')).toEqual({ slot: 'KYOTSU_1', strong: true });
-    expect(drawKoyakuHint(seqRng([99, 99]), 'REPLAY')).toEqual({ slot: 'KYOTSU_2', strong: true });
+    expect(drawKoyakuHint(seqRng([50, 0]), 'REPLAY')).toEqual({ slot: 'KOYU_1', strong: false });
+    expect(drawKoyakuHint(seqRng([99, 66]), 'REPLAY')).toEqual({ slot: 'KYOTSU_1', strong: false });
+  });
+
+  it('押し順ベルはベル停止 [20, 80, 0] / ハズレ目停止(こぼし)[95, 5, 0] で行が変わる(確定 39)', () => {
+    // ベル停止(bellMiss = false)
+    expect(drawKoyakuHint(seqRng([19]), 'BELL')).toBeNull();
+    expect(drawKoyakuHint(seqRng([20, 0]), 'BELL', false)).toEqual({
+      slot: 'KOYU_1',
+      strong: false,
+    });
+    expect(drawKoyakuHint(seqRng([99, 99]), 'BELL')).toEqual({ slot: 'KYOTSU_2', strong: false });
+    // ハズレ目停止(bellMiss = true)= ハズレと同じ [95, 5, 0]
+    expect(drawKoyakuHint(seqRng([94]), 'BELL', true)).toBeNull();
+    expect(drawKoyakuHint(seqRng([95, 0]), 'BELL', true)).toEqual({
+      slot: 'KOYU_1',
+      strong: false,
+    });
+    // bellMiss はベル以外の役では無視される
+    expect(drawKoyakuHint(seqRng([49]), 'REPLAY', true)).toBeNull();
+  });
+
+  it('レア役: 発生値 → 弱 / 強 + スロット(固定値。強スイカ [5, 15, 80])', () => {
+    expect(drawKoyakuHint(seqRng([4]), 'WATERMELON_STRONG')).toBeNull();
+    expect(drawKoyakuHint(seqRng([5, 0]), 'WATERMELON_STRONG')).toEqual({
+      slot: 'KOYU_1',
+      strong: false,
+    });
+    expect(drawKoyakuHint(seqRng([20, 66]), 'WATERMELON_STRONG')).toEqual({
+      slot: 'KYOTSU_1',
+      strong: true,
+    });
   });
 
   it('レア役ほど発生・強が出やすい(大量試行で発生率がテーブルへ収束)', () => {
     const trials = 20000;
     const rng = createRng(7);
-    for (const [role, [none]] of Object.entries(KOYAKU_HINT_TABLE)) {
+    for (const [key, [none]] of Object.entries(KOYAKU_HINT_TABLE)) {
       if (none >= SCENARIO_DENOM) continue;
+      const role = key === 'BELL_MISS' ? 'BELL' : (key as (typeof ROLES)[number]);
+      const bellMiss = key === 'BELL_MISS';
       let hits = 0;
       for (let i = 0; i < trials; i++) {
-        if (drawKoyakuHint(rng, role as (typeof ROLES)[number]) !== null) hits++;
+        if (drawKoyakuHint(rng, role, bellMiss) !== null) hits++;
       }
       const p = (SCENARIO_DENOM - none) / SCENARIO_DENOM;
       const exp = trials * p;
       const sigma = Math.sqrt(trials * p * (1 - p));
-      expect(Math.abs(hits - exp), role).toBeLessThanOrEqual(sigma * 4);
+      expect(Math.abs(hits - exp), key).toBeLessThanOrEqual(sigma * 4);
     }
   });
 });
