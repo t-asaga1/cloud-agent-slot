@@ -654,7 +654,7 @@ UI を触るものはブラウザ実機確認(録画)済み」で終わるよう
   デバイス無しの VM 環境での WebKitGTK 固有。ロジック・UI は正常動作)。Windows 実機での確認は
   5b の手順書でユーザーへ依頼する。テスト 323 パス・lint / build グリーン
 
-#### STEP 5b: CI ビルド + 配布 — 中
+#### STEP 5b: CI ビルド + 配布 — 中 — **完了(AGENT #053)**
 
 - GitHub Actions(`windows-latest`)で Windows exe(NSIS インストーラ / ポータブル exe)を自動ビルド
   (`tauri-apps/tauri-action` or 手動ステップ。実装 AGENT が選定して記録)
@@ -666,6 +666,16 @@ UI を触るものはブラウザ実機確認(録画)済み」で終わるよう
   起動手順・確認チェックリスト = STEP3 版の形式を踏襲)
 - 完了条件: CI ビルドグリーン(exe 成果物の生成をログ・成果物一覧で確認)+ 手順書 +
   ROADMAP の STEP 5 完了マークと HANDOVER 更新(Windows 実機確認の結果待ちはユーザー依頼として明記)
+- **実施結果(AGENT #053)**: `.github/workflows/windows-build.yml` を新設。実装方式は
+  **手動ステップ + ランナー標準 `gh` CLI**(`tauri-apps/tauri-action` は不採用 = 外部依存最小・
+  成果物パスと Release 添付を明示制御)。トリガーは タグ push(`v*` → Release 作成 + 添付)+
+  `workflow_dispatch`(Actions 成果物へアップロード)に加え、**`pull_request`(ワークフロー・
+  `src-tauri/` 等の変更時)を検証用に追加**(エージェントの `gh` は読み取り専用で
+  `workflow_dispatch` を起動できないため = AGENT #052 の事前確認どおり)。成果物 3 種
+  (NSIS setup.exe / MSI / ポータブル exe)。Rust stable 更新 + `swatinem/rust-cache` で
+  キャッシュ。PR #52 の `pull_request` トリガーで CI グリーン + 成果物生成をログで確認済み。
+  Windows 実機確認は `docs/STEP5_VERIFICATION.md` でユーザーへ依頼(特に AT ステージ動画・
+  実音再生 = VM 未確認の 2 点)
 
 ### STEP 6: 仕上げ — 小〜中(項目ごとに独立。優先順はユーザー指示で決める)
 
