@@ -443,8 +443,8 @@ describe('atYokokuAllowed / atYokokuView(AT 小役パート予告 = DIRECTION_SP
     expect(atYokokuAllowed(state({ type: 'NORMAL' }))).toBe(false);
   });
 
-  it('AT_NAVI = ベル図柄 + 押し順テキスト(ナビの中第一と一致)', () => {
-    const view = atYokokuView('AT_NAVI', 'BELL', 'NORMAL');
+  it('AT_NAVI = ベル図柄 + 押し順テキスト(このゲームのナビ押し順と一致 = 確定 36)', () => {
+    const view = atYokokuView('AT_NAVI', 'BELL', 'NORMAL', [1, 0, 2]);
     expect(view).toEqual({
       kind: 'AT_NAVI',
       videoUrl: AT_VIDEOS['at_koyaku_navi'],
@@ -453,6 +453,10 @@ describe('atYokokuAllowed / atYokokuView(AT 小役パート予告 = DIRECTION_SP
       strong: false,
       label: 'AT予告 ベルナビ',
     });
+    // 正解 4 通りのナビ押し順がそれぞれのテキストへ解決される
+    expect(atYokokuView('AT_NAVI', 'BELL', 'NORMAL', [1, 2, 0]).naviText).toBe('中→右→左');
+    expect(atYokokuView('AT_NAVI', 'BELL', 'NORMAL', [2, 0, 1]).naviText).toBe('右→左→中');
+    expect(atYokokuView('AT_NAVI', 'BELL', 'NORMAL', [2, 1, 0]).naviText).toBe('右→中→左');
   });
 
   it('AT_RARE = 成立役の図柄画像(目押し補助 = Q17)/ AT_STRONG = 図柄なし + 強調', () => {

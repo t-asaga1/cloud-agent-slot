@@ -15,7 +15,7 @@ import type { Background, BackgroundTrigger } from './core/background';
 import { drawBellMiss, drawRole } from './core/lottery';
 import type { Mode } from './core/mode';
 import { RENZOKU_GAMES } from './core/omen';
-import { NAVI_PUSH_ORDER, NORMAL_PUSH_ORDER, playGame } from './core/play';
+import { drawNaviPushOrder, NORMAL_PUSH_ORDER, playGame } from './core/play';
 import {
   drawAtYokoku,
   drawBattleRoute,
@@ -442,6 +442,8 @@ type SpinUi =
       startPositions: StopPositions;
       startAt: number;
       slips: readonly (ReelSlip | undefined)[];
+      /** ナビ押し順(確定 36。ナビ中のベル当選時のみレバーオンで抽せん。ナビ数字の表示に使う) */
+      naviOrder?: PushOrder;
     };
 
 /** オート消化の押し順セレクト: AUTO = 打ち方ポリシー連動(通常 = 左第一 / ナビ中のベル = ナビ) */
@@ -561,7 +563,7 @@ function App() {
    *   こぼすベル(bellMiss = 確定 35)には小役示唆予告を出さない(揃うベルは出す)。
    * いずれも次のレバーオンまで表示。
    */
-  const drawLeverDirection = (won: Role, bellMiss: boolean) => {
+  const drawLeverDirection = (won: Role, bellMiss: boolean, naviOrder?: PushOrder) => {
     const state = play.gameState;
     const { phase: currentPhase } = state;
     // バトルパート(STEP 4e)
@@ -583,7 +585,7 @@ function App() {
     let atYokoku: LeverDirection['atYokoku'];
     if (battle === undefined && atYokokuAllowed(state) && currentPhase.type === 'AT') {
       const drawn = drawAtYokoku(hintRng, won);
-      if (drawn !== null) atYokoku = atYokokuView(drawn, won, currentPhase.tier);
+      if (drawn !== null) atYokoku = atYokokuView(drawn, won, currentPhase.tier, naviOrder);
     }
     const renzoku = battle === undefined ? renzokuAtLeverOn(state) : undefined;
     const yokoku =
@@ -610,15 +612,19 @@ function App() {
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
-    // ベル当選時は 1/13 のこぼし抽せん(確定 35。playGame と同じ乱数消費順序)
+    // ベル当選時は 1/13 のこぼし抽せん(確定 35)→ ナビ中はナビ押し順抽せん(確定 36)。
+    // playGame と同じ乱数消費順序(役 → こぼし → ナビ押し順)
     const bellMiss = won === 'BELL' ? drawBellMiss(rng) : false;
-    drawLeverDirection(won, bellMiss);
+    const naviOrder =
+      isNaviActive(play.gameState) && won === 'BELL' ? drawNaviPushOrder(rng) : undefined;
+    drawLeverDirection(won, bellMiss, naviOrder);
     setSpinUi({
       mode: 'SPINNING',
       cycle: startSpin(won, bellMiss),
       startPositions: play.positions,
       startAt: performance.now(),
       slips: [undefined, undefined, undefined],
+      naviOrder,
     });
   };
 
@@ -650,13 +656,13 @@ function App() {
     dispatch({ type: 'LEVER' });
     const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
     const bellMiss = won === 'BELL' ? drawBellMiss(rng) : false;
-    drawLeverDirection(won, bellMiss);
+    const naviOrder =
+      isNaviActive(play.gameState) && won === 'BELL' ? drawNaviPushOrder(rng) : undefined;
+    drawLeverDirection(won, bellMiss, naviOrder);
     const pushes = pickPushes(aim, rng);
     const order: PushOrder =
       pushOrderSelect === 'AUTO'
-        ? isNaviActive(play.gameState) && won === 'BELL'
-          ? NAVI_PUSH_ORDER
-          : NORMAL_PUSH_ORDER
+        ? (naviOrder ?? NORMAL_PUSH_ORDER)
         : PUSH_ORDERS[pushOrderSelect];
     let cycle = startSpin(won, bellMiss);
     for (const reel of order) cycle = pressStop(cycle, reel, pushes[reel]);
@@ -815,10 +821,13 @@ function App() {
   const { phase } = gameState;
   // 押し順ナビの本表示(STEP 3c): AT・エンディング中のベル当選時、レバーオンで
   // リール窓上へナビ数字(何番目に押すか)を出し、リールが停止するごとに消す
+  const naviOrder = spinUi.mode === 'SPINNING' ? spinUi.naviOrder : undefined;
   const naviShown = spinning && navi && spinUi.cycle.wonRole === 'BELL';
   const naviDigit = (reel: ReelIndex): number | undefined => {
-    if (!naviShown || spinUi.cycle.stopped[reel] !== undefined) return undefined;
-    return NAVI_PUSH_ORDER.indexOf(reel) + 1;
+    if (naviOrder === undefined || !naviShown || spinUi.cycle.stopped[reel] !== undefined) {
+      return undefined;
+    }
+    return naviOrder.indexOf(reel) + 1;
   };
   // AT 獲得枚数はゲーム開始時点が AT / エンディングのゲームで加算される(counters.ts)。
   // メーター表示は AT 中(エンディング含む)のみ(終了後は非表示。値は次の AT_START まで凍結)
@@ -1009,7 +1018,11 @@ function App() {
               </div>
               <div>
                 ナビ:{' '}
-                {navi ? <strong className="accent">押し順ナビ中(ベル = 中第一)</strong> : 'なし'}
+                {navi ? (
+                  <strong className="accent">押し順ナビ中(ベル = 正解 4 通り均等)</strong>
+                ) : (
+                  'なし'
+                )}
               </div>
               <div>
                 予告演出:{' '}

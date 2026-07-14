@@ -18,18 +18,18 @@ describe(`simulate(固定シード ${SEED} / ${GAMES}G)`, () => {
   const stats = simulate(GAMES, SEED);
 
   it('固定値: 投入・払出・初当り・セット・上位 AT・エンディング(回帰検出)', () => {
-    // ベルこぼし抽せん(確定 35)が playGame の乱数列へ加わったため取り直し(2026-07-14。
-    // 前回は 4b のシナリオ抽せん追加 = 2026-07-13)
-    expect(stats.coinsIn).toBe(258948);
-    expect(stats.coinsOut).toBe(333529);
-    expect(stats.normal.games).toBe(68399);
-    expect(stats.at.games).toBe(GAMES - 68399);
-    expect(stats.atCount).toBe(302);
-    expect(stats.totalSets).toBe(1716);
-    expect(stats.upperAtCount).toBe(46);
-    expect(stats.endingCount).toBe(73);
-    expect(stats.endingCompleteCount).toBe(27);
-    expect(stats.vStockGains).toBe(299);
+    // ナビ押し順抽せん(確定 36)が playGame の乱数列へ加わったため取り直し(2026-07-14。
+    // 前回はベルこぼし抽せん = 確定 35 の追加時)
+    expect(stats.coinsIn).toBe(258675);
+    expect(stats.coinsOut).toBe(328477);
+    expect(stats.normal.games).toBe(68606);
+    expect(stats.at.games).toBe(GAMES - 68606);
+    expect(stats.atCount).toBe(283);
+    expect(stats.totalSets).toBe(1703);
+    expect(stats.upperAtCount).toBe(49);
+    expect(stats.endingCount).toBe(74);
+    expect(stats.endingCompleteCount).toBe(25);
+    expect(stats.vStockGains).toBe(280);
   });
 
   it('通常時純増 ≒ -1.8 枚/G(SPEC 想定)', () => {

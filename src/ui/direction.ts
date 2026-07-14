@@ -82,8 +82,7 @@ import { AT_VIDEOS, EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS 
 import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
-import { NAVI_PUSH_ORDER } from '../core/play';
-import type { ReelSymbol } from '../core/reel';
+import type { PushOrder, ReelSymbol } from '../core/reel';
 import { isRareRole, type Role } from '../core/roles';
 import {
   stepAt,
@@ -397,8 +396,10 @@ const AT_YOKOKU_KEYS: Record<AtYokoku, string> = {
   AT_STRONG: 'strong',
 };
 
-/** ナビの押し順表示(打ち方ポリシーの NAVI_PUSH_ORDER = 中第一 と一致させる) */
-const NAVI_ORDER_TEXT = NAVI_PUSH_ORDER.map((reel) => ['左', '中', '右'][reel]).join('→');
+/** 押し順の表示テキスト(例: 中→左→右) */
+export function pushOrderText(order: PushOrder): string {
+  return order.map((reel) => ['左', '中', '右'][reel]).join('→');
+}
 
 /** AT 小役パート予告の表示データ(レバーオン時に解決し、次のレバーオンまで表示) */
 export interface AtYokokuView {
@@ -406,7 +407,7 @@ export interface AtYokokuView {
   videoUrl: string;
   /** ムービー後に画面表示する図柄画像(NAVI = ベル / RARE = 成立役の図柄 = 確定 33) */
   symbolUrl?: string;
-  /** NAVI の押し順テキスト(中→左→右) */
+  /** NAVI の押し順テキスト(このゲームのナビ押し順 = 確定 36。例: 中→左→右) */
   naviText?: string;
   /** 強調枠(AT_STRONG = V ストック濃厚) */
   strong: boolean;
@@ -427,10 +428,18 @@ export function atYokokuAllowed(state: GameState): boolean {
 /**
  * AT 小役パート予告(`drawAtYokoku` の結果)を見た目へ解決する。
  * AT と上位 AT で別ムービー(`at_koyaku_*` / `uat_koyaku_*`)。
- * 図柄画像は NAVI = ベル(+ 押し順テキスト)/ RARE = 成立役の図柄(目押し補助)/
- * STRONG = なし(ムービーのみ。V ストック濃厚の強調枠)。
+ * 図柄画像は NAVI = ベル(+ このゲームのナビ押し順テキスト = 確定 36)/
+ * RARE = 成立役の図柄(目押し補助)/ STRONG = なし(ムービーのみ。V ストック濃厚の強調枠)。
+ *
+ * @param naviOrder このゲームのナビ押し順(`drawNaviPushOrder` の結果。レバーオンで
+ *   抽せんした値を渡す = リール窓上のナビ数字と必ず一致させる)
  */
-export function atYokokuView(kind: AtYokoku, role: Role, tier: BattleTier): AtYokokuView {
+export function atYokokuView(
+  kind: AtYokoku,
+  role: Role,
+  tier: BattleTier,
+  naviOrder?: PushOrder,
+): AtYokokuView {
   const prefix = tier === 'UPPER' ? 'uat' : 'at';
   const videoUrl = atVideoUrl(`${prefix}_koyaku_${AT_YOKOKU_KEYS[kind]}`);
   const label = `${tier === 'UPPER' ? '上位AT' : 'AT'}予告 ${AT_YOKOKU_LABELS[kind]}`;
@@ -439,7 +448,7 @@ export function atYokokuView(kind: AtYokoku, role: Role, tier: BattleTier): AtYo
       kind,
       videoUrl,
       symbolUrl: SYMBOL_IMAGES.BELL,
-      naviText: NAVI_ORDER_TEXT,
+      naviText: naviOrder !== undefined ? pushOrderText(naviOrder) : undefined,
       strong: false,
       label,
     };
