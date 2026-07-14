@@ -47,6 +47,7 @@ import {
   ENDING_GAMES,
   initGameState,
   isNaviActive,
+  isSevenFlagForced,
   type AdvanceResult,
   type GameEvent,
   type GameState,
@@ -63,6 +64,7 @@ import {
 } from './ui/playStats';
 import { StatsPanel } from './ui/StatsPanel';
 import {
+  atIntroAtLeverOn,
   atYokokuAllowed,
   atYokokuView,
   battleGameAtLeverOn,
@@ -75,6 +77,7 @@ import {
   resultSoundCue,
   revivalCutin,
   scenarioYokokuAtLeverOn,
+  sevenWaitAtLeverOn,
   type Cutin,
   type LeverDirection,
 } from './ui/direction';
@@ -184,6 +187,10 @@ function phaseLabel(phase: Phase): string {
       return `${phase.kind === 'REAL' ? '本' : '偽'}前兆 ${phase.game}/${phase.totalGames}G(演出${phase.renzoku}へ)`;
     case 'RENZOKU':
       return `連続演出${phase.renzoku} ${phase.game}/${RENZOKU_GAMES}G(${phase.kind === 'REAL' ? '本' : '偽'})`;
+    case 'SEVEN_WAIT':
+      return `赤7待機 ${phase.game}G(AT確定・赤7を狙え)`;
+    case 'AT_INTRO':
+      return 'AT導入(1G)';
     case 'AT': {
       const partGames = phase.part === 'KOYAKU' ? KOYAKU_PART_GAMES : BATTLE_PART_GAMES;
       return `${phase.tier === 'UPPER' ? '上位AT' : 'AT'} ${phase.part === 'KOYAKU' ? '小役' : 'バトル'} ${phase.partGame}/${partGames}G`;
@@ -207,7 +214,9 @@ function formatEvent(event: GameEvent): string {
     case 'RENZOKU_START':
       return `連続演出${event.renzoku} 開始(${event.kind === 'REAL' ? '本' : '偽'})`;
     case 'RENZOKU_RESULT':
-      return `連続演出${event.renzoku} ${event.success ? '成功!' : '失敗…'}`;
+      return `連続演出${event.renzoku} ${event.success ? '成功!(AT確定→赤7待機)' : '失敗…'}`;
+    case 'SEVEN_ALIGNED':
+      return '赤7揃い!(次ゲーム AT導入)';
     case 'BACKGROUND_CHANGE':
       return `背景移行 ${BACKGROUND_LABELS[event.from]}→${BACKGROUND_LABELS[event.to]}(${TRIGGER_LABELS[event.trigger]})`;
     case 'AT_START':
@@ -566,6 +575,9 @@ function App() {
   const drawLeverDirection = (won: Role, bellMiss: boolean, naviOrder?: PushOrder) => {
     const state = play.gameState;
     const { phase: currentPhase } = state;
+    // 赤7待機・AT 導入(確定 37)。あるとき他の演出は出ない(フェーズが排他)
+    const sevenWait = sevenWaitAtLeverOn(state);
+    const atIntro = atIntroAtLeverOn(state);
     // バトルパート(STEP 4e)
     let battle: LeverDirection['battle'];
     const battleGame = battleGameAtLeverOn(state);
@@ -603,7 +615,16 @@ function App() {
       const drawn = drawKoyakuHint(hintRng, won);
       if (drawn !== null) hint = koyakuHintView(drawn, won, state.background);
     }
-    setLeverDirection((prev) => ({ seq: prev.seq + 1, yokoku, hint, renzoku, atYokoku, battle }));
+    setLeverDirection((prev) => ({
+      seq: prev.seq + 1,
+      yokoku,
+      hint,
+      renzoku,
+      atYokoku,
+      battle,
+      sevenWait,
+      atIntro,
+    }));
   };
 
   /** レバーオン: BET 徴収(メーター)+ 役抽せん + 予告決定 + 全リール回転開始(回転中は無視) */
@@ -611,7 +632,13 @@ function App() {
     if (spinUi.mode !== 'IDLE') return;
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
-    const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
+    // 赤7待機中は内部当選役を REACH_ME へ強制(確定 37。役抽せんの乱数消費なし。
+    // デバッグの強制役指定より優先)
+    const won: Role = isSevenFlagForced(play.gameState)
+      ? 'REACH_ME'
+      : forcedRole === 'DRAW'
+        ? drawRole(rng)
+        : forcedRole;
     // ベル当選時は 1/13 のこぼし抽せん(確定 35)→ ナビ中はナビ押し順抽せん(確定 36)。
     // playGame と同じ乱数消費順序(役 → こぼし → ナビ押し順)
     const bellMiss = won === 'BELL' ? drawBellMiss(rng) : false;
@@ -654,7 +681,14 @@ function App() {
     if (spinUi.mode !== 'IDLE') return;
     playCue('LEVER_ON');
     dispatch({ type: 'LEVER' });
-    const won = forcedRole === 'DRAW' ? drawRole(rng) : forcedRole;
+    // 赤7待機中は REACH_ME 強制(確定 37)。目押しはセレクトを尊重する
+    // (適当押し = 揃えられず待機継続 / 赤7 狙い = 揃う、の両方をデバッグで再現できる。
+    // ヘッドレスの playGame / オートプレイ(一括)は常に赤7 狙いで 1G で揃う)
+    const won: Role = isSevenFlagForced(play.gameState)
+      ? 'REACH_ME'
+      : forcedRole === 'DRAW'
+        ? drawRole(rng)
+        : forcedRole;
     const bellMiss = won === 'BELL' ? drawBellMiss(rng) : false;
     const naviOrder =
       isNaviActive(play.gameState) && won === 'BELL' ? drawNaviPushOrder(rng) : undefined;

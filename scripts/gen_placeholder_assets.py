@@ -220,11 +220,18 @@ ENDING_MOVIES = [
     ("complete", "エンディング 完全制覇", "#f87171"),
 ]
 
+# AT 導入ムービー(SPEC 確定 37: 赤7 揃いの次ゲーム 1G に流して AT へ繋ぐ)。
+# AT確定ムービー(at_kakutei)はユーザー入稿の実素材のため本スクリプトの対象外
+# (取り込みは scripts/import_incoming_assets.py)。
+AT_INTRO_MOVIES = [
+    ("at_intro", "AT導入", "#f87171"),
+]
+
 AT_SECONDS = 2
 
 
 def at_files() -> list[tuple[str, str, str]]:
-    """(ファイル名 stem, 表示ラベル, 文字色)の一覧(合計 45 本)。"""
+    """(ファイル名 stem, 表示ラベル, 文字色)の一覧(合計 46 本)。"""
     files: list[tuple[str, str, str]] = []
     for tier_id, tier_label in AT_TIERS:
         for kind_id, kind_label, color in AT_KOYAKU_YOKOKU:
@@ -235,6 +242,8 @@ def at_files() -> list[tuple[str, str, str]]:
         files.append((f"battle_uat_{no:02d}", f"共闘バトル {label}", color))
     for ending_id, label, color in ENDING_MOVIES:
         files.append((f"ending_{ending_id}", label, color))
+    for stem, label, color in AT_INTRO_MOVIES:
+        files.append((stem, label, color))
     return files
 
 

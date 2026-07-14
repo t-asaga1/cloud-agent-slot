@@ -8,7 +8,7 @@ import {
   NORMAL_PUSH_ORDER,
   playGame,
 } from './play';
-import { KOMA_COUNT } from './reel';
+import { KOMA_COUNT, REEL_LAYOUT } from './reel';
 import { createRng } from './rng';
 import type { GameState } from './state';
 
@@ -41,6 +41,10 @@ function atState(): GameState {
   });
 }
 
+function sevenWaitState(game = 0): GameState {
+  return normalState({ mode: 'HONZENCHO', phase: { type: 'SEVEN_WAIT', game } });
+}
+
 describe('decidePush(打ち方ポリシー = 確定 26)', () => {
   it('通常時は役によらず左第一(順押し)', () => {
     const rng = createRng(1);
@@ -61,6 +65,22 @@ describe('decidePush(打ち方ポリシー = 確定 26)', () => {
     const expected = [rng.nextInt(20), rng.nextInt(20), rng.nextInt(20)];
     const decision = decidePush(normalState(), 'BELL', createRng(42));
     expect(decision.pushPositions).toEqual(expected);
+  });
+
+  it('赤7待機中(確定 37)は全リール赤7 狙い(0〜4 コマ手前)の押下位置になる', () => {
+    // 赤7 のコマ index(SPEC「3.」: 左 3 / 中 10 / 右 5 = コマ番号 4 / 11 / 6)
+    const sevenIndexes = [0, 1, 2].map((reel) =>
+      REEL_LAYOUT[reel as 0 | 1 | 2].indexOf('SEVEN_RED'),
+    );
+    for (let seed = 0; seed < 50; seed++) {
+      const decision = decidePush(sevenWaitState(), 'REACH_ME', createRng(seed));
+      expect(decision.pushOrder).toBe(NORMAL_PUSH_ORDER);
+      decision.pushPositions.forEach((position, reel) => {
+        const before = (sevenIndexes[reel] - position + KOMA_COUNT) % KOMA_COUNT;
+        expect(before, `リール${reel}`).toBeGreaterThanOrEqual(0);
+        expect(before, `リール${reel}`).toBeLessThanOrEqual(4);
+      });
+    }
   });
 
   it('ナビ中のベルはナビ押し順抽せん(1)→ 押下位置(3)の順に乱数を消費する(確定 36)', () => {
@@ -175,6 +195,33 @@ describe('playGame(ヘッドレス 1G 実行)', () => {
     }
     // こぼし抽せんの分母は 13(12/13 こぼし)
     expect(BELL_MISS_DENOM).toBe(13);
+  });
+
+  it('赤7待機中は REACH_ME 強制 + 赤7 狙いで 1 ゲームで揃う(確定 37。forcedRole より優先)', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      // forcedRole に別役を渡しても仕様上の REACH_ME 強制が最優先
+      const result = playGame(sevenWaitState(), createRng(seed), 'NONE');
+      expect(result.wonRole).toBe('REACH_ME');
+      // 全リール赤7 狙い(目押し成功想定)は 100% 7 揃い(STEP 1e の網羅テスト済み)
+      expect(result.displayedRole).toBe('REACH_ME');
+      expect(result.events).toContainEqual({ type: 'SEVEN_ALIGNED' });
+      expect(result.state.phase).toEqual({ type: 'AT_INTRO' });
+    }
+  });
+
+  it('赤7待機中の乱数消費 = 押下位置 3 のみ(役抽せんなし。固定シード再現性)', () => {
+    for (let seed = 0; seed < 10; seed++) {
+      // 手動で同じ消費順序を再現: 役抽せんなし → 押下位置 3(赤7 狙い)
+      const manual = createRng(seed);
+      const sevenIndexes = [0, 1, 2].map((reel) =>
+        REEL_LAYOUT[reel as 0 | 1 | 2].indexOf('SEVEN_RED'),
+      );
+      const expected = sevenIndexes.map(
+        (index) => (index - manual.nextInt(5) + KOMA_COUNT) % KOMA_COUNT,
+      );
+      const result = playGame(sevenWaitState(), createRng(seed));
+      expect(result.push.pushPositions).toEqual(expected);
+    }
   });
 
   it('リプレイは 100% 引き込み + 次ゲームの BET 不要(replayCarry)', () => {
