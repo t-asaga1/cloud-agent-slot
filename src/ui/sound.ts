@@ -10,8 +10,9 @@
  *   2. 専用ファイルを追加して `SOUND_CUES` の対応(キュー → ファイル)を張り替える
  * - 仮素材が不足しているキューは既存 SE を流用している(下記の「仮流用」コメント)。
  *   実素材では用途ごとの専用 SE に差し替える想定。
- * - BGM はステージ単位のまま `src/assets/index.ts` の `STAGE_BGMS`(ステージ ID → ファイル)が
- *   差し替えポイント。切替は `src/platform/audio.ts` の `playBgm`(クロスフェード付き)を使う。
+ * - BGM はユーザー入稿済みの 4 トラック(確定 38)で、`src/assets/index.ts` の `BGM_FILES`
+ *   (トラック ID → ファイル)が差し替えポイント。状態からの選曲は `src/ui/bgm.ts` の
+ *   `bgmTrackForState`、切替は `src/platform/audio.ts` の `playBgm`(クロスフェード付き)を使う。
  */
 import { SE } from '../assets';
 import { playSe } from '../platform/audio';

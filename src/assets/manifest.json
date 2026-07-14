@@ -234,85 +234,40 @@
     "note": "連続演出失敗SE の仮素材(サイン波合成・下降 2 音)。実素材入稿で差し替え予定"
   },
   {
-    "id": "bgm_yoshitsune",
-    "path": "audio/bgm/bgm_yoshitsune.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "義経背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_shizuka",
-    "path": "audio/bgm/bgm_shizuka.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "静背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_benkei",
-    "path": "audio/bgm/bgm_benkei.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "弁慶背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_yugata",
-    "path": "audio/bgm/bgm_yugata.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "夕方背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
     "id": "bgm_zencho",
     "path": "audio/bgm/bgm_zencho.ogg",
     "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/Ashen Gate（前兆背景）.wav を OGG 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "前兆背景の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "BGM「Ashen Gate」= 前兆背景滞在中(2026-07-14 入稿。SPEC 確定 38 / src/ui/bgm.ts)"
   },
   {
-    "id": "bgm_at_koyaku",
-    "path": "audio/bgm/bgm_at_koyaku.ogg",
+    "id": "bgm_at_base",
+    "path": "audio/bgm/bgm_at_base.ogg",
     "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/Skyfall Trigger（下位AT中基本）.wav を OGG 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "AT(小役パート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "BGM「Skyfall Trigger」= 下位 AT 中基本(小役・バトル一気通貫。2026-07-14 入稿)"
   },
   {
-    "id": "bgm_at_battle",
-    "path": "audio/bgm/bgm_at_battle.ogg",
+    "id": "bgm_at_kakutei",
+    "path": "audio/bgm/bgm_at_kakutei.ogg",
     "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/頼朝テーマ曲（下位AT継続確定）.wav を OGG 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "AT(バトルパート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "BGM「頼朝テーマ曲」= 下位 AT 継続確定時に 1/5 でそのセットのみ(2026-07-14 入稿)"
   },
   {
-    "id": "bgm_at_upper_koyaku",
-    "path": "audio/bgm/bgm_at_upper_koyaku.ogg",
+    "id": "bgm_at_upper",
+    "path": "audio/bgm/bgm_at_upper.ogg",
     "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/義経テーマ曲（上位AT中基本）.wav を OGG 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "上位AT(小役パート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
-  },
-  {
-    "id": "bgm_at_upper_battle",
-    "path": "audio/bgm/bgm_at_upper_battle.ogg",
-    "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
-    "license": "project-original",
-    "note": "上位AT(バトルパート)の BGM 仮素材(サイン波ループ)。実素材入稿で差し替え予定"
+    "note": "BGM「義経テーマ曲」= 上位 AT 中基本(一気通貫。2026-07-14 入稿)"
   },
   {
     "id": "yokoku_yoshitsune_koyu1_weak",
