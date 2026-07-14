@@ -1,0 +1,31 @@
+[package]
+name = "yoshitsune-monogatari"
+version = "0.1.0"
+description = "パチスロアプリ「義経物語」デスクトップ版(Tauri シェル)"
+authors = ["cloud-agent-slot"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+
+# Linux(WebKitGTK)では GStreamer にカスタムプロトコル tauri:// の URI ハンドラが
+# 無く、動画(WebM)・音声(Ogg)を再生できない(tauri-apps/tauri#3725)。
+# リリースビルドのフロントエンドを localhost HTTP で配信して回避する(lib.rs 参照)。
+# Windows(WebView2 = Chromium 系)はこの問題自体が無いため通常配信のまま。
+[target.'cfg(target_os = "linux")'.dependencies]
+tauri-plugin-localhost = "2"
+portpicker = "0.1"
