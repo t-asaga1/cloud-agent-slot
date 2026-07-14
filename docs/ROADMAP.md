@@ -629,7 +629,7 @@ UI を触るものはブラウザ実機確認(録画)済み」で終わるよう
 - 既存の `npm run dev` / `build` / `test` / `lint` は**従来どおり動くまま**にする(Web 版の開発フローを壊さない)。
   Tauri 用スクリプトは `tauri:dev` / `tauri:build` として追加する。
 
-#### STEP 5a: Tauri 導入 + ローカル動作確認 — 中
+#### STEP 5a: Tauri 導入 + ローカル動作確認 — 中 — **完了(AGENT #049)**
 
 - VM へ Rust toolchain + Linux 用依存(`libwebkit2gtk-4.1-dev` 等)を導入し、`src-tauri/` を scaffold
   (`tauri.conf.json`: アプリ名・ウィンドウサイズ(筐体 UI に合わせる)・アイコンは仮でよい)
@@ -642,6 +642,17 @@ UI を触るものはブラウザ実機確認(録画)済み」で終わるよう
 - 環境構築コマンドが多くなるため、完了時に **Cursor Cloud の環境セットアップ更新の要否**を HANDOVER へ記録する
 - 完了条件: `npm test` / `npm run lint` / `npm run build` グリーン(既存 274+ 件に影響なし)+
   `tauri:build` の Linux バイナリ生成 + デスクトップ実機確認記録(録画)
+- **実施結果(AGENT #049)**: Tauri 2.x を導入(`src-tauri/` scaffold + `tauri:dev` / `tauri:build`
+  スクリプト。既存の Web 版開発フロー・コア・UI・テストは無変更)。Linux(WebKitGTK)特有の
+  メディア再生問題 2 件を実測・解決: (1) GStreamer が `tauri://` プロトコルを扱えず動画・音声が
+  再生不可 → **リリースビルドのみ `tauri-plugin-localhost` で HTTP 配信**(2) 既定の playbin で
+  HTTP 配信の WebM(VP9)が再生開始 / ループ境界でストール → **`WEBKIT_GST_USE_PLAYBIN3=1` を
+  起動時に設定**(いずれも `src-tauri/src/lib.rs` に理由コメント付きで実装。Windows の WebView2 は
+  別系統のため影響なし)。デスクトップ実機確認(録画): 背景動画 / 予告・連続演出ムービー再生・
+  リール回転・停止(キーボード操作)・本前兆 → 連続演出 → AT 突入の通しフロー・console エラーなし。
+  **既知の VM 限定の制約**: AT 突入後のステージ動画が黒画面になることがある(GPU 無し・音声
+  デバイス無しの VM 環境での WebKitGTK 固有。ロジック・UI は正常動作)。Windows 実機での確認は
+  5b の手順書でユーザーへ依頼する。テスト 323 パス・lint / build グリーン
 
 #### STEP 5b: CI ビルド + 配布 — 中
 

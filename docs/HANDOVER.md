@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #048(STEP 5a 依頼ランの ERROR 終了の原因調査)
-- 作成日: 2026-07-13
-- 履歴コピー: `docs/handover/048_step5a_error_investigation.md`
+- 作成者: AGENT #049(STEP 5a = Tauri 導入 + ローカル動作確認)
+- 作成日: 2026-07-14
+- 履歴コピー: `docs/handover/049_step5a_tauri_desktop.md`
 
 ## プロジェクト概要
 
@@ -315,6 +315,16 @@
    - **ユーザーが確認したログの ERROR(`Failed to create recording directory /opt/cursor/artifacts/`)は失敗原因ではない**。これは Cursor Cloud VM 起動時の既知の無害な警告で、正常完了した直近ラン(AGENT #046 = STEP 4e / AGENT #047 = STEP 5 計画)の起動ログにも全く同じ ERROR が 2 件ずつ記録されている。VM セットアップの `create-artifacts-dir` ステップと exec-daemon 起動が並行して走る際の一時的な競合で、直後に「Artifacts assets directory created/verified」と成功しており、エージェントの動作(画面録画・アーティファクトのアップロード)にも影響していない。
    - **実際の障害**: 当該ラン(bc-11a6fcd6。21:32:20 作成)は 36 秒後の 21:32:56 に ERROR となり、**トランスクリプトが完全に空(メッセージ 0 件)**・ブランチ作成なし・コード変更なし。エージェントが最初の応答を生成する前(会話が始まる前)に Cursor Cloud サービス側でランが打ち切られた形。リポジトリ・環境・依頼文の問題ではない(環境セットアップは `npm install` まで exit code 0 で正常完了していた)。#014 で調査した事例(巨大スコープによる思考肥大化 → 応答生成の繰り返し失敗)とも異なり、今回は開始直後の即死 = **サービス側の一過性障害**と判断。
    - **失われた成果物はゼロで、再試行は安全**。現 main(96c4432)でテスト 323 パス・lint グリーンを確認済み。同じ依頼文で STEP 5a を再依頼すればよい(スコープ分割等の対策は不要)。
+43. **AGENT #049(今回)**: **STEP 5a = Tauri 導入 + ローカル動作確認を実施**(コアロジック `src/core/`・UI `src/ui/`・テストは無変更。追加は `src-tauri/` + npm scripts + `.gitignore` のみ):
+   - **環境構築**: Rust toolchain を stable 1.97.0 へ更新(VM 既存の 1.83.0 では依存の `edition2024` 要求でビルド不可 → `rustup update stable && rustup default stable`)+ apt で WebKitGTK 開発依存(`libwebkit2gtk-4.1-dev` `libgtk-3-dev` `libayatana-appindicator3-dev` `librsvg2-dev` 等)を導入。`@tauri-apps/cli` を devDependencies へ追加し、`tauri` / `tauri:dev` / `tauri:build` スクリプトを `package.json` へ追加(**既存の `dev` / `build` / `test` / `lint` は無変更 = Web 版フローを壊していない**)。
+   - **`src-tauri/` scaffold**: `tauri.conf.json`(productName = yoshitsune-monogatari / identifier = jp.cloudagent.yoshitsune / `frontendDist` = `../dist` / アイコンは Tauri 既定の仮)。ウィンドウは conf ではなく **Rust 側(`lib.rs` の `WebviewWindowBuilder`)で生成**(760×1000・最小 520×720。筐体 1 カラム UI に合わせたサイズ。Linux リリースビルドだけ URL を切り替える条件分岐のため)。
+   - **Linux(WebKitGTK)のメディア再生問題 2 件を実測・解決**(`lib.rs` に理由コメント付き。**Windows の WebView2(Chromium 系)は別系統でどちらの問題も無い**):
+     - (1) **GStreamer に `tauri://` の URI ハンドラが無い**: リリースビルドの背景・演出ムービー(WebM)/ BGM・SE(Ogg)が「No URI handler implemented for "tauri"」で全滅(tauri-apps/tauri#3725)→ **Linux リリースビルドのみ `tauri-plugin-localhost`(+ `portpicker` で空きポート)でフロントエンドを http://localhost:<port>/index.html から配信**。プラグインは "/" を index.html へ解決しない(500)ため URL に `/index.html` を明示。
+     - (2) **既定の playbin(2)では HTTP 配信の WebM(VP9)がストール**: 非ループ動画 = 最初のフレームで停止 / loop 動画 = 1 周目終端でフリーズ(MP4/H.264 は正常 = WebM + matroskademux 固有。素の WebKitGTK 単体でも再現 = Tauri 起因ではない)→ **`WEBKIT_GST_USE_PLAYBIN3=1` を WebView 初期化前に設定**で解消。
+   - **デスクトップ実機確認(録画 = `step5a_demo_zencho_renzoku_at.mp4`)**: リリースビルドのバイナリ(`src-tauri/target/release/yoshitsune-monogatari`)を起動し、背景動画ループ再生 / リール回転・停止(キーボード Space・Z/X/C)/ 前兆シナリオ予告・小役示唆予告ムービー / 本前兆 → 連続演出 4G → 勝利 → AT 突入の通しフロー / console エラーなしを確認。
+   - **既知の VM 限定の制約(コード起因ではない)**: (a) AT 突入後のステージ動画が黒画面になることがある(GPU 無し = llvmpipe ソフトウェアレンダリング + 音声デバイス無しの VM で、動画プレイヤーを多数生成した後の新規 `<video>` 要素で発生する WebKitGTK 固有事象。ロジック・UI・メーターは正常動作)/ (b) 音声はダミーシンク(PulseAudio null sink)で再生 = 実音は VM では確認不可。**どちらも Windows(WebView2)では別系統のため 5b の実機確認チェックリストで確認する**。
+   - **Cursor Cloud 環境セットアップ更新の要否 = 要**(下記「次の AGENT へのタスク」参照): Rust stable 1.97 + apt の WebKitGTK 依存 + `cargo build` の初回コンパイル(約 4 分)が毎回必要になるため、env setup agent での更新を推奨。
+   - テスト 323 パス(既存に影響なし)・lint / build グリーン。`tauri:build` で Linux リリースバイナリ + deb/rpm 生成を確認。**STEP 5a 完了(ROADMAP にマーク済み)。次は STEP 5b(CI ビルド + 配布)**。
 
 - Phase 1〜2 完了 + Phase 3 の抽せんテーブル層が完了。
 - **背景動画・リール図柄はユーザー入稿の実素材**。BGM/SE・液晶フォールバック・カットイン演出動画は仮素材のまま。
@@ -332,7 +342,8 @@
 - **STEP 4d 完了(AGENT #045)**: 連続演出の表示は `direction.ts` の `renzokuAtLeverOn`(レバーオン時に「種別 × 滞在背景 × G」で 4G 構成 = 導入/展開/あおり/決着を解決。チャンスアップは `chanceUps` 参照で CHANCE UP! バッジ)+ `RENZOKU_RESULT` カットインの専用ムービー(`renzoku_result_<win|lose>`)。連続演出ムービーは `src/assets/video/renzoku/` の仮素材 46 本(`RENZOKU_VIDEOS`)。詳細は経緯 39 参照。
 - **STEP 4e 完了(AGENT #046)**: AT 中・エンディングの演出は `direction.ts` の `atYokokuAllowed` / `atYokokuView`(AT 小役予告)+ `battleGameAtLeverOn` / `battleView`(バトル 8G。ルートは `App.tsx` の `battleRef` に保持)+ `revivalCutin`(復活告知)+ `overlayForState` の ENDING videoUrl(エンディング 2 種)。AT 演出ムービーは `src/assets/video/at/` の仮素材 45 本(`AT_VIDEOS`)。継続確定の実装解釈は DIRECTION_SPEC 2.5。詳細は経緯 40 参照。
 - 仕様の未確定事項は `docs/SPEC.md`「14.」の 4 件(演出ムービー実素材の入稿・白バー/ブランクの役割・30G の暫定値・シナリオ振分けの具体数値の調整)。いずれも 4f のブロッカーではない(実素材入稿のみ 4f の前提)。
-- **完成までの実行プランは `docs/ROADMAP.md`**(STEP 1〜6 とユーザーへの素材・仕様依頼リスト)。**STEP 1・STEP 2・STEP 3(3a〜3e)・STEP 4a〜4e 完了。STEP 4 残り**: 4f(実素材差し替え + 総合確認 + `docs/STEP4_VERIFICATION.md`。素材入稿に依存・順不同で先行実施可)。**STEP 5 は 5a / 5b の 2 分割で計画確定済み(AGENT #047。追加細分化は不要と判断)**で、次は 5a(Tauri 導入 + ローカル動作確認)に着手してよい。
+- **完成までの実行プランは `docs/ROADMAP.md`**(STEP 1〜6 とユーザーへの素材・仕様依頼リスト)。**STEP 1・STEP 2・STEP 3(3a〜3e)・STEP 4a〜4e・STEP 5a 完了。STEP 4 残り**: 4f(実素材差し替え + 総合確認 + `docs/STEP4_VERIFICATION.md`。素材入稿に依存・順不同で先行実施可)。**次は STEP 5b(CI ビルド + 配布。Windows 実機確認はユーザー依頼前提で `docs/STEP5_VERIFICATION.md` を作成)**。
+- **STEP 5a 完了(AGENT #049)**: Tauri 2.x シェルは `src-tauri/`(`tauri:dev` / `tauri:build`)。Linux(WebKitGTK)のメディア再生対策 2 件(localhost 配信 + playbin3)は `src-tauri/src/lib.rs` の理由コメントが正。**Windows ビルド(5b)にはこの対策は不要だが、条件コンパイル(`cfg(target_os = "linux")`)で自動的に除外される**ため 5b 側での変更は不要。詳細は経緯 43 参照。
 - **STEP 3a 完了(AGENT #035)**: 遊技サイクルの純ロジックは `src/ui/gameCycle.ts`(レバーオン → 停止ボタンで 1 リールずつ `resolveStop` → 全停止 → `advanceGame`。押し順 = 押した順、仮押し順の扱いはファイルヘッダー参照)。
 - **STEP 3b 完了(AGENT #036)**: リール回転アニメーションの純ロジックは `src/ui/reelAnimation.ts`(連続位置 `continuousPosition` / スベリ計画 `planSlip`・`slipPosition` / コマ帯 `reelStrip`)。描画は `App.tsx` の `requestAnimationFrame` + `.reel-strip`(App.css)の translateY スクロール。**「描画に使う時刻」と「押下位置の計算に使う時刻」は同一**(floor(連続位置) = `spinningPosition` をテストで固定)なので、以後の UI 変更でもこの関係を壊さないこと。
 - **STEP 3c 完了(AGENT #037)**: メーター管理の純ロジックは `src/ui/counters.ts`(`meterOnLever` = BET 徴収・自動補充 / `meterOnFinish` = 払出加算 + AT 獲得枚数。呼び出しタイミングはファイルヘッダー参照)。UI は 7seg 風メーターパネル(CREDIT / BET + REPLAY ランプ / WIN / AT 中のみ AT獲得)+ リール窓上のナビ数字(`navi-digit`。停止で消灯)。
@@ -364,14 +375,22 @@
 ユーザーの指示内容を最優先とした上で、次を実施:
 
 1. **実素材が `incoming/` に入稿されていたら STEP 4f(実素材の差し替え + 総合確認)に着手**(`docs/ROADMAP.md` の「STEP 4f」参照): `scripts/import_incoming_assets.py` の対応表を拡張して取り込み、`manifest.json` へ出所登録。差し替えポイントは SE = `SOUND_CUES` / BGM = `STAGE_BGMS` / 予告 = `YOKOKU_VIDEOS` / 連続演出 = `RENZOKU_VIDEOS` / AT・エンディング = `AT_VIDEOS`(いずれも同名ファイル置き換え or 対応表の張り替え)。総合ブラウザ確認 + `docs/STEP4_VERIFICATION.md`(STEP1/3 版の形式)を作成し、STEP 4 完了マークを付ける。
-2. 入稿がまだの場合は **STEP 5a(Tauri 導入 + ローカル動作確認)に着手**(ROADMAP の STEP 5 参照。計画は AGENT #047 が確定済みのため、5a の作業項目・完了条件・リスクに従って実装する。5a → 5b の順で 1 サブステップ = 1 AGENT = 1 PR)。**前回の STEP 5a 依頼ランはサービス側の一過性障害で ERROR 終了(成果物ゼロ・経緯 42 参照)のため、同じ依頼文での再依頼で問題ない**。
-3. 作業終了時に本ファイルを更新し、`docs/handover/049_*.md` に履歴を残す(048 は使用済み)。
+2. 入稿がまだの場合は **STEP 5b(CI ビルド + 配布)に着手**(ROADMAP の STEP 5b 参照): GitHub Actions(`windows-latest`)で Windows exe(NSIS インストーラ等)を自動ビルド。トリガーはタグ push(Release 添付)+ `workflow_dispatch`(検証用)の 2 本立て。Windows 実機確認は VM では不可能なため、ユーザー依頼前提の手順書 `docs/STEP5_VERIFICATION.md`(exe 入手方法・起動手順・チェックリスト = STEP3 版の形式)を作成する。
+3. 作業終了時に本ファイルを更新し、`docs/handover/050_*.md` に履歴を残す(049 は使用済み)。
 
-STEP 5a の実装 AGENT への注意(AGENT #047 の計画より):
+STEP 5b の実装 AGENT への注意(AGENT #049 = 5a の実装より):
 
-- **既存の Web 版開発フロー(`npm run dev` / `build` / `test` / `lint`)を壊さない**。Tauri 用は `tauri:dev` / `tauri:build` として追加する。コアロジック・UI・テストは原則無変更。
-- **Linux の WebKitGTK で WebM(VP9)ムービーが再生できない場合は gstreamer プラグイン導入を試みる**。それでも不可なら「Windows の WebView2(Chromium 系)は別系統」であることを記録して 5b へ進んでよい(Windows 実機確認は 5b の手順書でユーザーへ依頼)。
-- Rust toolchain 等の環境構築コマンドが多くなるため、完了時に **Cursor Cloud の環境セットアップ更新(cursor.com/onboard の env setup agent)の要否**を HANDOVER と応答に記録すること。
+- **Linux 特有のメディア対策(localhost 配信 + playbin3)は `cfg(target_os = "linux")` の条件コンパイルで Windows ビルドから自動除外される**。5b 側で `lib.rs` の変更は不要。`tauri-plugin-localhost` / `portpicker` も Linux 専用依存(`[target.'cfg(target_os = "linux")'.dependencies]`)にしてある。
+- Windows の実機確認チェックリストには **(a) AT 突入後のステージ動画の再生(VM の Linux では黒画面の既知事象)/ (b) BGM・SE の実音再生(VM は音声デバイス無しで未確認)** を必ず含めること(経緯 43 の VM 限定制約の切り分け)。
+- CI では `npm ci && npm run build` → `tauri build` の順(`beforeBuildCommand` は tauri.conf.json に設定済み = `npm run build`)。Rust は stable でよい(1.97 で動作確認済み。古い 1.83 は依存の `edition2024` 要求で不可)。
+- **`src-tauri/target` は `.gitignore` 済み**。CI キャッシュには `~/.cargo` + `src-tauri/target` を使うとビルド時間を短縮できる。
+
+**Cursor Cloud 環境セットアップ更新の要否 = 要(ユーザーへ提案済み)**: STEP 5a で VM へ導入した環境(下記)は現状エージェントごとに毎回セットアップが必要。cursor.com/onboard の env setup agent での更新を推奨:
+
+- Rust toolchain stable(1.97 以上。`rustup update stable && rustup default stable`)
+- apt: `libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
+- (実機確認する場合のみ)PulseAudio null sink(`pulseaudio --start` + `pactl load-module module-null-sink`。音声デバイス無しの VM で GStreamer のオーディオパイプラインが失敗しないようにするため)
+- 初回 `cargo build --release` は約 4 分(クリーンビルド)。`src-tauri/target` をイメージへ含めれば 2 回目以降は数十秒
 
 STEP 4e の実装で注意した点(4f 以降も維持すること):
 - **バトルルートの保持は `App.tsx` の `battleRef`(useRef)**。設定 = バトル 1G 目のレバーオン(`drawLeverDirection` 内)/ 引き直し・破棄 = 1G の締め(`finishGame` 内)/ リセットで破棄。演出用 rng(`hintRng`)を使うため出玉には影響しない。
