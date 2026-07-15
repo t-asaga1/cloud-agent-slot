@@ -141,6 +141,20 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
     if (leverSeq > 0 && hasYokoku) playCue('TELOP');
   }, [leverSeq, hasYokoku]);
 
+  // リール消灯音(ユーザー入稿 SE = 確定 40): 消灯している部分の数が増えるたびに鳴らす
+  // (対象リールの停止に同期 = 確定 39 の消灯タイミング)。同一 seq 内の増加で 1 回ずつ。
+  // 1G 即時消化(デバッグの 1G消化オート)では seq 替わりと同時に消灯が確定するため、
+  // そのときも 1 回鳴らす。
+  const blackoutOn =
+    lever.yokoku?.blackoutReels?.filter((reel) => stoppedReels[reel]).length ?? 0;
+  const prevBlackoutRef = useRef({ seq: lever.seq, on: blackoutOn });
+  useEffect(() => {
+    const prev = prevBlackoutRef.current;
+    const increased = lever.seq === prev.seq ? blackoutOn > prev.on : blackoutOn > 0;
+    if (increased) playCue('REEL_BLACKOUT');
+    prevBlackoutRef.current = { seq: lever.seq, on: blackoutOn };
+  }, [lever.seq, blackoutOn]);
+
   return (
     <div className="direction-layer">
       {overlay?.kind === 'ENDING' && (

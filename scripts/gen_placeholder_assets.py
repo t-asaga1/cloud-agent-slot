@@ -234,9 +234,9 @@ def at_files() -> list[tuple[str, str, str]]:
 
 
 # SE(id, 周波数系列 [(Hz, 長さ秒), ...])
+# se_lever_on / se_reel_stop / se_reel_blackout / se_win_* はユーザー入稿済み
+# (2026-07-15 = scripts/import_incoming_assets.py の SES)のため生成対象から除外
 SES = [
-    ("se_lever_on", [(880, 0.08), (1320, 0.10)]),
-    ("se_reel_stop", [(440, 0.06)]),
     ("se_payout", [(1047, 0.06), (1319, 0.06), (1568, 0.10)]),
     ("se_rare", [(660, 0.10), (990, 0.16)]),
     ("se_bonus", [(523, 0.12), (659, 0.12), (784, 0.12), (1047, 0.24)]),

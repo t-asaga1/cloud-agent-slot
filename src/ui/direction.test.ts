@@ -769,12 +769,26 @@ describe('cutinsForEvents(イベント由来のワンショット表示)', () =>
 });
 
 describe('resultSoundCue(1G の締めの基本 SE)', () => {
-  it('レア役成立(リーチ目含む)> 払出あり > なし の優先で 1 つ選ぶ', () => {
-    expect(resultSoundCue('CHERRY_CORNER', 2)).toBe('RARE');
-    expect(resultSoundCue('REACH_ME', 0)).toBe('RARE');
-    expect(resultSoundCue('BELL', 13)).toBe('PAYOUT');
-    expect(resultSoundCue('REPLAY', 0)).toBeUndefined();
-    expect(resultSoundCue('NONE', 0)).toBeUndefined();
+  it('入賞音(表示役 = 確定 40)は対応する役が実際に揃ったときだけ選ばれる', () => {
+    expect(resultSoundCue('REPLAY', 'REPLAY', 0)).toBe('WIN_REPLAY');
+    expect(resultSoundCue('WATERMELON_WEAK', 'WATERMELON_WEAK', 3)).toBe('WIN_WATERMELON');
+    expect(resultSoundCue('WATERMELON_STRONG', 'WATERMELON_STRONG', 3)).toBe('WIN_WATERMELON');
+    expect(resultSoundCue('CHERRY_CORNER', 'CHERRY_CORNER', 2)).toBe('WIN_CHERRY_WEAK');
+    expect(resultSoundCue('CHERRY_CENTER', 'CHERRY_CENTER', 2)).toBe('WIN_CHERRY_CENTER');
+  });
+
+  it('取りこぼし(表示役ハズレ)は入賞音ではなくレア役成立音', () => {
+    expect(resultSoundCue('CHERRY_CORNER', 'NONE', 0)).toBe('RARE');
+    expect(resultSoundCue('WATERMELON_STRONG', 'NONE', 0)).toBe('RARE');
+    expect(resultSoundCue('REACH_ME', 'NONE', 0)).toBe('RARE');
+  });
+
+  it('専用入賞音のない役は従来の レア役 > 払出 > なし の優先', () => {
+    expect(resultSoundCue('REACH_ME', 'REACH_ME', 3)).toBe('RARE');
+    expect(resultSoundCue('CHANCE_ME', 'CHANCE_ME', 3)).toBe('RARE');
+    expect(resultSoundCue('BELL', 'BELL', 13)).toBe('PAYOUT');
+    expect(resultSoundCue('BELL', 'NONE', 0)).toBeUndefined(); // ベルこぼし(確定 35)
+    expect(resultSoundCue('NONE', 'NONE', 0)).toBeUndefined();
   });
 });
 

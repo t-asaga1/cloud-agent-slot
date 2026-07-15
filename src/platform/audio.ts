@@ -8,6 +8,8 @@
  */
 
 let seEnabled = true;
+/** 再生中の SE(単一チャンネル。後発優先 = 確定 40 のため 1 つだけ保持する) */
+let seAudio: HTMLAudioElement | undefined;
 let bgmAudio: HTMLAudioElement | undefined;
 let bgmUrl: string | undefined;
 
@@ -49,12 +51,18 @@ export function setSeEnabled(enabled: boolean): void {
   seEnabled = enabled;
 }
 
-/** 効果音のワンショット再生(再生失敗は無視する) */
+/**
+ * 効果音のワンショット再生(再生失敗は無視する)。
+ * **後発優先(SPEC 確定 40)**: SE は単一チャンネルで、前の SE が再生中なら止めて
+ * 新しい SE へ差し替える(例: チェリー入賞音の再生中にレバーオンしたら、
+ * 入賞音を切ってレバーオン音を鳴らす)。BGM(`playBgm`)とは独立。
+ */
 export function playSe(url: string, volume = 0.5): void {
   if (!seEnabled) return;
-  const audio = new Audio(url);
-  audio.volume = volume;
-  void audio.play().catch(() => {});
+  if (seAudio !== undefined && !seAudio.paused) seAudio.pause();
+  seAudio = new Audio(url);
+  seAudio.volume = volume;
+  void seAudio.play().catch(() => {});
 }
 
 /**

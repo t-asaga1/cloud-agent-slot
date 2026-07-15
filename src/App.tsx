@@ -524,8 +524,9 @@ function App() {
       { wonRole: cycle.wonRole, displayedRole: spin.displayed },
       rng,
     );
-    // 基本 SE(レア役 > 払出)。告知系の SE はカットイン表示時に DirectionLayer が鳴らす
-    const cue = resultSoundCue(cycle.wonRole, result.payout.payout);
+    // 基本 SE(入賞音(表示役)> レア役 > 払出 = 確定 40)。
+    // 告知系の SE はカットイン表示時に DirectionLayer が鳴らす
+    const cue = resultSoundCue(cycle.wonRole, spin.displayed, result.payout.payout);
     if (cue !== undefined) playCue(cue);
 
     // 復活告知(STEP 4e): 敗北寄りルートの 8G 目全停止でセット継続 / エンディング移行が
