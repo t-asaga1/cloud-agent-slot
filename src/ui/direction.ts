@@ -850,11 +850,28 @@ export function cutinsForEvents(events: readonly GameEvent[]): Cutin[] {
 // ゲーム結果の基本 SE(カットインとは独立の毎ゲーム音)
 // ---------------------------------------------------------------------------
 
+/** 表示役 → 入賞 SE(ユーザー入稿素材 = 確定 40)の対応。弱チェリー = 角チェリー */
+const WIN_SOUND_CUES: Partial<Record<Role, SoundCueId>> = {
+  REPLAY: 'WIN_REPLAY',
+  WATERMELON_WEAK: 'WIN_WATERMELON',
+  WATERMELON_STRONG: 'WIN_WATERMELON',
+  CHERRY_CORNER: 'WIN_CHERRY_WEAK',
+  CHERRY_CENTER: 'WIN_CHERRY_CENTER',
+};
+
 /**
  * 1G の締め(全停止後)の基本 SE を 1 つ選ぶ(なければ undefined)。
- * レア役成立 > 払出あり、の優先(カットインの告知音とは独立に鳴る)。
+ * 入賞音(表示役 = 実際に揃った役。確定 40)> レア役成立(取りこぼし含む)>
+ * 払出あり、の優先(カットインの告知音とは独立に鳴る)。
+ * 入賞音の専用素材がない役(ベル・チャンス目・リーチ目)は従来の RARE / PAYOUT のまま。
  */
-export function resultSoundCue(wonRole: Role, payout: number): SoundCueId | undefined {
+export function resultSoundCue(
+  wonRole: Role,
+  displayedRole: Role,
+  payout: number,
+): SoundCueId | undefined {
+  const winCue = WIN_SOUND_CUES[displayedRole];
+  if (winCue !== undefined) return winCue;
   if (isRareRole(wonRole)) return 'RARE';
   if (payout > 0) return 'PAYOUT';
   return undefined;

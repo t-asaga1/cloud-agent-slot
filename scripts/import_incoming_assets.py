@@ -11,6 +11,8 @@
     → 背景動画と同じ変換で src/assets/video/at/ へ出力
 - BGM: incoming/*.wav — 2026-07-14 入稿分(4 曲)
     → OGG Vorbis(q4)へ変換し src/assets/audio/bgm/ へ出力
+- SE: incoming/*.wav — 2026-07-15 入稿分(7 音)
+    → OGG Vorbis(q4)へ変換し src/assets/audio/se/ へ出力
 
 incoming/ の元ファイルは取り込み後に削除される運用のため、
 存在しない入稿ファイルはスキップする(再実行可能)。
@@ -68,6 +70,19 @@ BGMS = {
     "頼朝テーマ曲（下位AT継続確定）.wav": "bgm_at_kakutei",
 }
 
+# 入稿ファイル名 → 素材 ID(SE。2026-07-15 入稿分 = 7 音。
+# サウンドキューへの割り当ては src/ui/sound.ts の SOUND_CUES / SPEC 確定 40)
+SES = {
+    "レバオン音.wav": "se_lever_on",
+    "リール停止音.wav": "se_reel_stop",
+    "リール消灯音.wav": "se_reel_blackout",
+    "リプレイ入賞音.wav": "se_win_replay",
+    "スイカ（弱強共通）入賞音.wav": "se_win_watermelon",
+    # 弱チェリー = 角チェリー(CHERRY_CORNER)の入賞に対応
+    "弱チェリー入賞音.wav": "se_win_cherry_weak",
+    "中段チェリー入賞音.wav": "se_win_cherry_center",
+}
+
 # リール窓 1 コマは横長(約 2:1)。全図柄を同一キャンバスに揃える
 SYMBOL_CANVAS = (400, 200)
 
@@ -117,6 +132,17 @@ def import_bgm(src: Path, dst: Path) -> None:
     print(f"{src.name} -> {dst.relative_to(ROOT)}  {dst.stat().st_size / 1024 / 1024:.1f} MB")
 
 
+def import_se(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    # ワンショット SE。BGM と同じ OGG Vorbis q4 へ圧縮する(音声内容は無加工)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(src), "-c:a", "libvorbis", "-q:a", "4", str(dst)],
+        check=True,
+        capture_output=True,
+    )
+    print(f"{src.name} -> {dst.relative_to(ROOT)}  {dst.stat().st_size / 1024:.0f} KB")
+
+
 def main() -> None:
     # 取り込み済みの入稿ファイルは incoming/ から削除される運用のためスキップ
     def each(mapping: dict[str, str], subdir: str) -> list[tuple[Path, str]]:
@@ -137,6 +163,8 @@ def main() -> None:
         import_stage_video(src, ASSETS / f"video/at/{asset_id}.webm")
     for src, asset_id in each(BGMS, ""):
         import_bgm(src, ASSETS / f"audio/bgm/{asset_id}.ogg")
+    for src, asset_id in each(SES, ""):
+        import_se(src, ASSETS / f"audio/se/{asset_id}.ogg")
 
 
 if __name__ == "__main__":

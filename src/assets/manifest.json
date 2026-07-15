@@ -174,19 +174,64 @@
     "id": "se_lever_on",
     "path": "audio/se/se_lever_on.ogg",
     "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/レバオン音.wav を OGG 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "レバーオンSE の仮素材(サイン波合成)。実素材入稿で差し替え予定"
+    "note": "レバーオンSE(2026-07-15 入稿。SPEC 確定 40 / サウンドキュー LEVER_ON)"
   },
   {
     "id": "se_reel_stop",
     "path": "audio/se/se_reel_stop.ogg",
     "type": "audio",
-    "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/リール停止音.wav を OGG 変換: scripts/import_incoming_assets.py)",
     "license": "project-original",
-    "note": "リール停止SE の仮素材(サイン波合成)。実素材入稿で差し替え予定"
+    "note": "リール停止SE(2026-07-15 入稿。SPEC 確定 40 / サウンドキュー REEL_STOP)"
+  },
+  {
+    "id": "se_reel_blackout",
+    "path": "audio/se/se_reel_blackout.ogg",
+    "type": "audio",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/リール消灯音.wav を OGG 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "リール消灯SE(2026-07-15 入稿。リール消灯演出 = 確定 39 の消灯部分が増えるたびに再生。サウンドキュー REEL_BLACKOUT)"
+  },
+  {
+    "id": "se_win_replay",
+    "path": "audio/se/se_win_replay.ogg",
+    "type": "audio",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/リプレイ入賞音.wav を OGG 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "リプレイ入賞SE(2026-07-15 入稿。表示役リプレイの 1G 締めで再生。サウンドキュー WIN_REPLAY)"
+  },
+  {
+    "id": "se_win_watermelon",
+    "path": "audio/se/se_win_watermelon.ogg",
+    "type": "audio",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/スイカ（弱強共通）入賞音.wav を OGG 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "スイカ入賞SE(弱強共通。2026-07-15 入稿。表示役スイカの 1G 締めで再生。サウンドキュー WIN_WATERMELON)"
+  },
+  {
+    "id": "se_win_cherry_weak",
+    "path": "audio/se/se_win_cherry_weak.ogg",
+    "type": "audio",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/弱チェリー入賞音.wav を OGG 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "弱チェリー(= 角チェリー)入賞SE(2026-07-15 入稿。表示役 角チェリーの 1G 締めで再生。サウンドキュー WIN_CHERRY_WEAK)"
+  },
+  {
+    "id": "se_win_cherry_center",
+    "path": "audio/se/se_win_cherry_center.ogg",
+    "type": "audio",
+    "origin": "user-provided",
+    "tool": "ユーザー制作(元ファイル: incoming/中段チェリー入賞音.wav を OGG 変換: scripts/import_incoming_assets.py)",
+    "license": "project-original",
+    "note": "中段チェリー入賞SE(2026-07-15 入稿。表示役 中段チェリーの 1G 締めで再生。サウンドキュー WIN_CHERRY_CENTER)"
   },
   {
     "id": "se_payout",

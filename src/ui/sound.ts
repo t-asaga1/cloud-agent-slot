@@ -10,6 +10,12 @@
  *   2. 専用ファイルを追加して `SOUND_CUES` の対応(キュー → ファイル)を張り替える
  * - 仮素材が不足しているキューは既存 SE を流用している(下記の「仮流用」コメント)。
  *   実素材では用途ごとの専用 SE に差し替える想定。
+ * - LEVER_ON / REEL_STOP / REEL_BLACKOUT / WIN_* はユーザー入稿素材(2026-07-15 =
+ *   SPEC 確定 40)。
+ * - **SE の再生は後発優先(確定 40)**: 同時に鳴る SE は 1 つだけで、新しい SE を
+ *   鳴らすとき前の SE が再生中なら止めて差し替える(例: チェリー入賞音の再生中に
+ *   レバーオンしたら、入賞音を切ってレバーオン音を鳴らす)。実装は
+ *   `src/platform/audio.ts` の `playSe`。
  * - BGM はユーザー入稿済みの 4 トラック(確定 38)で、`src/assets/index.ts` の `BGM_FILES`
  *   (トラック ID → ファイル)が差し替えポイント。状態からの選曲は `src/ui/bgm.ts` の
  *   `bgmTrackForState`、切替は `src/platform/audio.ts` の `playBgm`(クロスフェード付き)を使う。
@@ -23,6 +29,16 @@ export type SoundCueId =
   | 'LEVER_ON'
   /** リール停止ボタン */
   | 'REEL_STOP'
+  /** リール消灯演出(確定 39)の消灯(部分が増えるたび) */
+  | 'REEL_BLACKOUT'
+  /** リプレイ入賞(表示役リプレイの 1G 締め) */
+  | 'WIN_REPLAY'
+  /** スイカ入賞(弱強共通。表示役スイカの 1G 締め) */
+  | 'WIN_WATERMELON'
+  /** 弱チェリー(= 角チェリー)入賞 */
+  | 'WIN_CHERRY_WEAK'
+  /** 中段チェリー入賞 */
+  | 'WIN_CHERRY_CENTER'
   /** 払出(小役揃い) */
   | 'PAYOUT'
   /** レア役成立(リーチ目含む) */
@@ -42,6 +58,11 @@ export type SoundCueId =
 export const SOUND_CUES: Record<SoundCueId, string> = {
   LEVER_ON: SE.leverOn,
   REEL_STOP: SE.reelStop,
+  REEL_BLACKOUT: SE.reelBlackout,
+  WIN_REPLAY: SE.winReplay,
+  WIN_WATERMELON: SE.winWatermelon,
+  WIN_CHERRY_WEAK: SE.winCherryWeak,
+  WIN_CHERRY_CENTER: SE.winCherryCenter,
   PAYOUT: SE.payout,
   RARE: SE.rare,
   TELOP: SE.telop,

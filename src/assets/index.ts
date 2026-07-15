@@ -39,8 +39,13 @@ import seFail from './audio/se/se_fail.ogg';
 import seLeverOn from './audio/se/se_lever_on.ogg';
 import sePayout from './audio/se/se_payout.ogg';
 import seRare from './audio/se/se_rare.ogg';
+import seReelBlackout from './audio/se/se_reel_blackout.ogg';
 import seReelStop from './audio/se/se_reel_stop.ogg';
 import seTelop from './audio/se/se_telop.ogg';
+import seWinCherryCenter from './audio/se/se_win_cherry_center.ogg';
+import seWinCherryWeak from './audio/se/se_win_cherry_weak.ogg';
+import seWinReplay from './audio/se/se_win_replay.ogg';
+import seWinWatermelon from './audio/se/se_win_watermelon.ogg';
 
 export const CABINET_FRAME_URL = cabinetFrame;
 export const LCD_BG_FALLBACK_URL = lcdBgFallback;
@@ -196,7 +201,9 @@ export const AT_VIDEOS: Record<string, string> = Object.fromEntries(
 );
 
 /**
- * 効果音 URL(仮素材)。
+ * 効果音 URL。
+ * leverOn / reelStop / reelBlackout / win* はユーザー入稿素材(2026-07-15 = SPEC 確定 40)、
+ * それ以外は仮素材。
  * ゲーム中の SE 再生は本テーブルを直接参照せず、`src/ui/sound.ts` の
  * サウンドキュー(用途 ID → SE ファイル)を経由すること。実素材の差し替えは
  * (1) 同名ファイルの置き換え、または (2) sound.ts のキュー表の張り替え、のどちらかで済む。
@@ -204,6 +211,11 @@ export const AT_VIDEOS: Record<string, string> = Object.fromEntries(
 export const SE = {
   leverOn: seLeverOn,
   reelStop: seReelStop,
+  reelBlackout: seReelBlackout,
+  winReplay: seWinReplay,
+  winWatermelon: seWinWatermelon,
+  winCherryWeak: seWinCherryWeak,
+  winCherryCenter: seWinCherryCenter,
   payout: sePayout,
   rare: seRare,
   bonus: seBonus,
