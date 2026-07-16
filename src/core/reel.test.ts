@@ -1072,14 +1072,15 @@ describe('停止制御 III(STEP 1e: リーチ目 × 全 20^3 押下位置 × 押
 });
 
 // ---------------------------------------------------------------------------
-// DDT(左リール黒バー狙い。STEP 1e。SPEC「3.」確定事項・回答 6)
+// DDT(左リールバー狙い。STEP 1e + 白バー追加。SPEC「3.」確定事項・回答 6)
+// 指定位置 2 箇所: 黒バー(コマ 19)/ 白バー下段(コマ 9。2026-07-16 ユーザー指示で追加)
 // ---------------------------------------------------------------------------
 
 /**
  * 左第一停止の押し順(順押し・ハサミ押し)。
- * DDT は左リールへ黒バーを狙う打法のため、強い保証(黒バーが必ず窓内・下段付近)は
+ * DDT は左リールへバーを狙う打法のため、強い保証(バーが必ず窓内・下段付近)は
  * 左第一停止に限って検証する。左リールを後に止める押し順では、停止済みリールとの
- * 蹴飛ばし制約(非当選図柄を揃えない)が優先され、黒バー停止候補が禁止出目になる
+ * 蹴飛ばし制約(非当選図柄を揃えない)が優先され、バー停止候補が禁止出目になる
  * 押下位置が存在する(DDT 選好は蹴飛ばし・引き込みより弱い評価キーのため正しい挙動)。
  */
 const LEFT_FIRST_ORDERS = PUSH_ORDERS.filter((order) => order[0] === 0);
@@ -1160,6 +1161,72 @@ describe('DDT(左リール黒バー狙い = チェリー・スイカ察知打法
     // 押下位置 0(黒バーに届かない)のハズレ: 停止位置 0(スベリ 0)のまま
     const result = resolveSpin('NONE', [0, 0, 0], [0, 1, 2]);
     expect(result.positions[0]).toBe(0);
+  });
+});
+
+describe('DDT 指定位置 2 = 左リール白バー下段(2026-07-16 ユーザー指示で追加)', () => {
+  // 白バーは左リール 1 個(コマ 9 = index 8)。「白バー狙い」= 白バーを窓内へ
+  // 引き込める押下位置 5〜9(index)。白バー下段 = 停止位置 9(窓 [ベル, スイカ, 白バー])
+  it('ハズレ: 白バー狙い(押下位置 5〜9)では白バーが下段に停止する(左第一停止・全押下位置)', () => {
+    for (const order of LEFT_FIRST_ORDERS) {
+      for (let p0 = 5; p0 <= 9; p0++) {
+        for (let p1 = 0; p1 < KOMA_COUNT; p1++) {
+          for (let p2 = 0; p2 < KOMA_COUNT; p2++) {
+            const result = resolveSpin('NONE', [p0, p1, p2], order);
+            if (result.positions[0] !== 9) {
+              throw new Error(
+                `ハズレの白バー下段停止でない: order=${order} p0=${p0} p1=${p1} p2=${p2} positions=${result.positions}`,
+              );
+            }
+          }
+        }
+      }
+    }
+    expect(windowAt(0, 9)).toEqual(['BELL', 'WATERMELON', 'BAR_WHITE']);
+  });
+
+  it('チェリー成立時: 白バー狙い(押下位置 5〜9)では全域でチェリー停止で察知できる', () => {
+    // 白バー(コマ 9)はチェリー(コマ 8・13)が両側近くにあるため、黒バー狙いと違い
+    // 白バー狙いの全押下位置で角・中段チェリーとも窓内へ引き込める(取りこぼしなし)
+    for (const role of ['CHERRY_CORNER', 'CHERRY_CENTER'] as const) {
+      for (let p0 = 5; p0 <= 9; p0++) {
+        const result = resolveSpin(role, [p0, 0, 0], [0, 1, 2]);
+        if (result.displayed !== role) {
+          throw new Error(`チェリー取りこぼし: role=${role} p0=${p0} positions=${result.positions}`);
+        }
+      }
+    }
+  });
+
+  it('スイカ成立時: 白バー狙い(押下位置 5〜9)ではスイカが窓内へスベって察知できる(左第一停止)', () => {
+    // 左リールはスイカ 100% 引き込み配置(コマ 5・10 が白バー周辺)のため、
+    // 白バー狙いでもスイカ成立時は必ず左窓内にスイカが表示される
+    for (const role of ['WATERMELON_WEAK', 'WATERMELON_STRONG'] as const) {
+      for (const order of LEFT_FIRST_ORDERS) {
+        for (let p0 = 5; p0 <= 9; p0++) {
+          for (let p1 = 0; p1 < KOMA_COUNT; p1++) {
+            for (let p2 = 0; p2 < KOMA_COUNT; p2++) {
+              const result = resolveSpin(role, [p0, p1, p2], order);
+              if (!windowAt(0, result.positions[0]).includes('WATERMELON')) {
+                throw new Error(
+                  `スイカが左窓外: role=${role} order=${order} p0=${p0} p1=${p1} p2=${p2} positions=${result.positions}`,
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('リプレイ成立時: 白バー狙いでもリプレイが必ず揃う(チェリーと重なる形は回避される)', () => {
+    // 白バー窓内の停止(位置 7・8)は左窓にチェリーが同時表示されるため、
+    // よりクリーンな停止(チェリー非表示 = 位置 5 等)が優先されて白バーは窓外になる。
+    // リプレイ 100% 引き込みは総合網羅テストで検証済みのため、ここでは代表例のみ確認
+    for (let p0 = 5; p0 <= 9; p0++) {
+      const result = resolveSpin('REPLAY', [p0, 0, 0], [0, 1, 2]);
+      expect(result.displayed).toBe('REPLAY');
+    }
   });
 });
 
