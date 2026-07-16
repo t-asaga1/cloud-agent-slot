@@ -484,7 +484,9 @@
   object-fit: cover;
 }
 
-/* 成立役の図柄画像はムービー再生後(仮素材 2 秒の終盤)にフェードイン表示する */
+/* 成立役の図柄画像はムービー終盤にフェードイン表示する
+   (開始タイミングはスロット別 = KOYAKU_HINT_PRESENTATION の symbolDelayMs を
+   インライン animation-delay で上書き。1.5s は AT 小役予告など従来パネルの既定値) */
 .hint-symbol {
   position: absolute;
   left: 50%;
@@ -504,6 +506,40 @@
   to {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* 固有予告 1 の全画面表示(確定 43: 背景ループ動画より上のレイヤーで演出が進行)。
+   背景ループ → 予告はカットイン(瞬時切替)で開始する(YOKOKU_PRODUCTION_PLAN 2.4) */
+.koyaku-hint.koyaku-hint-full {
+  inset: 0;
+  width: auto;
+  aspect-ratio: auto;
+  border-radius: 0;
+  border: none;
+  background: #000;
+  animation: none;
+}
+
+.koyaku-hint.koyaku-hint-full.hint-strong {
+  border: none;
+  box-shadow: none;
+}
+
+/* 全画面の図柄はフェードインなし = PAN が終わった時点で「すでに映っている」(確定 43) */
+.koyaku-hint.koyaku-hint-full .hint-symbol {
+  width: 22%;
+  animation-name: hint-symbol-appear;
+  animation-duration: 0.01s;
+  animation-timing-function: steps(1, end);
+}
+
+@keyframes hint-symbol-appear {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
   }
 }
 

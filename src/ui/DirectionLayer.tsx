@@ -282,13 +282,27 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
         </div>
       )}
       {lever.hint !== undefined && (
+        // 固有 1 は全画面(背景ループ動画より上のレイヤー = 確定 43)。図柄は
+        // symbolDelayMs 経過時にフェードインなしで表示する(PAN 後の空きスペースに
+        // すでに映っている形)。それ以外は従来の右下小パネル + フェードイン
         <div
           key={`hint-${lever.seq}`}
-          className={lever.hint.strong ? 'koyaku-hint hint-strong' : 'koyaku-hint'}
+          className={[
+            'koyaku-hint',
+            lever.hint.fullscreen ? 'koyaku-hint-full' : '',
+            lever.hint.strong ? 'hint-strong' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           data-label={lever.hint.label}
         >
           <video className="hint-video" src={lever.hint.videoUrl} autoPlay muted playsInline />
-          <img className="hint-symbol" src={lever.hint.symbolUrl} alt={lever.hint.label} />
+          <img
+            className="hint-symbol"
+            style={{ animationDelay: `${lever.hint.symbolDelayMs}ms` }}
+            src={lever.hint.symbolUrl}
+            alt={lever.hint.label}
+          />
         </div>
       )}
       {lever.atYokoku !== undefined && (

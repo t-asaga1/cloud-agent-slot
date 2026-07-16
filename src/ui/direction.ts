@@ -300,6 +300,27 @@ const HINT_SLOT_LABELS: Record<KoyakuHint['slot'], string> = {
   KYOTSU_2: '共通予告2',
 };
 
+/**
+ * 小役示唆予告のスロット別表示形態(確定 43 = 2026-07-16 指示。
+ * docs/YOKOKU_PRODUCTION_PLAN.md「5.」の UI 変更):
+ * - **固有 1 は全画面**(背景ループ動画より上のレイヤーで演出が進行)。図柄は
+ *   ムービーの PAN が終わった時点(`symbolDelayMs`)で**フェードインなしで
+ *   すでに映っている形**で表示する(実素材 6 秒・PAN 後の空きスペースに重なる)。
+ * - 固有 2・3 / 共通 1・2 は従来の右下小パネル + 1.5 秒フェードイン
+ *   (それぞれの実素材の制作指示時に個別に決める)。
+ * `symbolDelayMs` は実素材の尺・PAN タイミングに合わせて調整する差し替えポイント。
+ */
+export const KOYAKU_HINT_PRESENTATION: Record<
+  KoyakuHint['slot'],
+  { fullscreen: boolean; symbolDelayMs: number }
+> = {
+  KOYU_1: { fullscreen: true, symbolDelayMs: 4600 },
+  KOYU_2: { fullscreen: false, symbolDelayMs: 1500 },
+  KOYU_3: { fullscreen: false, symbolDelayMs: 1500 },
+  KYOTSU_1: { fullscreen: false, symbolDelayMs: 1500 },
+  KYOTSU_2: { fullscreen: false, symbolDelayMs: 1500 },
+};
+
 /** 小役示唆予告の表示データ(ムービー + ムービー後に出す成立役の図柄画像) */
 export interface KoyakuHintView {
   videoUrl: string;
@@ -308,6 +329,10 @@ export interface KoyakuHintView {
   /** ムービー再生後に画面表示する成立役の図柄画像(確定 33) */
   symbolUrl: string;
   strong: boolean;
+  /** 全画面表示か(固有 1 = 確定 43。false = 右下小パネル) */
+  fullscreen: boolean;
+  /** 図柄画像の表示開始タイミング(ms)。全画面はフェードインなしの即時表示(確定 43) */
+  symbolDelayMs: number;
 }
 
 /**
@@ -330,11 +355,14 @@ export function koyakuHintView(
   const key = hint.slot.startsWith('KYOTSU')
     ? `yokoku_common${slotNo}_${variant}`
     : `yokoku_${BACKGROUND_KEYS[background]}_koyu${slotNo}_${variant}`;
+  const presentation = KOYAKU_HINT_PRESENTATION[hint.slot];
   return {
     videoUrl: yokokuVideoUrl(key),
     label: `${HINT_SLOT_LABELS[hint.slot]}(${hint.strong ? '強' : '弱'})`,
     symbolUrl: SYMBOL_IMAGES[symbol],
     strong: hint.strong,
+    fullscreen: presentation.fullscreen,
+    symbolDelayMs: presentation.symbolDelayMs,
   };
 }
 

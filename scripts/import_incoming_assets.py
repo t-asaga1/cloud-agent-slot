@@ -61,6 +61,20 @@ AT_MOVIES = {
     "AT確定.mp4": "at_kakutei",
 }
 
+# 入稿ファイル名 → 素材 ID(予告ムービー実素材。SPEC 確定 43 / docs/YOKOKU_PRODUCTION_PLAN.md。
+# 生成は scripts/gen_yokoku_koyu1.mjs → 採用版をこの名前で incoming/ へ置いて取り込む。
+# 既存仮素材の同名差し替えのため manifest.json の該当項目も更新すること)
+YOKOKU_MOVIES = {
+    "義経_固有予告1_弱.mp4": "yokoku_yoshitsune_koyu1_weak",
+    "義経_固有予告1_強.mp4": "yokoku_yoshitsune_koyu1_strong",
+    "静_固有予告1_弱.mp4": "yokoku_shizuka_koyu1_weak",
+    "静_固有予告1_強.mp4": "yokoku_shizuka_koyu1_strong",
+    "弁慶_固有予告1_弱.mp4": "yokoku_benkei_koyu1_weak",
+    "弁慶_固有予告1_強.mp4": "yokoku_benkei_koyu1_strong",
+    "夕方_固有予告1_弱.mp4": "yokoku_yugata_koyu1_weak",
+    "夕方_固有予告1_強.mp4": "yokoku_yugata_koyu1_strong",
+}
+
 # 入稿ファイル名 → 素材 ID(BGM。2026-07-14 入稿分 = 4 曲。
 # 使用箇所の仕様は docs/SPEC.md 確定 38 / トラック解決は src/ui/bgm.ts)
 BGMS = {
@@ -161,6 +175,8 @@ def main() -> None:
         import_stage_video(src, ASSETS / f"video/stage/{asset_id}.webm")
     for src, asset_id in each(AT_MOVIES, ""):
         import_stage_video(src, ASSETS / f"video/at/{asset_id}.webm")
+    for src, asset_id in each(YOKOKU_MOVIES, ""):
+        import_stage_video(src, ASSETS / f"video/yokoku/{asset_id}.webm")
     for src, asset_id in each(BGMS, ""):
         import_bgm(src, ASSETS / f"audio/bgm/{asset_id}.ogg")
     for src, asset_id in each(SES, ""):
