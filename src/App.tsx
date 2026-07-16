@@ -266,12 +266,13 @@ function chanceUpSummary(chanceUps: RenzokuChanceUps): string {
 }
 
 /** オート消化時の目押しモード(押下位置の決め方)。手動時はタイミング押しが正 */
-type AimMode = 'RANDOM' | 'SEVEN' | 'DDT';
+type AimMode = 'RANDOM' | 'SEVEN' | 'DDT' | 'DDT_WHITE';
 
 const AIM_LABELS: Record<AimMode, string> = {
   RANDOM: '適当押し(ランダム)',
   SEVEN: '赤7 狙い(全リール)',
   DDT: 'DDT(左リール黒バー狙い)',
+  DDT_WHITE: 'DDT(左リール白バー狙い)',
 };
 
 /** target のコマを中段へ引き込める(0〜4 コマ手前の)押下位置から 1 つ選ぶ */
@@ -287,6 +288,9 @@ function pickPushes(aim: AimMode, rng: Rng): [number, number, number] {
   }
   if (aim === 'DDT') {
     return [aimedPush(0, 'BAR_BLACK', rng), random(), random()];
+  }
+  if (aim === 'DDT_WHITE') {
+    return [aimedPush(0, 'BAR_WHITE', rng), random(), random()];
   }
   return [random(), random(), random()];
 }
