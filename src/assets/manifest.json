@@ -319,18 +319,18 @@
     "path": "video/yokoku/yokoku_yoshitsune_koyu1_weak.webm",
     "type": "video",
     "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "tool": "AI 生成(GPT Image 2 起点静止画 + Seedance 2.0 reference-to-video 720p 6秒。scripts/gen_yokoku_koyu1.mjs → import_incoming_assets.py で WebM 変換)",
     "license": "project-original",
-    "note": "予告ムービー仮素材「義経予告1 弱」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+    "note": "義経背景 固有予告1 弱「気配」実素材(SPEC 確定 43 / YOKOKU_PRODUCTION_PLAN 3.1)。義経が気づいて左を向く → 左 PAN → 空きスペースで図柄表示(2026-07-16 制作)"
   },
   {
     "id": "yokoku_yoshitsune_koyu1_strong",
     "path": "video/yokoku/yokoku_yoshitsune_koyu1_strong.webm",
     "type": "video",
     "origin": "generated",
-    "tool": "コード生成(scripts/gen_placeholder_assets.py)",
+    "tool": "AI 生成(GPT Image 2 起点静止画 + Seedance 2.0 reference-to-video 720p 6秒。scripts/gen_yokoku_koyu1.mjs → import_incoming_assets.py で WebM 変換)",
     "license": "project-original",
-    "note": "予告ムービー仮素材「義経予告1 強」(STEP 4c。命名は docs/DIRECTION_SPEC.md「4.」)。実素材入稿で差し替え予定"
+    "note": "義経背景 固有予告1 強「気配」実素材(SPEC 確定 43 / YOKOKU_PRODUCTION_PLAN 3.1)。義経が気づいて右を向く → 右 PAN + 桜吹雪 → 空きスペースで図柄表示(2026-07-16 制作)"
   },
   {
     "id": "yokoku_yoshitsune_koyu2_weak",

@@ -19,6 +19,8 @@
 //     node scripts/gen_yokoku_koyu1.mjs 義経 start
 //     node scripts/gen_yokoku_koyu1.mjs 義経 draft /tmp/yokoku_gen/義経_koyu1_start.png
 //     node scripts/gen_yokoku_koyu1.mjs 義経 final /tmp/yokoku_gen/義経_koyu1_start.png
+//     node scripts/gen_yokoku_koyu1.mjs 義経 final /tmp/yokoku_gen/義経_koyu1_start.png strong
+//       (第 4 引数 weak|strong で片方だけ再生成できる)
 //
 // 出力: /tmp/yokoku_gen/<背景>_koyu1_start.png / _weak_<draft|final>.mp4 / _strong_<draft|final>.mp4
 // 採用する動画は incoming/ へ「<bg>_固有予告1_弱.mp4 / _強.mp4」の名前でコピーし、
@@ -55,9 +57,13 @@ const BACKGROUNDS = {
     weakAction:
       "義経が何かに気づいて、ゆっくりと左を向く。カメラは義経の視線を追って左へゆっくりパンし、" +
       "義経が画面右へ外れて、木々と石畳だけの空きスペースを映して終わる。木の葉が数枚舞う。",
+    // 採用版(2026-07-16)のプロンプト。「桜吹雪が強めに舞う」だけでは描画されなかったため
+    // 明示的に強調している(冒頭から舞い続ける = 弱との出だし完全一致より効果の確実さを優先)
     strongAction:
       "義経が何かに気づいて、ゆっくりと右を向く。カメラは義経の視線を追って右へゆっくりパンし、" +
-      "義経が画面左へ外れて、木々と石畳だけの空きスペースを映して終わる。桜吹雪が強めに舞う。",
+      "義経が画面左へ外れて、木々と石畳だけの空きスペースを映して終わる。" +
+      "動画の冒頭から最後まで、画面全体にピンク色の桜の花びらが大量に舞い散り続ける(桜吹雪)。" +
+      "パン後の空きスペースでも桜吹雪が舞い続ける。",
   },
 };
 
@@ -71,7 +77,7 @@ if (!process.env.FAL_KEY) {
   process.exit(1);
 }
 
-const [bgName, step, startImagePath] = process.argv.slice(2);
+const [bgName, step, startImagePath, onlyVariant] = process.argv.slice(2);
 const bg = BACKGROUNDS[bgName];
 if (!bg || !["start", "draft", "final"].includes(step)) {
   console.error(
@@ -135,7 +141,8 @@ const faceUrl = await uploadRef(bg.face);
 const bodyUrl = await uploadRef(bg.body);
 const startUrl = await uploadRef(startImagePath);
 
-for (const variant of ["weak", "strong"]) {
+const variants = onlyVariant ? [onlyVariant] : ["weak", "strong"];
+for (const variant of variants) {
   const action = variant === "weak" ? bg.weakAction : bg.strongAction;
   const prompt =
     `@Image1 は主人公・${bg.desc}の顔の参照(顔立ち・髪型はこの画像から一切変えない)。` +
