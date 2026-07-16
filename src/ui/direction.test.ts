@@ -420,6 +420,17 @@ describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', (
     expect(kyotsu?.strong).toBe(true);
   });
 
+  it('固有 1 は全画面 + 図柄はムービー終盤(4.6 秒)/ それ以外は小パネル + 1.5 秒(確定 43)', () => {
+    const full = koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'YOSHITSUNE');
+    expect(full?.fullscreen).toBe(true);
+    expect(full?.symbolDelayMs).toBe(4600);
+    for (const slot of ['KOYU_2', 'KOYU_3', 'KYOTSU_1', 'KYOTSU_2'] as const) {
+      const panel = koyakuHintView({ slot, strong: false }, 'BELL', 'YOSHITSUNE');
+      expect(panel?.fullscreen).toBe(false);
+      expect(panel?.symbolDelayMs).toBe(1500);
+    }
+  });
+
   it('図柄画像は成立役に対応する(スイカ系 = スイカ / チェリー系 = チェリー / リーチ目 = 赤7)', () => {
     const at = (role: Parameters<typeof koyakuHintView>[1]) =>
       koyakuHintView({ slot: 'KOYU_1', strong: false }, role, 'YOSHITSUNE')?.symbolUrl;
