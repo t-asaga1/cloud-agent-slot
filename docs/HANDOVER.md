@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #072(参考画像の格納確認 + fal.ai 接続テスト)
+- 作成者: AGENT #073(Seedance 用キャラクター設定資料の生成 + 顔維持ルールの策定)
 - 作成日: 2026-07-16
-- 履歴コピー: `docs/handover/072_fal_connection_test.md`
+- 履歴コピー: `docs/handover/073_character_sheets_for_seedance.md`
 
 ## プロジェクト概要
 
@@ -469,6 +469,11 @@
    - **fal.ai 接続テストに成功**(API キーは Cloud Agent Secret `FAL_KEY`。VM に環境変数として注入済み): `@fal-ai/client` を devDependencies へ追加し、テストスクリプト `scripts/fal_connection_test.mjs` を新設(`node scripts/fal_connection_test.mjs [storage|image|video|all]`)。確認した 3 経路 = (1) **fal ストレージへの参考画像アップロード**(`fal.storage.upload`。義経正面 PNG 12MB → URL 取得)/ (2) **GPT Image 2 の画像生成**(`openai/gpt-image-2/edit`。参考画像 URL + プロンプトで義経の夜の橋キービジュアルを 16:9 で生成。quality=low で約 1 分)/ (3) **Seedance 2.0 の動画生成**(`bytedance/seedance-2.0/fast/image-to-video`。(2) の生成画像から 480p・4 秒・音声なしを約 130 秒で生成。キャラ・背景維持 + カメラドリーイン + 桜の花びらの動きを videoReview で確認、破綻なし)。
    - **モデル ID メモ(2026-07-16 時点)**: 画像 = `openai/gpt-image-2`(text-to-image)/ `openai/gpt-image-2/edit`(参考画像あり。`image_urls` 配列・quality low/medium/high・`image_size`)。動画 = `bytedance/seedance-2.0/<fast/>text-to-video` / `<fast/>image-to-video`(`image_url` + `end_image_url`・480p/720p・4〜15 秒・`generate_audio`)/ `<fast/>reference-to-video`。料金目安 = Seedance fast 720p $0.2419/秒・standard 720p $0.3034/秒(音声有無で同額)。GPT Image 2 はトークン課金で quality が効く(テストは low)。
    - 生成物はリポジトリへコミットしない(テスト出力は `/tmp/fal_test/`)。本番生成した演出画像・動画の入稿は従来どおり `incoming/` 直下 + `manifest.json` 登録の運用。
+67. **AGENT #073(今回)**: **Seedance 用キャラクター設定資料 8 枚の生成 + 顔維持ルールの策定**(2026-07-16 ユーザー指示「Seedance テストで義経の顔だけ変わった。顔も含め維持するため、4 キャラの設定資料画像を GPT Image 2 で、ネット調査に基づき Seedance に渡す最良の形で作成。デザインはリファレンスから変えない」。アプリのコード変更なし):
+   - **ネット調査の結論(ByteDance 公式プロンプトガイド + 2026-07 時点の運用知見)**: 顔維持に最も効く参照は**キャラ 1 人 = 「顔だけのヘッドショット」+「全身」の 2 枚ペア**(無地背景・均一照明・真正面・無表情)。三面図(1 枚に複数アングル)は「別人の複数人」と誤読されるため**使用禁止**。プロンプトで `@Image1 = 顔の参照 / @Image2 = 全身の参照` と役割をバインドし、参照は重要順に前へ・合計 4〜5 枚まで・**顔をテキストで再描写しない**。#072 のテストで顔が変わった主因は「顔が小さく写った生成キービジュアル 1 枚だけを起点にした image-to-video」だったと判断。**ルール全文は `docs/SEEDANCE_GUIDELINES.md`(新設)が正**。
+   - **設定資料 8 枚を生成・格納**: `scripts/gen_character_sheets.mjs`(新設)で `openai/gpt-image-2/edit`(quality=high)により義経・静・弁慶・頼朝 × 顔(2048×2048)+ 全身(1792×2896)を生成。入力はユーザー入稿の参考画像(顔アップ + 正面全身)で「デザインを一切変えない」指示を固定で含む。参考画像との並置比較で顔・衣装・装飾の一致を全キャラ検証済み。格納先 = **`incoming/reference/設定資料/`**(README 更新済み。アプリへは取り込まない参考資料扱い)。黒幕は参考画像未入稿のため未作成。
+   - **Seedance 2.0 で顔維持を実証**: 新設定資料ペア + @Image バインドの雛形プロンプトで `bytedance/seedance-2.0/fast/reference-to-video`(720p・4 秒)を 1 本生成し、**ドリーインのクローズアップでも義経の顔が参照と一致**(videoReview で顔ドリフト・モーフィングなしを確認。軽微な差は布テクスチャの平滑化・夜間カラーグレードのみ)。検証済み雛形プロンプトは SEEDANCE_GUIDELINES「4.」に記録。
+   - **API メモ**: `reference-to-video` の入力は `image_urls`(最大 9 枚・@Image1〜 で参照)+ `video_urls` / `audio_urls`。画像制約 = 1 辺 300〜6,000px・30MB 以内・アスペクト比 0.4〜2.5。GPT Image 2 はカスタムサイズ指定可(16 の倍数・最大辺 3840・総ピクセル 655,360〜8,294,400)。生成時間実測 = GPT Image 2 high 約 2.5〜3.5 分/枚・Seedance fast 720p 4 秒 約 7 分。
 
 - Phase 1〜2 完了 + Phase 3 の抽せんテーブル層が完了。
 - **背景動画・リール図柄・AT確定ムービー・BGM 4 曲・SE 7 音はユーザー入稿の実素材**。液晶フォールバック・演出ムービー(予告/連続演出/AT/エンディング)と残りの SE(払出・レア役成立・告知系)は仮素材のまま。
@@ -533,8 +538,8 @@
 3. **Windows 実機確認の結果がユーザーから届いたら対応**: `docs/STEP5_VERIFICATION.md` のチェックリスト(特に #1 AT ステージ動画 / #2 実音再生)の NG 報告があれば調査・修正する。
 4. **ユーザーが Release 配布(タグ v0.1.0 の publish)を実施した場合**: Actions の `windows-build` が失敗していたら `gh run list --workflow windows-build.yml` + `gh run view <id> --log` で調査・修正する(既知の一過性障害 = NSIS/WiX ダウンロードの DNS 失敗は 3 回リトライ済み)。
 5. **ユーザーが GitHub Desktop で `incoming/` へ大容量素材を main 直接プッシュする予定あり(2026-07-14 の質問 1)**。入稿を確認したら上記 1.(STEP 4f)の手順で取り込むこと。
-6. **演出用素材の生成フェーズが進行中(AGENT #071〜#072 = 経緯 65〜66)**: 参考画像 39 枚が `incoming/reference/` へ格納済み(黒幕・キャラその他・上位AT 背景は未格納)で、**fal.ai の接続テストも完了**(経緯 66)。次は参考画像をもとにした予告映像・画像の生成指示が来る想定。生成には `scripts/fal_connection_test.mjs` のコード(ストレージアップロード → `openai/gpt-image-2/edit` → `bytedance/seedance-2.0/*`)がそのまま雛形に使える。API キーは Secret `FAL_KEY`(環境変数)。**本番生成時は quality / resolution をテスト用の low / 480p から上げること**。生成物の取り込みは `incoming/` 直下 + `manifest.json` 登録の従来運用(参考画像はアプリへ取り込まない)。
-7. 作業終了時に本ファイルを更新し、`docs/handover/073_*.md` に履歴を残す(072 は使用済み)。
+6. **演出用素材の生成フェーズが進行中(AGENT #071〜#073 = 経緯 65〜67)**: 参考画像 39 枚が `incoming/reference/` へ格納済み(黒幕・キャラその他・上位AT 背景は未格納)+ **Seedance 用のキャラクター設定資料 8 枚(4 キャラ × 顔・全身)が `incoming/reference/設定資料/` に常備済み**(経緯 67)。次は各予告の制作指示が来る想定。**キャラクターを出す動画生成では必ず `docs/SEEDANCE_GUIDELINES.md` のルール(設定資料ペア + @Image バインド・顔の再描写禁止・生成後の顔検証)に従うこと**。コードの雛形は `scripts/fal_connection_test.mjs` / `scripts/gen_character_sheets.mjs`。API キーは Secret `FAL_KEY`(環境変数)。**本番生成時は quality / resolution をテスト用の low / 480p から上げること**。生成物の取り込みは `incoming/` 直下 + `manifest.json` 登録の従来運用(参考画像・設定資料はアプリへ取り込まない)。黒幕の参考画像が入稿されたら `gen_character_sheets.mjs` の `CHARACTERS` へ追加して設定資料を生成する。
+7. 作業終了時に本ファイルを更新し、`docs/handover/074_*.md` に履歴を残す(073 は使用済み)。
 
 ウェイト + BGM デフォルト再生 + 頼朝歌い出し(確定 41 = AGENT #069)の実装で注意した点(以後も維持すること):
 
