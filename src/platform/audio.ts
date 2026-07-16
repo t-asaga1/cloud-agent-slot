@@ -66,10 +66,32 @@ export function playSe(url: string, volume = 0.5): void {
 }
 
 /**
+ * 再生開始位置(秒)を設定する(頼朝テーマ曲の歌い出し再生 = 確定 41)。
+ * メタデータ読み込み前は currentTime の設定が効かない環境があるため、
+ * 読み込み済みなら即時、未読み込みなら loadedmetadata を待って設定する。
+ */
+function seekWhenReady(audio: HTMLAudioElement, sec: number): void {
+  // readyState 1 = HAVE_METADATA(定数参照は Node テスト環境に無いため数値リテラル)
+  if (audio.readyState >= 1) {
+    audio.currentTime = sec;
+    return;
+  }
+  audio.addEventListener(
+    'loadedmetadata',
+    () => {
+      audio.currentTime = sec;
+    },
+    { once: true },
+  );
+}
+
+/**
  * BGM をループ再生する。同じ URL が再生中なら何もしない。
  * 別 BGM が再生中ならクロスフェード(旧をフェードアウト・新をフェードイン)で切り替える。
+ * `startSec` = 初回の再生開始位置(秒。頼朝テーマ曲の歌い出し再生 = 確定 41)。
+ * ループ 2 周目以降は曲頭(0 秒)へ戻る(1 セット内で 1 周しきることは稀なため許容)。
  */
-export function playBgm(url: string, volume = 0.3, fadeMs = BGM_FADE_MS): void {
+export function playBgm(url: string, volume = 0.3, fadeMs = BGM_FADE_MS, startSec = 0): void {
   if (bgmAudio !== undefined && bgmUrl === url && !bgmAudio.paused) return;
   const old = bgmAudio;
   const crossFade = old !== undefined && !old.paused;
@@ -81,6 +103,7 @@ export function playBgm(url: string, volume = 0.3, fadeMs = BGM_FADE_MS): void {
   bgmAudio.loop = true;
   bgmAudio.volume = crossFade ? 0 : volume;
   bgmUrl = url;
+  if (startSec > 0) seekWhenReady(bgmAudio, startSec);
   void bgmAudio.play().catch(() => {});
   if (crossFade) fadeTo(bgmAudio, volume, fadeMs);
 }

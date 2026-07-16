@@ -37,6 +37,21 @@ import type { AdvanceResult, GameState } from '../core/state';
 /** 頼朝テーマ曲(継続確定 BGM)の抽せん分母(確定 38 = 1/5) */
 export const KAKUTEI_BGM_DENOM = 5;
 
+/**
+ * トラック別の再生開始位置(秒)。指定なし = 曲頭(0 秒)から。
+ * 頼朝テーマ曲は下位 AT の 1 セット(18G)では歌い出し(約 22.1 秒)まで
+ * たどり着かないため、**歌い出し直前の小節頭(21.6 秒)から流し出す**(確定 41)。
+ * 値は実素材の波形解析 + 聴感確認で特定(差し替え時はここを更新)。
+ */
+export const BGM_START_SEC: Partial<Record<BgmTrackId, number>> = {
+  AT_KAKUTEI: 21.6,
+};
+
+/** トラックの再生開始位置(秒)を返す(`playBgm` の startSec へ渡す) */
+export function bgmStartSecForTrack(track: BgmTrackId): number {
+  return BGM_START_SEC[track] ?? 0;
+}
+
 /** 頼朝テーマ曲の抽せん(1/5)。演出専用 rng で呼ぶこと */
 export function drawKakuteiBgm(rng: Rng): boolean {
   return rng.nextInt(KAKUTEI_BGM_DENOM) === 0;
