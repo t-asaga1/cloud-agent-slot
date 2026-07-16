@@ -14,6 +14,7 @@ import {
 } from '../core/reel';
 import { ROLES, type Role } from '../core/roles';
 import {
+  GAME_WAIT_MS,
   SPIN_MS_PER_KOMA,
   SPIN_MS_PER_REV,
   finishSpin,
@@ -22,6 +23,7 @@ import {
   provisionalPushOrder,
   spinningPosition,
   startSpin,
+  waitDelayMs,
   type SpinCycle,
 } from './gameCycle';
 
@@ -78,6 +80,27 @@ describe('回転の時間モデル(spinningPosition)', () => {
     expect(spinningPosition(-1, 0)).toBe(19);
     expect(spinningPosition(25, 0)).toBe(5);
     expect(spinningPosition(3, -100)).toBe(3);
+  });
+});
+
+describe('ウェイト(waitDelayMs = 確定 41)', () => {
+  it('定数: 1 ゲームのプレイ間隔最低 4.1 秒', () => {
+    expect(GAME_WAIT_MS).toBe(4100);
+  });
+
+  it('未プレイ(前ゲームなし)は遅延なし', () => {
+    expect(waitDelayMs(undefined, 12345)).toBe(0);
+  });
+
+  it('前ゲームの回転開始から 4.1 秒未満なら残り時間だけ遅延する', () => {
+    expect(waitDelayMs(1000, 1000)).toBe(GAME_WAIT_MS);
+    expect(waitDelayMs(1000, 2000)).toBe(GAME_WAIT_MS - 1000);
+    expect(waitDelayMs(1000, 1000 + GAME_WAIT_MS - 1)).toBe(1);
+  });
+
+  it('4.1 秒以上経過していれば遅延なし', () => {
+    expect(waitDelayMs(1000, 1000 + GAME_WAIT_MS)).toBe(0);
+    expect(waitDelayMs(1000, 1000 + GAME_WAIT_MS + 5000)).toBe(0);
   });
 });
 

@@ -49,6 +49,23 @@ import type { Role } from '../core/roles';
 /** リール回転速度: 1 周(20 コマ)あたりのミリ秒(実機の約 80rpm 相当。調整可) */
 export const SPIN_MS_PER_REV = 750;
 
+/**
+ * ウェイト: 1 ゲームのプレイ間隔の最低ミリ秒(確定 41 = 実機の 4.1 秒規制相当)。
+ * 前ゲームのリール回転開始から 4.1 秒経過するまで、次ゲームのリール回転を
+ * 開始しない(レバーオン自体は受け付け、回転開始だけを遅らせる)。
+ * UI のウェイトカット(デバッグ)が ON のときは適用しない(従来挙動)。
+ */
+export const GAME_WAIT_MS = 4100;
+
+/**
+ * ウェイトによる回転開始の遅延ミリ秒を求める。
+ * lastSpinStartAt = 前ゲームのリール回転開始時刻(未プレイなら undefined = 遅延なし)。
+ */
+export function waitDelayMs(lastSpinStartAt: number | undefined, now: number): number {
+  if (lastSpinStartAt === undefined) return 0;
+  return Math.max(0, GAME_WAIT_MS - (now - lastSpinStartAt));
+}
+
 /** 1 コマ進むのにかかるミリ秒 */
 export const SPIN_MS_PER_KOMA = SPIN_MS_PER_REV / KOMA_COUNT;
 

@@ -1,17 +1,24 @@
 /**
- * SE 再生の後発優先(SPEC 確定 40)の単体テスト。
+ * SE 再生の後発優先(SPEC 確定 40)+ BGM の再生開始位置(確定 41)の単体テスト。
  * SE は単一チャンネルで、新しい SE を鳴らすとき前の SE が再生中なら止めて差し替える
  * (例: チェリー入賞音の再生中にレバーオンしたら、入賞音を切ってレバーオン音を鳴らす)。
  * ブラウザの Audio は Node 環境にないため、再生状態だけ模倣したフェイクで検証する。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { playSe, setSeEnabled } from './audio';
+import { playBgm, playSe, setSeEnabled, stopBgm } from './audio';
 
 class FakeAudio {
   static instances: FakeAudio[] = [];
   src: string;
   volume = 1;
   paused = true;
+  loop = false;
+  currentTime = 0;
+  /** 新規インスタンスの readyState 初期値(テストごとに切替可) */
+  static defaultReadyState = 0;
+  /** 0 = メタデータ未読み込み / 1 = HAVE_METADATA(読み込み済み) */
+  readyState = FakeAudio.defaultReadyState;
+  private listeners = new Map<string, Array<() => void>>();
   constructor(src: string) {
     this.src = src;
     FakeAudio.instances.push(this);
@@ -23,15 +30,33 @@ class FakeAudio {
   pause(): void {
     this.paused = true;
   }
+  addEventListener(type: string, listener: () => void): void {
+    const list = this.listeners.get(type) ?? [];
+    list.push(listener);
+    this.listeners.set(type, list);
+  }
+  removeEventListener(type: string, listener: () => void): void {
+    const list = this.listeners.get(type) ?? [];
+    this.listeners.set(
+      type,
+      list.filter((l) => l !== listener),
+    );
+  }
+  /** loadedmetadata 等の発火を模倣(once は模倣不要 = テスト内で 1 回だけ発火する) */
+  emit(type: string): void {
+    for (const listener of this.listeners.get(type) ?? []) listener();
+  }
 }
 
 beforeEach(() => {
   FakeAudio.instances = [];
+  FakeAudio.defaultReadyState = 0;
   vi.stubGlobal('Audio', FakeAudio);
   setSeEnabled(true);
 });
 
 afterEach(() => {
+  stopBgm(0); // モジュール内の BGM 状態を破棄(fadeMs 0 = タイマー不使用)
   vi.unstubAllGlobals();
 });
 
@@ -73,5 +98,42 @@ describe('playSe(後発優先 = 確定 40)', () => {
     playSe('b.ogg');
     expect(FakeAudio.instances).toHaveLength(1);
     expect(FakeAudio.instances[0].paused).toBe(false);
+  });
+});
+
+describe('playBgm の再生開始位置(startSec = 確定 41)', () => {
+  it('startSec 指定なし(0)は曲頭から再生する', () => {
+    playBgm('bgm_at_base.ogg');
+    const bgm = FakeAudio.instances[0];
+    expect(bgm.paused).toBe(false);
+    expect(bgm.loop).toBe(true);
+    expect(bgm.currentTime).toBe(0);
+  });
+
+  it('メタデータ読み込み済みなら即時に開始位置へシークする', () => {
+    FakeAudio.defaultReadyState = 1;
+    playBgm('bgm_at_kakutei.ogg', 0.3, 0, 21.6);
+    const bgm = FakeAudio.instances[0];
+    expect(bgm.paused).toBe(false);
+    expect(bgm.currentTime).toBe(21.6);
+  });
+
+  it('メタデータ未読み込みなら loadedmetadata 後に開始位置へシークする', () => {
+    playBgm('bgm_at_kakutei.ogg', 0.3, 0, 21.6);
+    const bgm = FakeAudio.instances[0];
+    expect(bgm.paused).toBe(false);
+    expect(bgm.currentTime).toBe(0); // まだシークされない
+    bgm.emit('loadedmetadata');
+    expect(bgm.currentTime).toBe(21.6);
+  });
+
+  it('同じ URL が再生中なら何もしない(シークし直さない)', () => {
+    playBgm('bgm_at_kakutei.ogg', 0.3, 0, 21.6);
+    const bgm = FakeAudio.instances[0];
+    bgm.emit('loadedmetadata');
+    bgm.currentTime = 100; // 再生が進んだ状態を模倣
+    playBgm('bgm_at_kakutei.ogg', 0.3, 0, 21.6);
+    expect(FakeAudio.instances).toHaveLength(1);
+    expect(bgm.currentTime).toBe(100);
   });
 });

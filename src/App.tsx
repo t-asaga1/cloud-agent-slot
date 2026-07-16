@@ -52,8 +52,14 @@ import {
   type GameState,
   type Phase,
 } from './core/state';
-import { playBgm, stopBgm } from './platform/audio';
-import { BGM_LABELS, bgmTrackForState, bgmUrlForState, updateKakuteiBgm } from './ui/bgm';
+import { isBgmPlaying, playBgm, stopBgm } from './platform/audio';
+import {
+  BGM_LABELS,
+  bgmStartSecForTrack,
+  bgmTrackForState,
+  bgmUrlForState,
+  updateKakuteiBgm,
+} from './ui/bgm';
 import { initMeter, meterOnFinish, meterOnLever, type MeterState } from './ui/counters';
 import {
   cloneStats,
@@ -88,6 +94,7 @@ import {
   isAllStopped,
   pressStop,
   startSpin,
+  waitDelayMs,
   type SpinCycle,
 } from './ui/gameCycle';
 import {
@@ -448,6 +455,11 @@ interface ReelSlip {
  * 停止ボタン押下後は `slips[reel]` のスベリアニメーション(押下瞬間の連続位置 →
  * 停止位置。最大 4 コマ ≤ 150ms)で停止し、押下位置の判定はその floor
  * (= `spinningPosition` と同値)を使うため見た目とロジックのコマが一致する。
+ *
+ * ウェイト(確定 41): `startAt` が未来の時刻の間 = ウェイト中(前ゲームの回転開始から
+ * 4.1 秒経過するまで回転開始を遅らせる)。レバーオンは受け付け済みで、リールは
+ * `startAt` まで静止・停止ボタンは無効(`continuousPosition` が負の経過時間を
+ * 0 へクランプするため、時刻が `startAt` に達すると自然に回転が始まる)。
  */
 type SpinUi =
   | { mode: 'IDLE' }
@@ -455,6 +467,7 @@ type SpinUi =
       mode: 'SPINNING';
       cycle: SpinCycle;
       startPositions: StopPositions;
+      /** リール回転開始時刻(ウェイト中は未来の時刻) */
       startAt: number;
       slips: readonly (ReelSlip | undefined)[];
       /** ナビ押し順(確定 36。ナビ中のベル当選時のみレバーオンで抽せん。ナビ数字の表示に使う) */
@@ -481,7 +494,11 @@ function App() {
   const [leverDirection, setLeverDirection] = useState<LeverDirection>({ seq: 0 });
 
   const [stageSelect, setStageSelect] = useState<'AUTO' | StageId>('AUTO');
-  const [bgmOn, setBgmOn] = useState(false);
+  // BGM はデフォルト再生(確定 41)。ブラウザの自動再生ポリシーで初回再生が
+  // ブロックされた場合は、最初のユーザー操作で再試行する(下の useEffect)
+  const [bgmOn, setBgmOn] = useState(true);
+  // ウェイトカット(確定 41): ON = ウェイトなし(従来挙動)。デフォルトはウェイトあり
+  const [waitCut, setWaitCut] = useState(false);
   const [pushOrderSelect, setPushOrderSelect] = useState<PushOrderSelect>('AUTO');
   const [aim, setAim] = useState<AimMode>('RANDOM');
   const [forcedRole, setForcedRole] = useState<'DRAW' | Role>('DRAW');
@@ -507,6 +524,13 @@ function App() {
   // 最終リールのスベリ完了を待って 1G を締めるタイマー(リセット時に破棄)
   const finishTimerRef = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(finishTimerRef.current), []);
+
+  /**
+   * 前ゲームのリール回転開始時刻(ウェイト = 確定 41 の基準)。未プレイは undefined。
+   * オート消化・一括消化(即時実行のデバッグ機能。ウェイト対象外)でも更新し、
+   * 直後の手動レバーオンにはウェイトが掛かるようにする。
+   */
+  const lastSpinStartRef = useRef<number | undefined>(undefined);
 
   /**
    * バトルパートの進行中ルート(STEP 4e)。バトル 1G 目のレバーオンで一括抽せんし、
@@ -655,11 +679,16 @@ function App() {
     const naviOrder =
       isNaviActive(play.gameState) && won === 'BELL' ? drawNaviPushOrder(rng) : undefined;
     drawLeverDirection(won, bellMiss, naviOrder);
+    // ウェイト(確定 41): 前ゲームの回転開始から 4.1 秒未満なら回転開始を遅らせる
+    // (レバーオンは受け付け済み)。ウェイトカット ON のときは即時開始(従来挙動)
+    const now = performance.now();
+    const startAt = now + (waitCut ? 0 : waitDelayMs(lastSpinStartRef.current, now));
+    lastSpinStartRef.current = startAt;
     setSpinUi({
       mode: 'SPINNING',
       cycle: startSpin(won, bellMiss),
       startPositions: play.positions,
-      startAt: performance.now(),
+      startAt,
       slips: [undefined, undefined, undefined],
       naviOrder,
     });
@@ -673,6 +702,7 @@ function App() {
    */
   const onStop = (reel: ReelIndex) => {
     if (spinUi.mode !== 'SPINNING' || spinUi.cycle.stopped[reel] !== undefined) return;
+    if (performance.now() < spinUi.startAt) return; // ウェイト中は停止ボタン無効(確定 41)
     playCue('REEL_STOP');
     const pressAt = performance.now();
     const fromPosition = continuousPosition(spinUi.startPositions[reel], pressAt - spinUi.startAt);
@@ -710,6 +740,7 @@ function App() {
         : PUSH_ORDERS[pushOrderSelect];
     let cycle = startSpin(won, bellMiss);
     for (const reel of order) cycle = pressStop(cycle, reel, pushes[reel]);
+    lastSpinStartRef.current = performance.now(); // 直後の手動レバーオンにはウェイトを掛ける
     finishGame(cycle);
   };
 
@@ -763,6 +794,7 @@ function App() {
     if (lastSpin === undefined) return;
     logs.reverse();
     eventLog.reverse();
+    lastSpinStartRef.current = performance.now(); // 直後の手動レバーオンにはウェイトを掛ける
     // 高速消化中のレバーオン演出・バトルルートは無効化(最終ゲームの状態から再開)
     battleRef.current = undefined;
     setLeverDirection((prev) => ({ seq: prev.seq + 1 }));
@@ -814,14 +846,33 @@ function App() {
   }, []);
 
   // BGM はゲーム状態に連動(確定 38。ステージの手動切替とは独立)。
-  // トラックなし(通常 4 背景・赤7待機等)は無音 = stopBgm(フェード付き)
+  // トラックなし(通常 4 背景・赤7待機等)は無音 = stopBgm(フェード付き)。
+  // 頼朝テーマ曲は歌い出し(21.6 秒)から流し出す(確定 41 = `bgmStartSecForTrack`)
   const bgmTrack = bgmTrackForState(play.gameState, play.kakuteiBgm);
   const bgmUrl = bgmUrlForState(play.gameState, play.kakuteiBgm);
+  const bgmStartSec = bgmTrack === undefined ? 0 : bgmStartSecForTrack(bgmTrack);
   useEffect(() => {
     if (!bgmOn) return;
-    if (bgmUrl !== undefined) playBgm(bgmUrl);
+    if (bgmUrl !== undefined) playBgm(bgmUrl, undefined, undefined, bgmStartSec);
     else stopBgm();
-  }, [bgmOn, bgmUrl]);
+  }, [bgmOn, bgmUrl, bgmStartSec]);
+
+  // BGM デフォルト再生(確定 41)の自動再生ポリシー対策: ユーザー操作前の再生開始が
+  // ブラウザにブロックされた場合、最初の操作(クリック・キー)で再生を再試行する
+  useEffect(() => {
+    if (!bgmOn) return;
+    const retry = () => {
+      if (bgmUrl !== undefined && !isBgmPlaying()) {
+        playBgm(bgmUrl, undefined, undefined, bgmStartSec);
+      }
+    };
+    window.addEventListener('pointerdown', retry);
+    window.addEventListener('keydown', retry);
+    return () => {
+      window.removeEventListener('pointerdown', retry);
+      window.removeEventListener('keydown', retry);
+    };
+  }, [bgmOn, bgmUrl, bgmStartSec]);
 
   const onToggleBgm = () => {
     if (bgmOn) {
@@ -829,7 +880,7 @@ function App() {
       setBgmOn(false);
     } else {
       // 再生開始はユーザー操作起点(自動再生ポリシー)。以後の切替は上の useEffect
-      if (bgmUrl !== undefined) playBgm(bgmUrl);
+      if (bgmUrl !== undefined) playBgm(bgmUrl, undefined, undefined, bgmStartSec);
       setBgmOn(true);
     }
   };
@@ -837,6 +888,7 @@ function App() {
   const onReset = () => {
     setAutoPlay(false);
     window.clearTimeout(finishTimerRef.current);
+    lastSpinStartRef.current = undefined;
     setSpinUi({ mode: 'IDLE' });
     setResetCount((n) => n + 1); // DirectionLayer を再マウントして演出キューを破棄
     setLeverDirection({ seq: 0 });
@@ -862,9 +914,13 @@ function App() {
   /** リールが視覚的に動いているか(回転中 or スベリ中。ぼかし表示に使う) */
   const isReelMoving = (reel: ReelIndex): boolean => {
     if (spinUi.mode !== 'SPINNING') return false;
+    if (now < spinUi.startAt) return false; // ウェイト中はまだ回転していない(確定 41)
     const slip = spinUi.slips[reel];
     return slip === undefined || !isSlipDone(slip.anim, now - slip.pressAt);
   };
+
+  /** ウェイト中か(確定 41。レバーオン受付済み・リール回転開始待ち) */
+  const waiting = spinUi.mode === 'SPINNING' && now < spinUi.startAt;
 
   // 出目ハイライトは全停止中のみ(回転中は消す)
   const hitRows = spinning
@@ -1003,7 +1059,8 @@ function App() {
           <div className="stop-buttons">
             {REEL_NAMES.map((name, reel) => {
               const reelIndex = reel as ReelIndex;
-              const enabled = spinning && spinUi.cycle.stopped[reelIndex] === undefined;
+              const enabled =
+                spinning && !waiting && spinUi.cycle.stopped[reelIndex] === undefined;
               return (
                 <button
                   key={name}
@@ -1031,6 +1088,14 @@ function App() {
             </button>
             <button type="button" onClick={onToggleBgm}>
               BGM {bgmOn ? '停止' : '再生'}
+            </button>
+            <button
+              type="button"
+              className={waitCut ? 'auto-on' : undefined}
+              onClick={() => setWaitCut((v) => !v)}
+              title="ウェイト = 1 ゲームのプレイ間隔最低 4.1 秒。カット ON で従来どおり即回転"
+            >
+              ウェイトカット {waitCut ? 'ON' : 'OFF'}
             </button>
             <span className="bulk-controls">
               <select
@@ -1166,13 +1231,24 @@ function App() {
                 )}
                 {spinning ? (
                   <div>
-                    <strong className="accent">回転中</strong>
-                    <span className="miss">
-                      停止ボタン(Z・X・C)で {REEL_NAMES.filter(
-                        (_, reel) => spinUi.cycle.stopped[reel as ReelIndex] === undefined,
-                      ).join('・')}{' '}
-                      リールを停止
-                    </span>
+                    {waiting ? (
+                      <>
+                        <strong className="accent">ウェイト中</strong>
+                        <span className="miss">
+                          (残り {((spinUi.startAt - now) / 1000).toFixed(1)} 秒で回転開始)
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <strong className="accent">回転中</strong>
+                        <span className="miss">
+                          停止ボタン(Z・X・C)で {REEL_NAMES.filter(
+                            (_, reel) => spinUi.cycle.stopped[reel as ReelIndex] === undefined,
+                          ).join('・')}{' '}
+                          リールを停止
+                        </span>
+                      </>
+                    )}
                   </div>
                 ) : (
                   play.lastLog && (

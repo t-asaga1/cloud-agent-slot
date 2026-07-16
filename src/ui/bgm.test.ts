@@ -3,6 +3,8 @@ import { BGM_FILES } from '../assets';
 import type { Rng } from '../core/rng';
 import type { AdvanceResult, AtPhase, GameEvent, GameState, Phase } from '../core/state';
 import {
+  BGM_START_SEC,
+  bgmStartSecForTrack,
   bgmTrackForState,
   bgmUrlForState,
   drawKakuteiBgm,
@@ -139,6 +141,19 @@ describe('bgmTrackForState(状態 → BGM トラック = 確定 38)', () => {
   it('bgmUrlForState はトラックのファイル URL(なし = undefined)を返す', () => {
     expect(bgmUrlForState(state(atPhase()), false)).toBe(BGM_FILES.AT_BASE);
     expect(bgmUrlForState(state({ type: 'NORMAL' }), false)).toBeUndefined();
+  });
+});
+
+describe('再生開始位置(BGM_START_SEC = 確定 41)', () => {
+  it('頼朝テーマ曲は歌い出し(21.6 秒)から流し出す', () => {
+    expect(BGM_START_SEC.AT_KAKUTEI).toBe(21.6);
+    expect(bgmStartSecForTrack('AT_KAKUTEI')).toBe(21.6);
+  });
+
+  it('他のトラックは曲頭(0 秒)から', () => {
+    expect(bgmStartSecForTrack('ZENCHO')).toBe(0);
+    expect(bgmStartSecForTrack('AT_BASE')).toBe(0);
+    expect(bgmStartSecForTrack('AT_UPPER')).toBe(0);
   });
 });
 
