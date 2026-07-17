@@ -54,7 +54,7 @@ ByteDance 公式プロンプトガイドおよび 2026-07 時点の Seedance 2.0
 | 弁慶 | `弁慶_顔.png` | `弁慶_全身.png` |
 | 頼朝 | `頼朝_顔.png` | `頼朝_全身.png` |
 
-黒幕は参考画像が未入稿のため未作成(入稿され次第 `gen_character_sheets.mjs` の `CHARACTERS` へ追加して生成する)。
+黒幕(後白河法皇)は設定資料ペアが未作成。デザインは案 A で確定済みで、参考画像(`incoming/reference/キャラクター/黒幕/後白河_案A_全身.png` + `後白河_顔アップ.png`)と `gen_character_sheets.mjs` の `CHARACTERS` への追加は完了している(AGENT #091)。ユーザーの指示があり次第 `node scripts/gen_character_sheets.mjs 後白河` で生成する(API 課金のため指示なしで生成しない)。
 
 ## 4. 動画生成の標準手順(予告 1 本あたり)
 
