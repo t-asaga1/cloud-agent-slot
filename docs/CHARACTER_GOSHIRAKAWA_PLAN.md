@@ -1,7 +1,14 @@
 # 後白河法皇(黒幕・ラスボス)キャラクターデザイン制作プラン
 
-作成: AGENT #089(2026-07-17)/ 更新: AGENT #090(2026-07-17)
-ステータス: **A/B/C 全 3 案の全身デザイン画を生成済み(`incoming/reference/キャラクター/黒幕/後白河_案{A,B,C}_全身.png`)。ユーザーの採用案決定待ち**
+作成: AGENT #089(2026-07-17)/ 更新: AGENT #091(2026-07-17)
+ステータス: **案 A「若き覇王」で確定(2026-07-17 ユーザー決定)。顔アップ参考画像も生成済み。次は Seedance 用設定資料ペアの生成(「6.」参照)**
+
+## 0a. 採用決定と顔アップ生成(AGENT #091。2026-07-17)
+
+- ユーザー決定(2026-07-17): **案 A「若き覇王」を採用**。不採用の案 B / C の PNG は削除済み(Git 履歴には残る)。
+- 顔アップ参考画像を生成: `scripts/gen_goshirakawa_face.mjs`(新設。`FAL_KEY2` + `openai/gpt-image-2/edit`、quality=high、2048×2048。参照 = 案 A 全身画 1 枚)。
+- 格納先 = **`incoming/reference/キャラクター/黒幕/後白河_顔アップ.png`**(他キャラの顔アップ参考画像と同じ `incoming/reference/キャラクター/<名前>/` 配下)。
+- `gen_character_sheets.mjs` の `CHARACTERS` へ「後白河」を追加済み(顔 = 後白河_顔アップ.png / 全身 = 後白河_案A_全身.png)。**Seedance 用設定資料ペア(顔 2048×2048 + 全身 1792×2896)の生成は未実施**(次ラン。生成前にユーザーの指示を待つ)。
 
 ## 0. 生成結果(AGENT #090。2026-07-17)
 
@@ -117,8 +124,9 @@
 
 ## 6. 次ラン(採用案決定後)への申し送り
 
-- ユーザーが採用案(A/B/C)を決定したら:
-  1. 不採用 2 案の PNG を `incoming/reference/キャラクター/黒幕/` から削除(Git 履歴には残る)。
-  2. 採用案に修正指示があれば `scripts/gen_goshirakawa_design.mjs` のプロンプトを調整して再生成(AGENTS.md 生成ルール 3: 指示なしの再生成禁止)。
-  3. デザイン確定後、確定した全身画を参照の 1 枚目に据えて顔アップ派生を生成し、`gen_character_sheets.mjs` の `CHARACTERS` へ「後白河」を追加して Seedance 用設定資料ペア(顔 2048×2048 + 全身 1792×2896)を生成・`incoming/reference/設定資料/` へ常備(SEEDANCE_GUIDELINES「3.」の黒幕未作成分を解消)。
+- ~~ユーザーが採用案(A/B/C)を決定したら~~ → **案 A で確定・1〜3 の顔アップまで実施済み(AGENT #091。「0a.」参照)**:
+  1. ~~不採用 2 案の PNG を削除~~ → 済(案 B / C 削除)。
+  2. 採用案(案 A)に修正指示があれば `scripts/gen_goshirakawa_design.mjs` のプロンプトを調整して再生成(AGENTS.md 生成ルール 3: 指示なしの再生成禁止)。顔アップの修正は `scripts/gen_goshirakawa_face.mjs` を調整して再生成。
+  3. ~~顔アップ派生の生成 + `gen_character_sheets.mjs` への追加~~ → 済。
+- **残タスク: Seedance 用設定資料ペア(顔 2048×2048 + 全身 1792×2896)の生成**(`node scripts/gen_character_sheets.mjs 後白河` → 検品 → `incoming/reference/設定資料/後白河_{顔,全身}.png` へコミット。SEEDANCE_GUIDELINES「3.」の黒幕未作成分を解消)。生成 = API 課金のため、着手前にユーザーの指示を得ること。
 - AGENTS.md「AI 素材生成(fal.ai)のルール」を遵守: 生成前のプロンプト承認 → 生成後はユーザー確認 → 指示なしの再生成禁止。
