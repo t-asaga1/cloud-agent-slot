@@ -47,7 +47,8 @@ interface Props {
   lever: LeverDirection;
   cutinFrame: CutinFrame;
   /**
-   * 各リールの停止済みフラグ(リール消灯演出 = 確定 39 用)。
+   * 各リールの停止済みフラグ(リール消灯演出 = 確定 39 / 紙芝居方式の
+   * 小役示唆予告 = 2026-07-17 指示 用)。
    * 回転中は停止したリールから順に true になり、全停止後(レバー待ち)は全 true。
    */
   stoppedReels: readonly [boolean, boolean, boolean];
@@ -140,6 +141,10 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
   useEffect(() => {
     if (leverSeq > 0 && hasYokoku) playCue('TELOP');
   }, [leverSeq, hasYokoku]);
+
+  // 紙芝居方式の小役示唆予告(2026-07-17 指示)用の停止ボタン数。
+  // 0 = レバーオン直後(1 枚目)/ 1〜2 = 第 1 停止以降(2 枚目)/ 3 = 全停止(3 枚目 + 図柄)
+  const hintStopCount = stoppedReels.filter(Boolean).length;
 
   // リール消灯音(ユーザー入稿 SE = 確定 40): 消灯している部分の数が増えるたびに鳴らす
   // (対象リールの停止に同期 = 確定 39 の消灯タイミング)。同一 seq 内の増加で 1 回ずつ。
@@ -284,7 +289,9 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
       {lever.hint !== undefined && (
         // 固有 1 は全画面(背景ループ動画より上のレイヤー = 確定 43)。図柄は
         // symbolDelayMs 経過時にフェードインなしで表示する(PAN 後の空きスペースに
-        // すでに映っている形)。それ以外は従来の右下小パネル + フェードイン
+        // すでに映っている形)。それ以外は従来の右下小パネル + フェードイン。
+        // 紙芝居方式(stills = 2026-07-17 指示)は停止ボタン連動で静止画を切り替える:
+        // レバーオン = 1 枚目 → 第 1 停止 = 2 枚目(弱強差分)→ 第 3 停止 = 3 枚目 + 図柄
         <div
           key={`hint-${lever.seq}`}
           className={[
@@ -296,13 +303,29 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
             .join(' ')}
           data-label={lever.hint.label}
         >
-          <video className="hint-video" src={lever.hint.videoUrl} autoPlay muted playsInline />
-          <img
-            className="hint-symbol"
-            style={{ animationDelay: `${lever.hint.symbolDelayMs}ms` }}
-            src={lever.hint.symbolUrl}
-            alt={lever.hint.label}
-          />
+          {lever.hint.stills !== undefined ? (
+            <img
+              className="hint-video"
+              src={
+                hintStopCount === 0
+                  ? lever.hint.stills.leverOn
+                  : hintStopCount < 3
+                    ? lever.hint.stills.firstStop
+                    : lever.hint.stills.allStop
+              }
+              alt={lever.hint.label}
+            />
+          ) : (
+            <video className="hint-video" src={lever.hint.videoUrl} autoPlay muted playsInline />
+          )}
+          {(lever.hint.stills === undefined || hintStopCount === 3) && (
+            <img
+              className="hint-symbol"
+              style={{ animationDelay: `${lever.hint.symbolDelayMs}ms` }}
+              src={lever.hint.symbolUrl}
+              alt={lever.hint.label}
+            />
+          )}
         </div>
       )}
       {lever.atYokoku !== undefined && (

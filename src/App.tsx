@@ -980,7 +980,8 @@ function App() {
                 overlay={overlayForState(gameState)}
                 lever={leverDirection}
                 cutinFrame={play.cutinFrame}
-                // リール消灯演出(確定 39)用の停止済みフラグ。全停止後(レバー待ち)は全 true
+                // リール消灯演出(確定 39)・紙芝居予告(2026-07-17 指示)用の
+                // 停止済みフラグ。全停止後(レバー待ち)は全 true
                 stoppedReels={
                   spinUi.mode === 'SPINNING'
                     ? [
