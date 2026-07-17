@@ -286,7 +286,49 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
           ))}
         </div>
       )}
-      {lever.hint !== undefined && (
+      {lever.hint?.kaiwa !== undefined && (
+        // 会話予告(固有 3 = 2026-07-17 指示): レバーオンで一言目ウィンドウ(画面左)→
+        // 第 1 停止で一言目を消さずに二言目ウィンドウ(画面右)を追加表示(枠の重なり許容)→
+        // 第 3 停止で全画面(強のみ。背景は見えない + 大台詞)。台詞・話者名は
+        // 画像に焼き込まずアプリ側テキスト描画(KAIWA_LINES = direction.ts)。
+        // 図柄は他の小役示唆予告と同じく第 3 停止で表示する。
+        <div key={`kaiwa-${lever.seq}`} className="kaiwa-yokoku" data-label={lever.hint.label}>
+          {lever.hint.kaiwa.fullscreen !== undefined && hintStopCount >= 3 ? (
+            <div className="kaiwa-full">
+              <img
+                className="kaiwa-full-image"
+                src={lever.hint.kaiwa.fullscreen.imageUrl}
+                alt={lever.hint.kaiwa.fullscreen.name}
+              />
+              <div className="kaiwa-full-text">{lever.hint.kaiwa.fullscreen.text}</div>
+            </div>
+          ) : (
+            <>
+              <div className="kaiwa-window kaiwa-window-first">
+                <img src={lever.hint.kaiwa.first.imageUrl} alt={lever.hint.kaiwa.first.name} />
+                <span className="kaiwa-name">{lever.hint.kaiwa.first.name}</span>
+                <span className="kaiwa-text kaiwa-text-first">{lever.hint.kaiwa.first.text}</span>
+              </div>
+              {hintStopCount >= 1 && lever.hint.kaiwa.second !== undefined && (
+                <div className="kaiwa-window kaiwa-window-second">
+                  <img
+                    src={lever.hint.kaiwa.second.imageUrl}
+                    alt={lever.hint.kaiwa.second.name}
+                  />
+                  <span className="kaiwa-name">{lever.hint.kaiwa.second.name}</span>
+                  <span className="kaiwa-text kaiwa-text-second">
+                    {lever.hint.kaiwa.second.text}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+          {hintStopCount === 3 && (
+            <img className="hint-symbol kaiwa-symbol" src={lever.hint.symbolUrl} alt={lever.hint.label} />
+          )}
+        </div>
+      )}
+      {lever.hint !== undefined && lever.hint.kaiwa === undefined && (
         // 固有 1 は全画面(背景ループ動画より上のレイヤー = 確定 43)。図柄は
         // symbolDelayMs 経過時にフェードインなしで表示する(PAN 後の空きスペースに
         // すでに映っている形)。それ以外は従来の右下小パネル + フェードイン。

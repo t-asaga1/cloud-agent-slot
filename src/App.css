@@ -543,6 +543,137 @@
   }
 }
 
+/* 会話予告(固有 3 = 2026-07-17 指示。YOKOKU_PRODUCTION_PLAN 12.7〜12.9)。
+   レバーオン = 一言目ウィンドウ(画面左)→ 第 1 停止 = 二言目ウィンドウ(画面右)を
+   追加表示(一言目は残す・枠の重なり許容)→ 第 3 停止 = 全画面(強のみ)。
+   台詞・話者名は画像に焼き込まずここで重ねて描画する */
+.kaiwa-yokoku {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.kaiwa-window {
+  position: absolute;
+  width: 52%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: 6px;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
+  animation: yokoku-in 0.3s ease-out;
+  /* 台詞・名前のフォントをウィンドウ幅基準(cqw)にするためのコンテナ化 */
+  container-type: inline-size;
+}
+
+.kaiwa-window img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kaiwa-window-first {
+  left: 1.5%;
+  top: 4.5%;
+}
+
+/* 二言目は画面右下寄り(一言目とは対角。中央付近の重なりは許容) */
+.kaiwa-window-second {
+  right: 1.5%;
+  bottom: 4.5%;
+}
+
+/* 話者名 = 枠画像左上のネームプレート(無地)へ重ねる */
+.kaiwa-name {
+  position: absolute;
+  left: 2%;
+  top: 3%;
+  width: 24%;
+  height: 8.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fcd34d;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  font-size: 4.4cqw;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* 台詞 = 枠内の空きスペース(一言目 = 右側 / 二言目 = 左側)へ重ねる */
+.kaiwa-text {
+  position: absolute;
+  top: 16%;
+  bottom: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #f8fafc;
+  font-weight: 700;
+  line-height: 1.55;
+  font-size: 5.4cqw;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.kaiwa-text-first {
+  left: 47%;
+  right: 7%;
+}
+
+.kaiwa-text-second {
+  left: 7%;
+  right: 51%;
+}
+
+/* 第 3 停止の全画面(強)。背景は見えない + 大台詞(左上の空きスペースへ) */
+.kaiwa-full {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  animation: yokoku-in 0.2s ease-out;
+  /* 大台詞のフォントを液晶幅基準(cqw)にするためのコンテナ化 */
+  container-type: inline-size;
+}
+
+.kaiwa-full-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kaiwa-full-text {
+  position: absolute;
+  left: 4%;
+  top: 7%;
+  max-width: 56%;
+  color: #fde68a;
+  font-weight: 900;
+  line-height: 1.35;
+  letter-spacing: 0.06em;
+  font-size: 7.5cqw;
+  -webkit-text-stroke: 1px rgba(30, 10, 0, 0.85);
+  text-shadow:
+    0 0 12px rgba(0, 0, 0, 0.9),
+    0 4px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* 会話予告の図柄は第 3 停止に同期して即時表示(右下寄せ。フェードインなし) */
+.hint-symbol.kaiwa-symbol {
+  left: auto;
+  top: auto;
+  right: 3.5%;
+  bottom: 5%;
+  width: 14%;
+  transform: none;
+  animation-name: hint-symbol-appear;
+  animation-duration: 0.01s;
+  animation-timing-function: steps(1, end);
+}
+
 /* 連続演出 4G の全画面表示(STEP 4d: 全画面ムービー + タイトル / n/4G / 段階名) */
 .renzoku-screen {
   position: absolute;

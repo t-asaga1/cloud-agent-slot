@@ -163,9 +163,13 @@ const yokokuImageModules = import.meta.glob('./images/yokoku/*.webp', {
 
 /**
  * 予告の静止画 URL(AI 生成の実素材)。キー = ファイル名 stem(拡張子なし)。
- * 命名規約: `yokoku_<bg>_koyu<n>_still<連番>[_<weak|strong>]`
- * (弱強共通の画像はサフィックスなし。例: 静背景 固有 1 =
- * `yokoku_shizuka_koyu1_still1` / `..._still2_weak` / `..._still2_strong` / `..._still3`)。
+ * 命名規約:
+ * - 紙芝居方式(背景別): `yokoku_<bg>_koyu<n>_still<連番>[_<weak|strong>]`
+ *   (弱強共通の画像はサフィックスなし。例: 静背景 固有 1 =
+ *   `yokoku_shizuka_koyu1_still1` / `..._still2_weak` / `..._still2_strong` / `..._still3`)。
+ * - 会話予告 = 固有 3(キャラ別・4 背景共用): `yokoku_kaiwa_<char>_<line1|line2|full>`
+ *   (char = yoshitsune / yoritomo / shizuka / benkei。line1 = 一言目ウィンドウ /
+ *   line2 = 二言目ウィンドウ / full = 第 3 停止の全画面。YOKOKU_PRODUCTION_PLAN 12.7〜12.9)。
  * キーからの解決は `src/ui/direction.ts` の `yokokuImageUrl` を使うこと
  * (存在しないキーを検知できる)。
  */

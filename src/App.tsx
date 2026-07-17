@@ -76,6 +76,7 @@ import {
   battleGameAtLeverOn,
   battleView,
   cutinsForEvents,
+  drawKaiwaCast,
   koyakuHintAllowed,
   koyakuHintView,
   overlayForState,
@@ -651,7 +652,12 @@ function App() {
     ) {
       // 押し順ベルはベル停止 / ハズレ目停止(左第一こぼし)で振分けが変わる(確定 39)
       const drawn = drawKoyakuHint(hintRng, won, bellMiss);
-      if (drawn !== null) hint = koyakuHintView(drawn, won, state.background, bellMiss);
+      if (drawn !== null) {
+        // 固有 3 = 会話予告(2026-07-17 指示)は話者キャストも演出 rng で抽せんする
+        const kaiwaCast =
+          drawn.slot === 'KOYU_3' ? drawKaiwaCast(hintRng, state.background) : undefined;
+        hint = koyakuHintView(drawn, won, state.background, bellMiss, kaiwaCast);
+      }
     }
     setLeverDirection((prev) => ({
       seq: prev.seq + 1,

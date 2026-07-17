@@ -1717,5 +1717,113 @@
     "tool": "AI 生成(Cursor エージェント内蔵の画像生成ツール GenerateImage。設定資料 2 ペア + 夕方1.png 参照、2 枚目以降は 1 枚目を連鎖参照。1536x1024 生成 → 中央 16:9 クロップ + 1280x720 WebP 変換)",
     "license": "project-original",
     "note": "夕方背景 固有予告1 静止画 3/3(弱・強共通。第3停止ボタンで切替 + 成立小役の図柄を中央へ重ねて表示)。商店の店先(看板・のれん・提灯)・人物なし・中央の通りを空けた構図(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_yoshitsune_line1",
+    "path": "images/yokoku/yokoku_kaiwa_yoshitsune_line1.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)一言目ウィンドウ(義経)。枠の左 1/3 にバストアップ・右の台詞スペースはアプリ側テキスト描画(2026-07-17 制作。YOKOKU_PRODUCTION_PLAN 12.7〜12.9)"
+  },
+  {
+    "id": "yokoku_kaiwa_yoshitsune_line2",
+    "path": "images/yokoku/yokoku_kaiwa_yoshitsune_line2.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)二言目ウィンドウ(義経)。枠の右 1/3 にバストアップ(表情強め)・左の台詞スペースはアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_yoshitsune_full",
+    "path": "images/yokoku/yokoku_kaiwa_yoshitsune_full.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア参照。1536x1024 生成 → 上端基準 16:9 クロップ(上 0 / 下 160px)+ 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)第 3 停止の全画面 = 強(義経の決めポーズ + キャラ別カラーのエネルギー背景)。大台詞はアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_yoritomo_line1",
+    "path": "images/yokoku/yokoku_kaiwa_yoritomo_line1.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)一言目ウィンドウ(頼朝)。枠の左 1/3 にバストアップ・右の台詞スペースはアプリ側テキスト描画(2026-07-17 制作。YOKOKU_PRODUCTION_PLAN 12.7〜12.9)"
+  },
+  {
+    "id": "yokoku_kaiwa_yoritomo_line2",
+    "path": "images/yokoku/yokoku_kaiwa_yoritomo_line2.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)二言目ウィンドウ(頼朝)。枠の右 1/3 にバストアップ(表情強め)・左の台詞スペースはアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_yoritomo_full",
+    "path": "images/yokoku/yokoku_kaiwa_yoritomo_full.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア参照。1536x1024 生成 → 上端基準 16:9 クロップ(上 0 / 下 160px)+ 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)第 3 停止の全画面 = 強(頼朝の決めポーズ + キャラ別カラーのエネルギー背景)。大台詞はアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_shizuka_line1",
+    "path": "images/yokoku/yokoku_kaiwa_shizuka_line1.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)一言目ウィンドウ(静)。枠の左 1/3 にバストアップ・右の台詞スペースはアプリ側テキスト描画(2026-07-17 制作。YOKOKU_PRODUCTION_PLAN 12.7〜12.9)"
+  },
+  {
+    "id": "yokoku_kaiwa_shizuka_line2",
+    "path": "images/yokoku/yokoku_kaiwa_shizuka_line2.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)二言目ウィンドウ(静)。枠の右 1/3 にバストアップ(表情強め)・左の台詞スペースはアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_shizuka_full",
+    "path": "images/yokoku/yokoku_kaiwa_shizuka_full.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア参照。1536x1024 生成 → 上端基準 16:9 クロップ(上 0 / 下 160px)+ 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)第 3 停止の全画面 = 強(静の決めポーズ + キャラ別カラーのエネルギー背景)。大台詞はアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_benkei_line1",
+    "path": "images/yokoku/yokoku_kaiwa_benkei_line1.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)一言目ウィンドウ(弁慶)。枠の左 1/3 にバストアップ・右の台詞スペースはアプリ側テキスト描画(2026-07-17 制作。YOKOKU_PRODUCTION_PLAN 12.7〜12.9)"
+  },
+  {
+    "id": "yokoku_kaiwa_benkei_line2",
+    "path": "images/yokoku/yokoku_kaiwa_benkei_line2.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア + 会話予告_枠.png 参照、二言目は一言目を連鎖参照。1536x1024 生成 → 3:2 のまま 1152x768 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)二言目ウィンドウ(弁慶)。枠の右 1/3 にバストアップ(表情強め)・左の台詞スペースはアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_kaiwa_benkei_full",
+    "path": "images/yokoku/yokoku_kaiwa_benkei_full.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア参照。1536x1024 生成 → 上端基準 16:9 クロップ(上 0 / 下 160px)+ 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "基本背景 固有予告3(会話予告)第 3 停止の全画面 = 強(弁慶の決めポーズ + キャラ別カラーのエネルギー背景)。大台詞はアプリ側テキスト描画(2026-07-17 制作)"
   }
 ]
