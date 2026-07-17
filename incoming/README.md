@@ -16,6 +16,7 @@
      se/        レバオン.wav, 払い出し.wav, ...
      specs/     設計仕様書.xlsx, 確率テーブル.xlsx, ...
      reference/ 演出用画像の参考画像(キャラクター/背景。詳細は reference/README.md)
+     yokoku/    AGENT が生成した予告用静止画の原本置き場(ユーザー確認待ち。組込み後に削除)
    ```
 
 2. 各ファイルが「どの状態・どの用途向けか」をこの README に追記するか、AGENT への指示文に書く。
