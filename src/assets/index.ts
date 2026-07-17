@@ -154,6 +154,28 @@ export const YOKOKU_VIDEOS: Record<string, string> = Object.fromEntries(
   ]),
 );
 
+// 予告の静止画(2026-07-17 方針転換 = 各予告は静止画 3 枚程度の紙芝居方式で制作。
+// glob で一括解決。ビルド時に列挙される)
+const yokokuImageModules = import.meta.glob('./images/yokoku/*.webp', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * 予告の静止画 URL(AI 生成の実素材)。キー = ファイル名 stem(拡張子なし)。
+ * 命名規約: `yokoku_<bg>_koyu<n>_still<連番>[_<weak|strong>]`
+ * (弱強共通の画像はサフィックスなし。例: 静背景 固有 1 =
+ * `yokoku_shizuka_koyu1_still1` / `..._still2_weak` / `..._still2_strong` / `..._still3`)。
+ * キーからの解決は `src/ui/direction.ts` の `yokokuImageUrl` を使うこと
+ * (存在しないキーを検知できる)。
+ */
+export const YOKOKU_IMAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(yokokuImageModules).map(([path, url]) => [
+    path.slice('./images/yokoku/'.length, -'.webp'.length),
+    url,
+  ]),
+);
+
 // 連続演出ムービー(STEP 4d。46 本あるため glob で一括解決。ビルド時に列挙される)
 const renzokuVideoModules = import.meta.glob('./video/renzoku/*.webm', {
   eager: true,

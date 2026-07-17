@@ -97,7 +97,14 @@
  *   `atIntroAtLeverOn` で AT 導入ムービー(`at_intro`)を全画面表示する(1G)。
  * - 赤7 が揃ったゲームの全停止で `SEVEN_ALIGNED` イベント → 「赤7揃い!」カットイン。
  */
-import { AT_VIDEOS, EFFECT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
+import {
+  AT_VIDEOS,
+  EFFECT_VIDEOS,
+  RENZOKU_VIDEOS,
+  SYMBOL_IMAGES,
+  YOKOKU_IMAGES,
+  YOKOKU_VIDEOS,
+} from '../assets';
 import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
@@ -176,6 +183,13 @@ const BACKGROUND_KEYS: Record<Background, string> = {
 export function yokokuVideoUrl(key: string): string {
   const url = YOKOKU_VIDEOS[key];
   if (url === undefined) throw new Error(`予告ムービーがありません: ${key}`);
+  return url;
+}
+
+/** 予告の静止画 URL をキーから解決する(存在しないキーは入稿漏れ = 即エラー) */
+export function yokokuImageUrl(key: string): string {
+  const url = YOKOKU_IMAGES[key];
+  if (url === undefined) throw new Error(`予告静止画がありません: ${key}`);
   return url;
 }
 
@@ -321,19 +335,49 @@ export const KOYAKU_HINT_PRESENTATION: Record<
   KYOTSU_2: { fullscreen: false, symbolDelayMs: 1500 },
 };
 
-/** 小役示唆予告の表示データ(ムービー + ムービー後に出す成立役の図柄画像) */
+/**
+ * 紙芝居(静止画切替)方式の予告 3 枚(2026-07-17 方針転換 = 各予告は静止画 3 枚程度で
+ * 制作。切替タイミングは 2026-07-17 のユーザー指示):
+ * レバーオンで 1 枚目 → 第 1 停止ボタンで 2 枚目(弱強差分)→
+ * 第 3 停止ボタンで 3 枚目 + 成立小役の図柄表示。
+ */
+export interface KoyakuHintStills {
+  /** 1 枚目(レバーオン時に表示) */
+  leverOn: string;
+  /** 2 枚目(第 1 停止ボタンで切替。弱強の差分はここ) */
+  firstStop: string;
+  /** 3 枚目(第 3 停止ボタンで切替。成立小役の図柄を重ねて表示) */
+  allStop: string;
+}
+
+/** 小役示唆予告の表示データ(ムービー or 紙芝居 + 成立役の図柄画像) */
 export interface KoyakuHintView {
-  videoUrl: string;
+  /** 予告ムービー(紙芝居方式のスロットでは undefined) */
+  videoUrl?: string;
+  /** 紙芝居方式の静止画 3 枚(ムービー方式のスロットでは undefined) */
+  stills?: KoyakuHintStills;
   /** デバッグ・テスト用(画面には出さない) */
   label: string;
-  /** ムービー再生後に画面表示する成立役の図柄画像(確定 33) */
+  /** ムービー再生後(紙芝居は第 3 停止時)に画面表示する成立役の図柄画像(確定 33) */
   symbolUrl: string;
   strong: boolean;
   /** 全画面表示か(固有 1 = 確定 43。false = 右下小パネル) */
   fullscreen: boolean;
-  /** 図柄画像の表示開始タイミング(ms)。全画面はフェードインなしの即時表示(確定 43) */
+  /** 図柄画像の表示開始タイミング(ms)。全画面はフェードインなしの即時表示(確定 43)。
+   *  紙芝居方式は停止ボタン連動のため未使用(0) */
   symbolDelayMs: number;
 }
+
+/**
+ * 紙芝居(静止画切替)方式で表示するスロット × 背景 → 静止画キーの stem。
+ * 実素材の静止画が入稿されたものから順次追加する(2026-07-17 現在: 静背景 固有 1 のみ)。
+ * stem に `_still1` / `_still2_<weak|strong>` / `_still3` を付けた 4 枚が揃っている前提
+ * (存在は direction.test.ts で検証)。
+ */
+const KOYAKU_HINT_STILLS: Partial<Record<KoyakuHint['slot'], Partial<Record<Background, string>>>> =
+  {
+    KOYU_1: { SHIZUKA: 'yokoku_shizuka_koyu1' },
+  };
 
 /**
  * 小役示唆予告(`drawKoyakuHint` の結果)を見た目へ解決する。
@@ -341,6 +385,8 @@ export interface KoyakuHintView {
  * 前兆背景には小役示唆の素材がない(呼び出し側が `koyakuHintAllowed` で除外)。
  * 図柄はハズレ = ブランク(確定 39)/ こぼすベル(bellMiss = 確定 35)も
  * ハズレ目が停止するためブランクを表示する(実装解釈)。
+ * 静止画 3 枚が入稿済みのスロット × 背景(`KOYAKU_HINT_STILLS`)は紙芝居方式で解決する
+ * (レバーオン → 第 1 停止 → 第 3 停止 + 図柄。2026-07-17 のユーザー指示)。
  */
 export function koyakuHintView(
   hint: KoyakuHint,
@@ -351,6 +397,22 @@ export function koyakuHintView(
   const symbol = role === 'BELL' && bellMiss ? 'BLANK' : HINT_SYMBOLS[role];
   if (symbol === undefined || background === 'ZENCHO') return undefined;
   const variant = hint.strong ? 'strong' : 'weak';
+  const label = `${HINT_SLOT_LABELS[hint.slot]}(${hint.strong ? '強' : '弱'})`;
+  const stillStem = KOYAKU_HINT_STILLS[hint.slot]?.[background];
+  if (stillStem !== undefined) {
+    return {
+      stills: {
+        leverOn: yokokuImageUrl(`${stillStem}_still1`),
+        firstStop: yokokuImageUrl(`${stillStem}_still2_${variant}`),
+        allStop: yokokuImageUrl(`${stillStem}_still3`),
+      },
+      label,
+      symbolUrl: SYMBOL_IMAGES[symbol],
+      strong: hint.strong,
+      fullscreen: KOYAKU_HINT_PRESENTATION[hint.slot].fullscreen,
+      symbolDelayMs: 0,
+    };
+  }
   const slotNo = Number(hint.slot.slice(-1));
   const key = hint.slot.startsWith('KYOTSU')
     ? `yokoku_common${slotNo}_${variant}`
@@ -358,7 +420,7 @@ export function koyakuHintView(
   const presentation = KOYAKU_HINT_PRESENTATION[hint.slot];
   return {
     videoUrl: yokokuVideoUrl(key),
-    label: `${HINT_SLOT_LABELS[hint.slot]}(${hint.strong ? '強' : '弱'})`,
+    label,
     symbolUrl: SYMBOL_IMAGES[symbol],
     strong: hint.strong,
     fullscreen: presentation.fullscreen,

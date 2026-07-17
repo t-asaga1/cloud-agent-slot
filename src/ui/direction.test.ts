@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_VIDEOS } from '../assets';
+import { AT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_IMAGES, YOKOKU_VIDEOS } from '../assets';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES } from '../core/omen';
 import type { BattleRoute, OmenScenario, RenzokuChanceUps, ScenarioStep } from '../core/scenario';
@@ -22,6 +22,7 @@ import {
   revivalCutin,
   scenarioYokokuAtLeverOn,
   sevenWaitAtLeverOn,
+  yokokuImageUrl,
   yokokuVideoUrl,
 } from './direction';
 import { SOUND_CUES, type SoundCueId } from './sound';
@@ -138,6 +139,26 @@ describe('YOKOKU_VIDEOS(予告ムービー仮素材の存在検証。DIRECTION_S
 
   it('存在しないキーはエラー(仮素材の生成漏れ検知)', () => {
     expect(() => yokokuVideoUrl('yokoku_nazo_koyu9_weak')).toThrow();
+  });
+});
+
+describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-07-17 = 静背景 固有 1 の 4 枚)', () => {
+  it('静背景 固有予告 1 の 4 枚が揃っている(1 枚目 / 2 枚目 弱・強 / 3 枚目)', () => {
+    const expected = [
+      'yokoku_shizuka_koyu1_still1',
+      'yokoku_shizuka_koyu1_still2_weak',
+      'yokoku_shizuka_koyu1_still2_strong',
+      'yokoku_shizuka_koyu1_still3',
+    ];
+    for (const key of expected) {
+      expect(YOKOKU_IMAGES[key], key).toBeTruthy();
+      expect(yokokuImageUrl(key), key).toBe(YOKOKU_IMAGES[key]);
+    }
+    expect(Object.keys(YOKOKU_IMAGES)).toHaveLength(expected.length);
+  });
+
+  it('存在しないキーはエラー(入稿漏れ検知)', () => {
+    expect(() => yokokuImageUrl('yokoku_shizuka_koyu9_still1')).toThrow();
   });
 });
 
@@ -455,6 +476,36 @@ describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', (
 
   it('前兆背景では解決しない(素材がない)', () => {
     expect(koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'ZENCHO')).toBeUndefined();
+  });
+
+  it('静背景の固有 1 は紙芝居方式(静止画 3 枚): レバーオン → 第 1 停止(弱強差分)→ 第 3 停止 + 図柄', () => {
+    const weak = koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'SHIZUKA');
+    expect(weak?.videoUrl).toBeUndefined(); // ムービーは使わない
+    expect(weak?.stills).toEqual({
+      leverOn: YOKOKU_IMAGES['yokoku_shizuka_koyu1_still1'],
+      firstStop: YOKOKU_IMAGES['yokoku_shizuka_koyu1_still2_weak'],
+      allStop: YOKOKU_IMAGES['yokoku_shizuka_koyu1_still3'],
+    });
+    expect(weak?.fullscreen).toBe(true); // 全画面(確定 43)のまま
+    expect(weak?.symbolUrl).toBe(SYMBOL_IMAGES.BELL);
+    expect(weak?.label).toBe('固有予告1(弱)');
+
+    // 弱強の差分は 2 枚目のみ(1 枚目・3 枚目は共通)
+    const strong = koyakuHintView({ slot: 'KOYU_1', strong: true }, 'CHERRY_CORNER', 'SHIZUKA');
+    expect(strong?.stills?.firstStop).toBe(YOKOKU_IMAGES['yokoku_shizuka_koyu1_still2_strong']);
+    expect(strong?.stills?.leverOn).toBe(weak?.stills?.leverOn);
+    expect(strong?.stills?.allStop).toBe(weak?.stills?.allStop);
+    expect(strong?.strong).toBe(true);
+    expect(strong?.symbolUrl).toBe(SYMBOL_IMAGES.CHERRY);
+  });
+
+  it('静止画未入稿のスロット × 背景は従来のムービー方式のまま(静の固有 2 / 義経の固有 1)', () => {
+    const shizukaKoyu2 = koyakuHintView({ slot: 'KOYU_2', strong: false }, 'BELL', 'SHIZUKA');
+    expect(shizukaKoyu2?.stills).toBeUndefined();
+    expect(shizukaKoyu2?.videoUrl).toBe(YOKOKU_VIDEOS['yokoku_shizuka_koyu2_weak']);
+    const yoshitsuneKoyu1 = koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'YOSHITSUNE');
+    expect(yoshitsuneKoyu1?.stills).toBeUndefined();
+    expect(yoshitsuneKoyu1?.videoUrl).toBe(YOKOKU_VIDEOS['yokoku_yoshitsune_koyu1_weak']);
   });
 });
 
