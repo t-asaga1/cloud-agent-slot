@@ -370,13 +370,17 @@ export interface KoyakuHintView {
 
 /**
  * 紙芝居(静止画切替)方式で表示するスロット × 背景 → 静止画キーの stem。
- * 実素材の静止画が入稿されたものから順次追加する(2026-07-17 現在: 静・弁慶背景の固有 1)。
+ * 実素材の静止画が入稿されたものから順次追加する(2026-07-17 現在: 静・弁慶・夕方背景の固有 1)。
  * stem に `_still1` / `_still2_<weak|strong>` / `_still3` を付けた 4 枚が揃っている前提
  * (存在は direction.test.ts で検証)。
  */
 const KOYAKU_HINT_STILLS: Partial<Record<KoyakuHint['slot'], Partial<Record<Background, string>>>> =
   {
-    KOYU_1: { SHIZUKA: 'yokoku_shizuka_koyu1', BENKEI: 'yokoku_benkei_koyu1' },
+    KOYU_1: {
+      SHIZUKA: 'yokoku_shizuka_koyu1',
+      BENKEI: 'yokoku_benkei_koyu1',
+      YUGATA: 'yokoku_yugata_koyu1',
+    },
   };
 
 /**
