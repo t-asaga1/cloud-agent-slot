@@ -11,7 +11,7 @@
 //   - 顔維持ルールは docs/SEEDANCE_GUIDELINES.md に従う(@Image バインド・顔の再描写なし)
 //
 // 使い方:
-//   FAL_KEY=<APIキー> node scripts/gen_yokoku_koyu1.mjs <背景> <ステップ> [起点静止画パス]
+//   FAL_KEY2=<APIキー> node scripts/gen_yokoku_koyu1.mjs <背景> <ステップ> [起点静止画パス]
 //     背景   : 義経(静・弁慶・夕方は BACKGROUNDS へ追記して展開する)
 //     ステップ: start = 起点静止画のみ / draft = 下書き動画(fast 480p) /
 //               final = 本番動画(standard 720p)。draft / final は起点静止画パス必須
@@ -72,10 +72,12 @@ const COMMON_TAIL =
   "動きはすべてゆっくりで落ち着いている。振り向きはゆっくり。" +
   "落ち着いたシネマティックな和風の照明。文字・ロゴ・字幕は入れない。";
 
-if (!process.env.FAL_KEY) {
-  console.error("ERROR: 環境変数 FAL_KEY が設定されていません。");
+// API キーは FAL_KEY2 を使用する(2026-07-16 ユーザー指示。旧 FAL_KEY は使わない)
+if (!process.env.FAL_KEY2) {
+  console.error("ERROR: 環境変数 FAL_KEY2 が設定されていません。");
   process.exit(1);
 }
+fal.config({ credentials: process.env.FAL_KEY2 });
 
 const [bgName, step, startImagePath, onlyVariant] = process.argv.slice(2);
 const bg = BACKGROUNDS[bgName];
