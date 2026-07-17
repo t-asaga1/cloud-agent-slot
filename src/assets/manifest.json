@@ -1681,5 +1681,41 @@
     "tool": "AI 生成(Cursor エージェント内蔵の画像生成ツール GenerateImage。設定資料ペア + 比叡山滝.png 参照、2 枚目以降は 1 枚目を連鎖参照。1536x1024 生成 → 中央 16:9 クロップ + 1280x720 WebP 変換)",
     "license": "project-original",
     "note": "弁慶背景 固有予告1 静止画 3/3(弱・強共通。第3停止ボタンで切替 + 成立小役の図柄を中央へ重ねて表示)。比叡山の森・人物なし・中央は図柄合成用に霧で抜いた構図(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_yugata_koyu1_still1",
+    "path": "images/yokoku/yokoku_yugata_koyu1_still1.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(Cursor エージェント内蔵の画像生成ツール GenerateImage。設定資料 2 ペア + 夕方1.png 参照、2 枚目以降は 1 枚目を連鎖参照。1536x1024 生成 → 中央 16:9 クロップ + 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "夕方背景 固有予告1 静止画 1/3(弱・強共通。レバーオン時表示)。夕暮れの商店街を並んで歩く義経(向かって右)と弁慶(左)の正面ミディアムショット(2026-07-17 制作。YOKOKU_PRODUCTION_PLAN 12.6)"
+  },
+  {
+    "id": "yokoku_yugata_koyu1_still2_weak",
+    "path": "images/yokoku/yokoku_yugata_koyu1_still2_weak.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(Cursor エージェント内蔵の画像生成ツール GenerateImage。設定資料 2 ペア + 夕方1.png 参照、2 枚目以降は 1 枚目を連鎖参照。1536x1024 生成 → 中央 16:9 クロップ + 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "夕方背景 固有予告1 静止画 2/3 弱(第1停止ボタンで切替)。同構図のまま二人そろって左(画面左)を向く(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_yugata_koyu1_still2_strong",
+    "path": "images/yokoku/yokoku_yugata_koyu1_still2_strong.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(Cursor エージェント内蔵の画像生成ツール GenerateImage。設定資料 2 ペア + 夕方1.png 参照、2 枚目以降は 1 枚目を連鎖参照。1536x1024 生成 → 中央 16:9 クロップ + 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "夕方背景 固有予告1 静止画 2/3 強(第1停止ボタンで切替)。同構図のまま二人そろって右(画面右)を向く(2026-07-17 制作)"
+  },
+  {
+    "id": "yokoku_yugata_koyu1_still3",
+    "path": "images/yokoku/yokoku_yugata_koyu1_still3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(Cursor エージェント内蔵の画像生成ツール GenerateImage。設定資料 2 ペア + 夕方1.png 参照、2 枚目以降は 1 枚目を連鎖参照。1536x1024 生成 → 中央 16:9 クロップ + 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "夕方背景 固有予告1 静止画 3/3(弱・強共通。第3停止ボタンで切替 + 成立小役の図柄を中央へ重ねて表示)。商店の店先(看板・のれん・提灯)・人物なし・中央の通りを空けた構図(2026-07-17 制作)"
   }
 ]

@@ -142,8 +142,8 @@ describe('YOKOKU_VIDEOS(予告ムービー仮素材の存在検証。DIRECTION_S
   });
 });
 
-describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-07-17 = 静・弁慶背景 固有 1 の各 4 枚)', () => {
-  it('静・弁慶背景 固有予告 1 の各 4 枚が揃っている(1 枚目 / 2 枚目 弱・強 / 3 枚目)', () => {
+describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-07-17 = 静・弁慶・夕方背景 固有 1 の各 4 枚)', () => {
+  it('静・弁慶・夕方背景 固有予告 1 の各 4 枚が揃っている(1 枚目 / 2 枚目 弱・強 / 3 枚目)', () => {
     const expected = [
       'yokoku_shizuka_koyu1_still1',
       'yokoku_shizuka_koyu1_still2_weak',
@@ -153,6 +153,10 @@ describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-
       'yokoku_benkei_koyu1_still2_weak',
       'yokoku_benkei_koyu1_still2_strong',
       'yokoku_benkei_koyu1_still3',
+      'yokoku_yugata_koyu1_still1',
+      'yokoku_yugata_koyu1_still2_weak',
+      'yokoku_yugata_koyu1_still2_strong',
+      'yokoku_yugata_koyu1_still3',
     ];
     for (const key of expected) {
       expect(YOKOKU_IMAGES[key], key).toBeTruthy();
@@ -517,6 +521,26 @@ describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', (
 
     const strong = koyakuHintView({ slot: 'KOYU_1', strong: true }, 'WATERMELON_STRONG', 'BENKEI');
     expect(strong?.stills?.firstStop).toBe(YOKOKU_IMAGES['yokoku_benkei_koyu1_still2_strong']);
+    expect(strong?.stills?.leverOn).toBe(weak?.stills?.leverOn);
+    expect(strong?.stills?.allStop).toBe(weak?.stills?.allStop);
+    expect(strong?.strong).toBe(true);
+    expect(strong?.symbolUrl).toBe(SYMBOL_IMAGES.WATERMELON);
+  });
+
+  it('夕方背景の固有 1 も紙芝居方式(2026-07-17 組込み。弱強差分は 2 枚目のみ)', () => {
+    const weak = koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'YUGATA');
+    expect(weak?.videoUrl).toBeUndefined();
+    expect(weak?.stills).toEqual({
+      leverOn: YOKOKU_IMAGES['yokoku_yugata_koyu1_still1'],
+      firstStop: YOKOKU_IMAGES['yokoku_yugata_koyu1_still2_weak'],
+      allStop: YOKOKU_IMAGES['yokoku_yugata_koyu1_still3'],
+    });
+    expect(weak?.fullscreen).toBe(true);
+    expect(weak?.symbolUrl).toBe(SYMBOL_IMAGES.BELL);
+    expect(weak?.label).toBe('固有予告1(弱)');
+
+    const strong = koyakuHintView({ slot: 'KOYU_1', strong: true }, 'WATERMELON_STRONG', 'YUGATA');
+    expect(strong?.stills?.firstStop).toBe(YOKOKU_IMAGES['yokoku_yugata_koyu1_still2_strong']);
     expect(strong?.stills?.leverOn).toBe(weak?.stills?.leverOn);
     expect(strong?.stills?.allStop).toBe(weak?.stills?.allStop);
     expect(strong?.strong).toBe(true);
