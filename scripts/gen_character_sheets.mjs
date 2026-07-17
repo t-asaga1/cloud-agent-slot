@@ -10,7 +10,7 @@
 //   - 透過 PNG ではなく無地背景へフラット化し、均一ライティングにする
 //
 // 使い方:
-//   FAL_KEY=<APIキー> node scripts/gen_character_sheets.mjs [キャラ名...]
+//   FAL_KEY2=<APIキー> node scripts/gen_character_sheets.mjs [キャラ名...]
 //     キャラ名省略 = 全 4 キャラ(義経 静 弁慶 頼朝)
 //     例: node scripts/gen_character_sheets.mjs 義経
 //
@@ -75,10 +75,12 @@ const SHEETS = {
   },
 };
 
-if (!process.env.FAL_KEY) {
-  console.error("ERROR: 環境変数 FAL_KEY が設定されていません。");
+// API キーは FAL_KEY2 を使用する(2026-07-16 ユーザー指示。旧 FAL_KEY は使わない)
+if (!process.env.FAL_KEY2) {
+  console.error("ERROR: 環境変数 FAL_KEY2 が設定されていません。");
   process.exit(1);
 }
+fal.config({ credentials: process.env.FAL_KEY2 });
 
 const targets = process.argv.slice(2).length
   ? process.argv.slice(2)

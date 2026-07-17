@@ -1,7 +1,7 @@
 // fal.ai 接続テストスクリプト(演出素材生成フェーズの事前確認用)
 //
 // 使い方:
-//   FAL_KEY=<APIキー> node scripts/fal_connection_test.mjs [storage|image|video|all]
+//   FAL_KEY2=<APIキー> node scripts/fal_connection_test.mjs [storage|image|video|all]
 //     storage : fal ストレージへの参考画像アップロードのみ
 //     image   : ストレージ + GPT Image 2 (edit) での画像生成
 //     video   : ストレージ + Seedance 2.0 (fast/image-to-video) での動画生成
@@ -24,10 +24,12 @@ const REFERENCE_IMAGE =
 
 const mode = process.argv[2] ?? "all";
 
-if (!process.env.FAL_KEY) {
-  console.error("ERROR: 環境変数 FAL_KEY が設定されていません。");
+// API キーは FAL_KEY2 を使用する(2026-07-16 ユーザー指示。旧 FAL_KEY は使わない)
+if (!process.env.FAL_KEY2) {
+  console.error("ERROR: 環境変数 FAL_KEY2 が設定されていません。");
   process.exit(1);
 }
+fal.config({ credentials: process.env.FAL_KEY2 });
 
 function logQueueUpdate(label) {
   return (update) => {
