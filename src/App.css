@@ -561,6 +561,8 @@
   border-radius: 6px;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
   animation: yokoku-in 0.3s ease-out;
+  /* 台詞・名前のフォントをウィンドウ幅基準(cqw)にするためのコンテナ化 */
+  container-type: inline-size;
 }
 
 .kaiwa-window img {
@@ -595,7 +597,7 @@
   font-weight: 800;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
-  font-size: clamp(0.55rem, 1.1vw, 0.95rem);
+  font-size: 4.4cqw;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
@@ -610,8 +612,8 @@
   text-align: center;
   color: #f8fafc;
   font-weight: 700;
-  line-height: 1.6;
-  font-size: clamp(0.7rem, 1.5vw, 1.25rem);
+  line-height: 1.55;
+  font-size: 5.4cqw;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
@@ -631,6 +633,8 @@
   inset: 0;
   background: #000;
   animation: yokoku-in 0.2s ease-out;
+  /* 大台詞のフォントを液晶幅基準(cqw)にするためのコンテナ化 */
+  container-type: inline-size;
 }
 
 .kaiwa-full-image {
@@ -650,7 +654,7 @@
   font-weight: 900;
   line-height: 1.35;
   letter-spacing: 0.06em;
-  font-size: clamp(1.2rem, 3.4vw, 2.6rem);
+  font-size: 7.5cqw;
   -webkit-text-stroke: 1px rgba(30, 10, 0, 0.85);
   text-shadow:
     0 0 12px rgba(0, 0, 0, 0.9),
