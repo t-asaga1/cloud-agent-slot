@@ -109,6 +109,7 @@ import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
 import type { PushOrder, ReelIndex, ReelSymbol } from '../core/reel';
+import type { Rng } from '../core/rng';
 import { isRareRole, type Role } from '../core/roles';
 import {
   stepAt,
@@ -335,6 +336,150 @@ export const KOYAKU_HINT_PRESENTATION: Record<
   KYOTSU_2: { fullscreen: false, symbolDelayMs: 1500 },
 };
 
+// ---------------------------------------------------------------------------
+// 会話予告(基本背景の固有予告 3 = 2026-07-17 ユーザー指示。
+// docs/YOKOKU_PRODUCTION_PLAN.md 12.7〜12.9)
+// ---------------------------------------------------------------------------
+
+/** 会話予告に登場するキャラクター */
+export const KAIWA_SPEAKERS = ['YOSHITSUNE', 'YORITOMO', 'SHIZUKA', 'BENKEI'] as const;
+export type KaiwaSpeaker = (typeof KAIWA_SPEAKERS)[number];
+
+/** キャラ → 画像キー stem(`yokoku_kaiwa_<char>` + `_line1` / `_line2` / `_full`) */
+const KAIWA_IMAGE_STEMS: Record<KaiwaSpeaker, string> = {
+  YOSHITSUNE: 'yokoku_kaiwa_yoshitsune',
+  YORITOMO: 'yokoku_kaiwa_yoritomo',
+  SHIZUKA: 'yokoku_kaiwa_shizuka',
+  BENKEI: 'yokoku_kaiwa_benkei',
+};
+
+/** キャラの表示名(ウィンドウ左上のネームプレートへアプリ側で描画) */
+export const KAIWA_SPEAKER_NAMES: Record<KaiwaSpeaker, string> = {
+  YOSHITSUNE: '義経',
+  YORITOMO: '頼朝',
+  SHIZUKA: '静',
+  BENKEI: '弁慶',
+};
+
+/**
+ * 会話予告の台詞テーブル(仮セリフ = 12.7「セリフは仮でよい」。
+ * 画像へは焼き込まず、アプリ側テキスト描画で表示する = 差し替えはこの表だけでよい)。
+ * first = 一言目 / second = 二言目 / full = 第 3 停止の全画面の大台詞。
+ */
+export const KAIWA_LINES: Record<KaiwaSpeaker, { first: string; second: string; full: string }> = {
+  YOSHITSUNE: {
+    first: '何かが来る…構えろ!',
+    second: 'ここからが本番だ!',
+    full: '勝負の時だ!',
+  },
+  YORITOMO: {
+    first: '余の前に立つか…',
+    second: 'くくく…見せてみよ',
+    full: '掛かって来い!',
+  },
+  SHIZUKA: {
+    first: '風向きが変わりました…',
+    second: '良い知らせの予感がします',
+    full: '舞い上がりなさい!',
+  },
+  BENKEI: {
+    first: 'むっ、妙な気配だな',
+    second: '腕が鳴るわい!',
+    full: '一気に薙ぎ払う!',
+  },
+};
+
+/** 会話予告のキャスト(一言目 / 二言目 / 全画面の話者) */
+export interface KaiwaCast {
+  first: KaiwaSpeaker;
+  second: KaiwaSpeaker;
+  fullscreen: KaiwaSpeaker;
+}
+
+/** 会話予告のある背景 → 背景キャラ(夕方は専用ルールのため含めない) */
+const KAIWA_BG_SPEAKERS: Partial<Record<Background, KaiwaSpeaker>> = {
+  YOSHITSUNE: 'YOSHITSUNE',
+  SHIZUKA: 'SHIZUKA',
+  BENKEI: 'BENKEI',
+};
+
+/**
+ * 会話予告のキャスト抽せん(2026-07-17 ユーザー指示。UI がレバーオン時に
+ * `drawKoyakuHint` の結果が固有 3 だったとき演出用 rng で呼ぶ独立関数):
+ * - 義経/静/弁慶背景: 一言目 = 背景キャラ / 二言目 = 背景キャラ以外の 3 人から抽せん /
+ *   全画面 = 背景キャラ or 頼朝。
+ * - 夕方背景: 一言目 = 弁慶 or 義経 / 二言目 = 静固定 / 全画面 = 頼朝固定。
+ * 前兆背景では呼ばない(`koyakuHintAllowed` が除外済み)。
+ */
+export function drawKaiwaCast(rng: Rng, background: Background): KaiwaCast {
+  if (background === 'YUGATA') {
+    return {
+      first: rng.nextInt(2) === 0 ? 'BENKEI' : 'YOSHITSUNE',
+      second: 'SHIZUKA',
+      fullscreen: 'YORITOMO',
+    };
+  }
+  const bgSpeaker = KAIWA_BG_SPEAKERS[background];
+  if (bgSpeaker === undefined) throw new Error(`会話予告のない背景です: ${background}`);
+  const others = KAIWA_SPEAKERS.filter((speaker) => speaker !== bgSpeaker);
+  return {
+    first: bgSpeaker,
+    second: others[rng.nextInt(others.length)],
+    fullscreen: rng.nextInt(2) === 0 ? bgSpeaker : 'YORITOMO',
+  };
+}
+
+/** 会話ウィンドウ / 全画面 1 枚分の表示データ(台詞はアプリ側テキスト描画) */
+export interface KaiwaWindowView {
+  imageUrl: string;
+  /** 話者の表示名(ネームプレートへ描画) */
+  name: string;
+  /** 台詞(仮セリフ = KAIWA_LINES) */
+  text: string;
+}
+
+/**
+ * 会話予告(固有 3)の表示データ。
+ * レバーオンで一言目 → 第 1 停止で(一言目を消さずに)二言目を追加表示 →
+ * 第 3 停止で全画面(強のみ)。表示切替は DirectionLayer が stoppedReels で行う。
+ */
+export interface KaiwaTalkView {
+  /** 一言目ウィンドウ(画面左。レバーオンから表示) */
+  first: KaiwaWindowView;
+  /**
+   * 二言目ウィンドウ(画面右。第 1 停止で追加表示)。
+   * 弱で小役がそろわないゲーム(ハズレ・ベルこぼし・チャンス目・リーチ目)は
+   * undefined = 一言目のみで終わる(2026-07-17 指示「小役がそろう場合は必ず二言目」)。
+   */
+  second?: KaiwaWindowView;
+  /** 第 3 停止の全画面(強のみ。背景は見えない + 大台詞) */
+  fullscreen?: KaiwaWindowView;
+}
+
+/**
+ * 「小役がそろう」= 図柄が実際に有効ラインへ揃う役(2026-07-17 指示の実装解釈)。
+ * リプレイも揃うため含める。チャンス目(スイカテンパイはずし)・リーチ目・ハズレ・
+ * ベルこぼし(bellMiss)は揃わない扱い = 弱では一言目のみ。
+ */
+const KAIWA_ALIGNED_ROLES: readonly Role[] = [
+  'REPLAY',
+  'BELL',
+  'WATERMELON_WEAK',
+  'WATERMELON_STRONG',
+  'CHERRY_CORNER',
+  'CHERRY_CENTER',
+];
+
+/** 会話予告のウィンドウ / 全画面 1 枚分を解決する */
+function kaiwaWindowView(speaker: KaiwaSpeaker, part: 'line1' | 'line2' | 'full'): KaiwaWindowView {
+  const line = KAIWA_LINES[speaker];
+  return {
+    imageUrl: yokokuImageUrl(`${KAIWA_IMAGE_STEMS[speaker]}_${part}`),
+    name: KAIWA_SPEAKER_NAMES[speaker],
+    text: part === 'line1' ? line.first : part === 'line2' ? line.second : line.full,
+  };
+}
+
 /**
  * 紙芝居(静止画切替)方式の予告 3 枚(2026-07-17 方針転換 = 各予告は静止画 3 枚程度で
  * 制作。切替タイミングは 2026-07-17 のユーザー指示):
@@ -350,12 +495,14 @@ export interface KoyakuHintStills {
   allStop: string;
 }
 
-/** 小役示唆予告の表示データ(ムービー or 紙芝居 + 成立役の図柄画像) */
+/** 小役示唆予告の表示データ(ムービー or 紙芝居 or 会話予告 + 成立役の図柄画像) */
 export interface KoyakuHintView {
-  /** 予告ムービー(紙芝居方式のスロットでは undefined) */
+  /** 予告ムービー(紙芝居・会話予告方式のスロットでは undefined) */
   videoUrl?: string;
-  /** 紙芝居方式の静止画 3 枚(ムービー方式のスロットでは undefined) */
+  /** 紙芝居方式の静止画 3 枚(ムービー・会話予告方式のスロットでは undefined) */
   stills?: KoyakuHintStills;
+  /** 会話予告(固有 3 = 2026-07-17 指示。他スロットでは undefined) */
+  kaiwa?: KaiwaTalkView;
   /** デバッグ・テスト用(画面には出さない) */
   label: string;
   /** ムービー再生後(紙芝居は第 3 停止時)に画面表示する成立役の図柄画像(確定 33) */
@@ -391,17 +538,44 @@ const KOYAKU_HINT_STILLS: Partial<Record<KoyakuHint['slot'], Partial<Record<Back
  * ハズレ目が停止するためブランクを表示する(実装解釈)。
  * 静止画 3 枚が入稿済みのスロット × 背景(`KOYAKU_HINT_STILLS`)は紙芝居方式で解決する
  * (レバーオン → 第 1 停止 → 第 3 停止 + 図柄。2026-07-17 のユーザー指示)。
+ * **固有 3 は 4 背景とも会話予告**(2026-07-17 指示): 呼び出し側が `drawKaiwaCast` の
+ * 結果を渡すこと。弱 = 一言目(+ 小役がそろうゲームは二言目)/
+ * 強 = 一言目 → 二言目 → 第 3 停止の全画面、を `KaiwaTalkView` へ解決する。
  */
 export function koyakuHintView(
   hint: KoyakuHint,
   role: Role,
   background: Background,
   bellMiss = false,
+  kaiwaCast?: KaiwaCast,
 ): KoyakuHintView | undefined {
   const symbol = role === 'BELL' && bellMiss ? 'BLANK' : HINT_SYMBOLS[role];
   if (symbol === undefined || background === 'ZENCHO') return undefined;
   const variant = hint.strong ? 'strong' : 'weak';
   const label = `${HINT_SLOT_LABELS[hint.slot]}(${hint.strong ? '強' : '弱'})`;
+  if (hint.slot === 'KOYU_3') {
+    // 会話予告(2026-07-17 指示)。弱強の見た目差は第 3 停止まで出ない
+    // (弱 = 二言目まで / 強 = 全画面まで)ため、レバーオン時点では悟らせない
+    if (kaiwaCast === undefined) {
+      throw new Error('固有予告3(会話予告)には drawKaiwaCast の結果が必要です');
+    }
+    const aligned = KAIWA_ALIGNED_ROLES.includes(role) && !(role === 'BELL' && bellMiss);
+    const second = hint.strong || aligned ? kaiwaWindowView(kaiwaCast.second, 'line2') : undefined;
+    const fullscreen = hint.strong ? kaiwaWindowView(kaiwaCast.fullscreen, 'full') : undefined;
+    const castLabel = [
+      KAIWA_SPEAKER_NAMES[kaiwaCast.first],
+      ...(second !== undefined ? [KAIWA_SPEAKER_NAMES[kaiwaCast.second]] : []),
+      ...(fullscreen !== undefined ? [KAIWA_SPEAKER_NAMES[kaiwaCast.fullscreen]] : []),
+    ].join('→');
+    return {
+      kaiwa: { first: kaiwaWindowView(kaiwaCast.first, 'line1'), second, fullscreen },
+      label: `固有予告3 会話予告(${hint.strong ? '強' : '弱'}: ${castLabel})`,
+      symbolUrl: SYMBOL_IMAGES[symbol],
+      strong: hint.strong,
+      fullscreen: false,
+      symbolDelayMs: 0,
+    };
+  }
   const stillStem = KOYAKU_HINT_STILLS[hint.slot]?.[background];
   if (stillStem !== undefined) {
     return {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_IMAGES, YOKOKU_VIDEOS } from '../assets';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES } from '../core/omen';
+import { createRng, type Rng } from '../core/rng';
 import type { BattleRoute, OmenScenario, RenzokuChanceUps, ScenarioStep } from '../core/scenario';
 import { ENDING_GAMES, type GameEvent, type GameState } from '../core/state';
 import {
@@ -12,6 +13,9 @@ import {
   battleGameAtLeverOn,
   battleView,
   cutinsForEvents,
+  drawKaiwaCast,
+  KAIWA_LINES,
+  KAIWA_SPEAKER_NAMES,
   koyakuHintAllowed,
   koyakuHintView,
   overlayForState,
@@ -24,8 +28,28 @@ import {
   sevenWaitAtLeverOn,
   yokokuImageUrl,
   yokokuVideoUrl,
+  type KaiwaCast,
 } from './direction';
 import { SOUND_CUES, type SoundCueId } from './sound';
+
+/** 指定した値を順に返す rng(消費順・消費数の検証用。scenario.test.ts と同型) */
+function seqRng(values: number[]): Rng {
+  let i = 0;
+  const take = (): number => {
+    if (i >= values.length) {
+      throw new Error(`seqRng: 乱数の消費が想定回数(${values.length})を超えた`);
+    }
+    return values[i++];
+  };
+  return {
+    next: () => take(),
+    nextInt: (max: number) => {
+      const v = take();
+      if (v < 0 || v >= max) throw new Error(`seqRng: 値 ${v} が範囲 [0, ${max}) 外`);
+      return v;
+    },
+  };
+}
 
 function state(phase: GameState['phase'], overrides: Partial<GameState> = {}): GameState {
   return {
@@ -142,8 +166,8 @@ describe('YOKOKU_VIDEOS(予告ムービー仮素材の存在検証。DIRECTION_S
   });
 });
 
-describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-07-17 = 静・弁慶・夕方背景 固有 1 の各 4 枚)', () => {
-  it('静・弁慶・夕方背景 固有予告 1 の各 4 枚が揃っている(1 枚目 / 2 枚目 弱・強 / 3 枚目)', () => {
+describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-07-17 = 静・弁慶・夕方背景 固有 1 の各 4 枚 + 会話予告 12 枚)', () => {
+  it('静・弁慶・夕方背景 固有予告 1 の各 4 枚 + 会話予告(4 キャラ × 3)が揃っている', () => {
     const expected = [
       'yokoku_shizuka_koyu1_still1',
       'yokoku_shizuka_koyu1_still2_weak',
@@ -157,6 +181,12 @@ describe('YOKOKU_IMAGES(紙芝居方式の予告静止画の存在検証。2026-
       'yokoku_yugata_koyu1_still2_weak',
       'yokoku_yugata_koyu1_still2_strong',
       'yokoku_yugata_koyu1_still3',
+      // 会話予告(固有 3 = 12.7〜12.9): 4 キャラ × 一言目/二言目/全画面
+      ...['yoshitsune', 'yoritomo', 'shizuka', 'benkei'].flatMap((char) => [
+        `yokoku_kaiwa_${char}_line1`,
+        `yokoku_kaiwa_${char}_line2`,
+        `yokoku_kaiwa_${char}_full`,
+      ]),
     ];
     for (const key of expected) {
       expect(YOKOKU_IMAGES[key], key).toBeTruthy();
@@ -453,7 +483,8 @@ describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', (
     const full = koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'YOSHITSUNE');
     expect(full?.fullscreen).toBe(true);
     expect(full?.symbolDelayMs).toBe(4600);
-    for (const slot of ['KOYU_2', 'KOYU_3', 'KYOTSU_1', 'KYOTSU_2'] as const) {
+    // 固有 3 は会話予告(2026-07-17 指示)のため対象外(別 describe で検証)
+    for (const slot of ['KOYU_2', 'KYOTSU_1', 'KYOTSU_2'] as const) {
       const panel = koyakuHintView({ slot, strong: false }, 'BELL', 'YOSHITSUNE');
       expect(panel?.fullscreen).toBe(false);
       expect(panel?.symbolDelayMs).toBe(1500);
@@ -554,6 +585,137 @@ describe('koyakuHintAllowed / koyakuHintView(小役示唆予告 = 確定 34)', (
     const yoshitsuneKoyu1 = koyakuHintView({ slot: 'KOYU_1', strong: false }, 'BELL', 'YOSHITSUNE');
     expect(yoshitsuneKoyu1?.stills).toBeUndefined();
     expect(yoshitsuneKoyu1?.videoUrl).toBe(YOKOKU_VIDEOS['yokoku_yoshitsune_koyu1_weak']);
+  });
+});
+
+describe('会話予告(固有予告 3 = 2026-07-17 指示。drawKaiwaCast + koyakuHintView の kaiwa 解決)', () => {
+  const CAST: KaiwaCast = { first: 'YOSHITSUNE', second: 'SHIZUKA', fullscreen: 'YORITOMO' };
+
+  it('義経/静/弁慶背景: 一言目 = 背景キャラ / 二言目 = 他 3 人から抽せん / 全画面 = 背景キャラ or 頼朝', () => {
+    // 義経背景: 他 3 人 = [頼朝, 静, 弁慶] の順(KAIWA_SPEAKERS から背景キャラを除いた順)
+    expect(drawKaiwaCast(seqRng([0, 0]), 'YOSHITSUNE')).toEqual({
+      first: 'YOSHITSUNE',
+      second: 'YORITOMO',
+      fullscreen: 'YOSHITSUNE',
+    });
+    expect(drawKaiwaCast(seqRng([1, 1]), 'YOSHITSUNE')).toEqual({
+      first: 'YOSHITSUNE',
+      second: 'SHIZUKA',
+      fullscreen: 'YORITOMO',
+    });
+    expect(drawKaiwaCast(seqRng([2, 0]), 'SHIZUKA')).toEqual({
+      first: 'SHIZUKA',
+      second: 'BENKEI',
+      fullscreen: 'SHIZUKA',
+    });
+    expect(drawKaiwaCast(seqRng([0, 1]), 'BENKEI')).toEqual({
+      first: 'BENKEI',
+      second: 'YOSHITSUNE',
+      fullscreen: 'YORITOMO',
+    });
+  });
+
+  it('夕方背景: 一言目 = 弁慶 or 義経 / 二言目 = 静固定 / 全画面 = 頼朝固定', () => {
+    expect(drawKaiwaCast(seqRng([0]), 'YUGATA')).toEqual({
+      first: 'BENKEI',
+      second: 'SHIZUKA',
+      fullscreen: 'YORITOMO',
+    });
+    expect(drawKaiwaCast(seqRng([1]), 'YUGATA')).toEqual({
+      first: 'YOSHITSUNE',
+      second: 'SHIZUKA',
+      fullscreen: 'YORITOMO',
+    });
+  });
+
+  it('二言目・全画面の候補は全て出現し、一言目に背景キャラ以外は出ない(実 rng で分布確認)', () => {
+    const rng = createRng(20260717);
+    const seconds = new Set<string>();
+    const fullscreens = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const cast = drawKaiwaCast(rng, 'YOSHITSUNE');
+      expect(cast.first).toBe('YOSHITSUNE');
+      expect(cast.second).not.toBe('YOSHITSUNE');
+      seconds.add(cast.second);
+      fullscreens.add(cast.fullscreen);
+    }
+    expect(seconds).toEqual(new Set(['YORITOMO', 'SHIZUKA', 'BENKEI']));
+    expect(fullscreens).toEqual(new Set(['YOSHITSUNE', 'YORITOMO']));
+  });
+
+  it('前兆背景ではキャスト抽せんできない(呼び出し側が koyakuHintAllowed で除外する前提)', () => {
+    expect(() => drawKaiwaCast(seqRng([]), 'ZENCHO')).toThrow();
+  });
+
+  it('弱 + 小役がそろう役(ベル): 一言目 + 二言目まで。全画面は出ない', () => {
+    const view = koyakuHintView({ slot: 'KOYU_3', strong: false }, 'BELL', 'YOSHITSUNE', false, CAST);
+    expect(view?.videoUrl).toBeUndefined();
+    expect(view?.stills).toBeUndefined();
+    expect(view?.kaiwa?.first).toEqual({
+      imageUrl: YOKOKU_IMAGES['yokoku_kaiwa_yoshitsune_line1'],
+      name: KAIWA_SPEAKER_NAMES.YOSHITSUNE,
+      text: KAIWA_LINES.YOSHITSUNE.first,
+    });
+    expect(view?.kaiwa?.second).toEqual({
+      imageUrl: YOKOKU_IMAGES['yokoku_kaiwa_shizuka_line2'],
+      name: KAIWA_SPEAKER_NAMES.SHIZUKA,
+      text: KAIWA_LINES.SHIZUKA.second,
+    });
+    expect(view?.kaiwa?.fullscreen).toBeUndefined();
+    expect(view?.label).toBe('固有予告3 会話予告(弱: 義経→静)');
+    expect(view?.symbolUrl).toBe(SYMBOL_IMAGES.BELL);
+    expect(view?.strong).toBe(false);
+    expect(view?.fullscreen).toBe(false);
+    expect(view?.symbolDelayMs).toBe(0);
+  });
+
+  it('弱 + そろわない役(ハズレ / ベルこぼし / チャンス目 / リーチ目): 一言目のみ', () => {
+    for (const [role, bellMiss] of [
+      ['NONE', false],
+      ['BELL', true],
+      ['CHANCE_ME', false],
+      ['REACH_ME', false],
+    ] as const) {
+      const view = koyakuHintView({ slot: 'KOYU_3', strong: false }, role, 'YOSHITSUNE', bellMiss, CAST);
+      expect(view?.kaiwa?.second, `${role} bellMiss=${bellMiss}`).toBeUndefined();
+      expect(view?.kaiwa?.fullscreen).toBeUndefined();
+      expect(view?.label).toBe('固有予告3 会話予告(弱: 義経)');
+    }
+    // リプレイ・スイカ・チェリーは揃う役 = 二言目まで行く
+    for (const role of ['REPLAY', 'WATERMELON_WEAK', 'CHERRY_CORNER'] as const) {
+      const view = koyakuHintView({ slot: 'KOYU_3', strong: false }, role, 'YOSHITSUNE', false, CAST);
+      expect(view?.kaiwa?.second, role).toBeDefined();
+    }
+  });
+
+  it('強: 一言目 → 二言目 → 第 3 停止の全画面(そろわないレア役でも全段階へ行く)', () => {
+    const view = koyakuHintView(
+      { slot: 'KOYU_3', strong: true },
+      'WATERMELON_STRONG',
+      'YOSHITSUNE',
+      false,
+      CAST,
+    );
+    expect(view?.kaiwa?.second).toBeDefined();
+    expect(view?.kaiwa?.fullscreen).toEqual({
+      imageUrl: YOKOKU_IMAGES['yokoku_kaiwa_yoritomo_full'],
+      name: KAIWA_SPEAKER_NAMES.YORITOMO,
+      text: KAIWA_LINES.YORITOMO.full,
+    });
+    expect(view?.label).toBe('固有予告3 会話予告(強: 義経→静→頼朝)');
+    expect(view?.symbolUrl).toBe(SYMBOL_IMAGES.WATERMELON);
+
+    // 強はチャンス目(そろわない)でも二言目 → 全画面まで進む(全画面 = 強区分の見せ場)
+    const chance = koyakuHintView({ slot: 'KOYU_3', strong: true }, 'CHANCE_ME', 'BENKEI', false, CAST);
+    expect(chance?.kaiwa?.second).toBeDefined();
+    expect(chance?.kaiwa?.fullscreen).toBeDefined();
+  });
+
+  it('キャストなしの固有 3 はエラー(呼び出し側の drawKaiwaCast 忘れ検知)/ 前兆背景は undefined', () => {
+    expect(() => koyakuHintView({ slot: 'KOYU_3', strong: false }, 'BELL', 'YOSHITSUNE')).toThrow();
+    expect(
+      koyakuHintView({ slot: 'KOYU_3', strong: false }, 'BELL', 'ZENCHO', false, CAST),
+    ).toBeUndefined();
   });
 });
 
