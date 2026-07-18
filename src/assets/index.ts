@@ -202,6 +202,29 @@ export const RENZOKU_VIDEOS: Record<string, string> = Object.fromEntries(
   ]),
 );
 
+// 下位 AT バトルパート演出の静止画(2026-07-18 = AI 生成の実素材 25 枚。
+// glob で一括解決。ビルド時に列挙される)
+const battleImageModules = import.meta.glob('./images/battle/*.webp', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * 下位 AT バトルパート演出の静止画 URL(AI 生成の実素材。生成 =
+ * scripts/gen_battle_images.mjs / 指示元 = incoming/義経物語下位AT中.pptx)。
+ * キー = ファイル名 stem = `battle_at_<jobId>`(jobId は生成スクリプトの JOBS と同一。
+ * 例: `battle_at_g1_normal` / `battle_at_g5_yoshitsune_weak_stop3`)。
+ * 技名・「敗北」「継続」・台詞はアプリ側テキスト描画で重ねる(画像に焼き込まない)。
+ * キーからの解決は `src/ui/direction.ts` の `battleImageUrl` を使うこと
+ * (存在しないキーを検知できる)。全 25 キーの存在は direction.test.ts で検証する。
+ */
+export const BATTLE_IMAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(battleImageModules).map(([path, url]) => [
+    path.slice('./images/battle/'.length, -'.webp'.length),
+    url,
+  ]),
+);
+
 // AT・上位 AT・エンディング演出ムービー(STEP 4e。45 本あるため glob で一括解決)
 const atVideoModules = import.meta.glob('./video/at/*.webm', {
   eager: true,

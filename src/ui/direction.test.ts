@@ -1,16 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { AT_VIDEOS, RENZOKU_VIDEOS, SYMBOL_IMAGES, YOKOKU_IMAGES, YOKOKU_VIDEOS } from '../assets';
+import {
+  AT_VIDEOS,
+  BATTLE_IMAGES,
+  RENZOKU_VIDEOS,
+  SYMBOL_IMAGES,
+  YOKOKU_IMAGES,
+  YOKOKU_VIDEOS,
+} from '../assets';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES } from '../core/omen';
 import { createRng, type Rng } from '../core/rng';
 import type { BattleRoute, OmenScenario, RenzokuChanceUps, ScenarioStep } from '../core/scenario';
 import { ENDING_GAMES, type GameEvent, type GameState } from '../core/state';
 import {
+  AT_BATTLE_SERIFU,
   atIntroAtLeverOn,
   atVideoUrl,
   atYokokuAllowed,
   atYokokuView,
   battleGameAtLeverOn,
+  battleImageUrl,
   battleView,
   cutinsForEvents,
   drawKaiwaCast,
@@ -871,42 +880,113 @@ describe('battleGameAtLeverOn / battleView(バトルパート 8G = DIRECTION_SPE
     chanceUps,
   });
 
-  it('G1〜3 は通常/チャンスのペア No(チャンスアップはルートへ焼き込み = Q18)', () => {
+  it('下位 AT G1〜3(静止画紙芝居 = 2026-07-18): 導入 = 月(通常 青 / チャンス 赤)/ 台詞 2 種', () => {
     const w4 = route('W4', 'WIN', [1, 3]);
-    expect(battleView('NORMAL', w4, 1)).toMatchObject({
-      videoUrl: AT_VIDEOS['battle_at_02'],
-      chanceUp: true,
-      stage: '導入',
+    // G1 チャンス = 赤い月(ムービーは使わない)
+    const g1 = battleView('NORMAL', w4, 1);
+    expect(g1.videoUrl).toBeUndefined();
+    expect(g1).toMatchObject({ chanceUp: true, stage: '導入' });
+    expect(g1.still).toEqual({ leverUrl: BATTLE_IMAGES['battle_at_g1_chance'] });
+    // G1 通常 = 青い月
+    expect(battleView('NORMAL', route('W1', 'WIN', []), 1).still?.leverUrl).toBe(
+      BATTLE_IMAGES['battle_at_g1_normal'],
+    );
+    // G2 = 義経セリフ(通常。台詞はアプリ側テキスト = AT_BATTLE_SERIFU)
+    expect(battleView('NORMAL', w4, 2).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g2_yoshitsune_serifu'],
+      leverText: { kind: 'SERIFU', ...AT_BATTLE_SERIFU.g2Normal },
     });
-    expect(battleView('NORMAL', w4, 2)).toMatchObject({
-      videoUrl: AT_VIDEOS['battle_at_03'],
-      chanceUp: false,
-      stage: '義経台詞',
-    });
-    expect(battleView('NORMAL', w4, 3)).toMatchObject({
-      videoUrl: AT_VIDEOS['battle_at_06'],
-      chanceUp: true,
-      stage: '頼朝台詞',
+    // G3 = 頼朝セリフ(チャンスアップ G は台詞が変わる)
+    expect(battleView('NORMAL', w4, 3).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g3_yoritomo_serifu'],
+      leverText: { kind: 'SERIFU', ...AT_BATTLE_SERIFU.g3Chance },
     });
   });
 
-  it('G4〜8 はルート分岐の No(AT: 義経強 = 桜花繚乱 / 敗北寄り = 復活判定)', () => {
-    const w3 = route('W3', 'WIN', []);
-    expect([4, 5, 6, 7, 8].map((g) => battleView('NORMAL', w3, g).videoUrl)).toEqual([
-      AT_VIDEOS['battle_at_07'], // 攻撃決め 義経攻撃へ
-      AT_VIDEOS['battle_at_10'], // 義経強攻撃
-      AT_VIDEOS['battle_at_14'], // 桜花繚乱チャンス
-      AT_VIDEOS['battle_at_16'], // 頼朝の台詞
-      AT_VIDEOS['battle_at_19'], // 継続 次セットへ
-    ]);
+  it('下位 AT G4〜8(義経強 = 桜花繚乱チャレンジ / 技名はアプリ側テキスト)', () => {
+    const w3 = route('W3', 'WIN', []); // 義経強攻撃 → 桜花繚乱 → 継続
+    // G4 = 対峙 → 第 3 停止で義経の顔アップ
+    expect(battleView('NORMAL', w3, 4).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g4_lever_taiji'],
+      stop3Url: BATTLE_IMAGES['battle_at_g4_stop3_yoshitsune_up'],
+    });
+    // G5 義経強 = レバオンで技名「桜花繚乱」→ 第 3 停止で決めカット(pptx スライド 6)
+    expect(battleView('NORMAL', w3, 5).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g5_yoshitsune_strong_lever'],
+      leverText: { kind: 'WAZA', text: '桜花繚乱' },
+      stop3Url: BATTLE_IMAGES['battle_at_g5_yoshitsune_strong_stop3'],
+    });
+    // G6〜8 = 桜花繚乱チャレンジ(G8 第 3 停止で継続)
+    expect(battleView('NORMAL', w3, 6).still?.leverUrl).toBe(
+      BATTLE_IMAGES['battle_at_g6_ouka_challenge'],
+    );
+    expect(battleView('NORMAL', w3, 7).still?.leverText).toEqual({
+      kind: 'CHALLENGE',
+      text: '桜花繚乱チャレンジ',
+    });
+    expect(battleView('NORMAL', w3, 8).still).toMatchObject({
+      leverUrl: BATTLE_IMAGES['battle_at_g6_ouka_challenge'],
+      stop3Url: BATTLE_IMAGES['battle_at_g7_yoshitsune_atk_keizoku'],
+      stop3Text: { kind: 'KEIZOKU', text: '継続' },
+    });
+  });
+
+  it('下位 AT G4〜8(義経弱 = 頼朝防御 → 余裕 → 継続 / 技名 穿炎刃)', () => {
+    const w1 = route('W1', 'WIN', []);
+    expect(battleView('NORMAL', w1, 4).still?.stop3Url).toBe(
+      BATTLE_IMAGES['battle_at_g4_stop3_yoshitsune_up'],
+    );
+    expect(battleView('NORMAL', w1, 5).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g5_yoshitsune_weak_lever'],
+      stop3Url: BATTLE_IMAGES['battle_at_g5_yoshitsune_weak_stop3'],
+      stop3Text: { kind: 'WAZA', text: '穿炎刃' },
+    });
+    expect(battleView('NORMAL', w1, 6).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g6_yoshitsune_atk_lever'],
+      stop3Url: BATTLE_IMAGES['battle_at_g6_yoshitsune_atk_stop3'],
+    });
+    expect(battleView('NORMAL', w1, 7).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g7_yoshitsune_atk_keizoku'],
+      leverText: { kind: 'KEIZOKU', text: '継続' },
+    });
+    expect(battleView('NORMAL', w1, 8).still?.leverText).toEqual({ kind: 'KEIZOKU', text: '継続' });
+  });
+
+  it('下位 AT G4〜8(頼朝攻撃: 勝利 = 耐える / 敗北寄り = 敗北 → 復活判定)', () => {
+    // W5 = 頼朝弱攻撃 → 耐える → 継続
+    const w5 = route('W5', 'WIN', []);
+    expect(battleView('NORMAL', w5, 4).still?.stop3Url).toBe(
+      BATTLE_IMAGES['battle_at_g4_stop3_yoritomo_up'],
+    );
+    expect(battleView('NORMAL', w5, 5).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g5_yoritomo_weak_lever'],
+      stop3Url: BATTLE_IMAGES['battle_at_g5_yoritomo_weak_stop3'],
+      stop3Text: { kind: 'WAZA', text: '雷獄刃' },
+    });
+    expect(battleView('NORMAL', w5, 6).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g6_yoritomo_atk_lever'],
+    });
+    expect(battleView('NORMAL', w5, 7).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g7_yoritomo_atk_lever'],
+      stop3Url: BATTLE_IMAGES['battle_at_g7_stop3_taeru'],
+      stop3Text: undefined,
+    });
+    // U4 = 頼朝強攻撃 → 耐えれない → 敗北(復活の成否は全停止後の revivalCutin)
     const u4 = route('U4', 'LOSE', []);
-    expect([4, 5, 6, 7, 8].map((g) => battleView('NORMAL', u4, g).videoUrl)).toEqual([
-      AT_VIDEOS['battle_at_08'], // 攻撃決め 頼朝攻撃へ
-      AT_VIDEOS['battle_at_12'], // 頼朝強攻撃
-      AT_VIDEOS['battle_at_15'], // 義経喰らうか
-      AT_VIDEOS['battle_at_18'], // 耐えれない
-      AT_VIDEOS['battle_at_20'], // 復活判定
-    ]);
+    expect(battleView('NORMAL', u4, 5).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g5_yoritomo_strong_lever'],
+      stop3Url: BATTLE_IMAGES['battle_at_g5_yoritomo_strong_stop3'],
+      stop3Text: { kind: 'WAZA', text: '御雷天昇' },
+    });
+    expect(battleView('NORMAL', u4, 7).still).toMatchObject({
+      leverUrl: BATTLE_IMAGES['battle_at_g7_yoritomo_atk_lever'],
+      stop3Url: BATTLE_IMAGES['battle_at_g7_stop3_haiboku'],
+      stop3Text: { kind: 'HAIBOKU', text: '敗北' },
+    });
+    expect(battleView('NORMAL', u4, 8).still).toEqual({
+      leverUrl: BATTLE_IMAGES['battle_at_g8_lever_down'],
+      leverText: { kind: 'HAIBOKU', text: '敗北' },
+    });
   });
 
   it('上位 AT は歯抜け No(G6 ヒット判定 = 14 / G8 = 20 or 21)へ解決する', () => {
@@ -925,22 +1005,60 @@ describe('battleGameAtLeverOn / battleView(バトルパート 8G = DIRECTION_SPE
 
   it('未知のルート ID はエラー(ルート表とのズレ検知)', () => {
     expect(() => battleView('NORMAL', route('W9', 'WIN', []), 4)).toThrow();
+    expect(() => battleView('UPPER', route('W9', 'WIN', []), 4)).toThrow();
     // G1〜3 はルート ID 非依存のためエラーにならない
     expect(() => battleView('NORMAL', route('W9', 'WIN', []), 1)).not.toThrow();
   });
 });
 
+describe('BATTLE_IMAGES(下位 AT バトル静止画素材の存在検証。2026-07-18 の実素材 25 枚)', () => {
+  it('全 25 キーが揃っている(gen_battle_images.mjs の JOBS と同一の jobId)', () => {
+    const jobIds = [
+      'g1_normal', 'g1_chance',
+      'g2_yoshitsune_serifu', 'g3_yoritomo_serifu',
+      'g4_lever_taiji', 'g4_stop3_yoshitsune_up', 'g4_stop3_yoritomo_up',
+      'g5_yoshitsune_weak_lever', 'g5_yoshitsune_weak_stop3',
+      'g5_yoshitsune_strong_lever', 'g5_yoshitsune_strong_stop3',
+      'g5_yoritomo_weak_lever', 'g5_yoritomo_weak_stop3',
+      'g5_yoritomo_strong_lever', 'g5_yoritomo_strong_stop3',
+      'g6_yoshitsune_atk_lever', 'g6_yoshitsune_atk_stop3',
+      'g6_yoritomo_atk_lever', 'g6_ouka_challenge',
+      'g7_yoritomo_atk_lever', 'g7_stop3_taeru', 'g7_stop3_haiboku',
+      'g7_yoshitsune_atk_keizoku',
+      'g8_lever_down', 'g8_stop3_shizuka_cutin',
+    ];
+    expect(jobIds).toHaveLength(25);
+    for (const jobId of jobIds) {
+      const key = `battle_at_${jobId}`;
+      expect(BATTLE_IMAGES[key], key).toBeTruthy();
+      expect(battleImageUrl(key), key).toBe(BATTLE_IMAGES[key]);
+    }
+    expect(Object.keys(BATTLE_IMAGES)).toHaveLength(25);
+  });
+
+  it('存在しないキーはエラー(入稿漏れ検知)', () => {
+    expect(() => battleImageUrl('battle_at_g9_nazo')).toThrow();
+  });
+});
+
 describe('revivalCutin(復活告知 = 敗北寄りルート 8G 目の第 3 リール停止)', () => {
-  it('復活パターンのラベル付き SPECIAL カットインになる', () => {
-    const cutin = revivalCutin({ id: 'R3', label: '静の祈り→復活' });
+  it('下位 AT は静のカットイン静止画(pptx 8G「静のカットイン発生で復活」)', () => {
+    const cutin = revivalCutin({ id: 'R3', label: '静の祈り→復活' }, 'NORMAL');
     expect(cutin).toMatchObject({
       title: '復活!',
       sub: '静の祈り→復活',
       style: 'SPECIAL',
       sound: 'BIG_WIN',
+      imageUrl: BATTLE_IMAGES['battle_at_g8_stop3_shizuka_cutin'],
     });
     expect(cutin.durationMs).toBeGreaterThan(0);
+    expect(cutin.videoUrl).toBeUndefined();
+  });
+
+  it('上位 AT は実素材未制作のため仮エフェクトムービーのまま', () => {
+    const cutin = revivalCutin({ id: 'R2', label: '義経の一太刀' }, 'UPPER');
     expect(cutin.videoUrl).toBeTruthy();
+    expect(cutin.imageUrl).toBeUndefined();
   });
 });
 

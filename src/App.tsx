@@ -568,7 +568,7 @@ function App() {
       battle.route.outcome === 'LOSE' &&
       result.events.some((e) => e.type === 'AT_SET_CONTINUE' || e.type === 'ENDING_START')
     ) {
-      cutins = [revivalCutin(drawRevival(hintRng, battle.tier)), ...cutins];
+      cutins = [revivalCutin(drawRevival(hintRng, battle.tier), battle.tier), ...cutins];
     }
 
     // バトルルートの更新(STEP 4e): バトル 1G 目の全停止で率当せん(継続確定)が
