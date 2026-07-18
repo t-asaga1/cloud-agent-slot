@@ -1,8 +1,8 @@
 # 引継ぎ資料(最新)
 
-- 作成者: AGENT #096(**「1 AGENT 1 やり取り」ルールの廃止 + 引継ぎ資料の簡易化**。旧 HANDOVER の全履歴は `docs/handover/095_uat_battle_and_ending_images.md` 以前に保存済み)
+- 作成者: AGENT #097(**上位ATバトルのタイトル文字削除 + バトル紙芝居のゲーム間連結 + 液晶2倍表示モード**。旧 HANDOVER の全履歴は `docs/handover/095_uat_battle_and_ending_images.md` 以前に保存済み)
 - 作成日: 2026-07-18
-- 履歴コピー: `docs/handover/096_rule_change_and_simplified_handover.md`
+- 履歴コピー: `docs/handover/096_rule_change_and_simplified_handover.md`(簡易化の区切り。#097 は小変更のため履歴コピーなし)
 
 **次の AGENT は最初にこのファイル(`docs/HANDOVER.md`)だけ読めば作業を開始できる。** 詳細が必要になったときだけ下記の参照先を開くこと。
 
@@ -10,9 +10,13 @@
 
 パチスロアプリケーション「**義経物語**」の開発。TypeScript + React + Vite + Vitest(Web)+ Tauri 2.x(Windows exe)。
 
-- **リール制御・ゲームフロー・遊技 UI・演出システム・Windows ビルド(CI)・遊技データ表示はすべて実装済み**(ROADMAP の STEP 1〜3・4a〜4e・5・6a 完了)。テスト 433 パス・lint / build グリーンが正常状態。
+- **リール制御・ゲームフロー・遊技 UI・演出システム・Windows ビルド(CI)・遊技データ表示はすべて実装済み**(ROADMAP の STEP 1〜3・4a〜4e・5・6a 完了)。テスト 434 パス・lint / build グリーンが正常状態。
 - 出玉バランスはユーザー承認済み(機械割 約 129〜131%)。数値は調整指示が出るまで変更しない。
-- 現在は**演出素材(AI 生成画像)の制作・組込みフェーズ**。背景動画・図柄・AT確定ムービー・BGM 4 曲・SE 7 音はユーザー入稿の実素材。固有予告 1(4 背景)・会話予告(固有 3)・下位 AT バトルは組込み済み。残りの演出は仮素材のまま。
+- 現在は**演出素材(AI 生成画像)の制作・組込みフェーズ**。背景動画・図柄・AT確定ムービー・BGM 4 曲・SE 7 音はユーザー入稿の実素材。固有予告 1(4 背景)・会話予告(固有 3)・下位/上位 AT バトル・エンディング/リザルトは組込み済み(上位バトル画像は 2026-07-18 ユーザー確認 OK)。残りの演出は仮素材のまま。
+- 2026-07-18(#097)のユーザー指示による変更:
+  - **上位 AT バトルのタイトル文字は表示しない**(`BATTLE_TITLES.UPPER = ''`。n/8G カウントは残す。下位は従来どおり「BATTLE — 頼朝との一戦」)。
+  - **バトル紙芝居はゲーム間で背景動画へ戻さない**: DirectionLayer のバトル画面は安定キー(seq 非依存)で 8G 間マウント維持 + フェードインなし + 完全不透過黒下地(`.battle-screen`)+ ルート抽せん直後に全静止画をプリロード(`battleStillUrls` + App の `preloadBattleStills`)。
+  - **液晶 2 倍表示モード**: 遊技ボタン列の「液晶2倍」トグルで、液晶(背景動画 + DirectionLayer 複製)を実寸 2 倍の固定パネルへ表示(確認用)。複製側は `silent` prop で SE を二重再生しない。バトル/連続演出/赤7待機のヘッダー・注記フォントは vw → cqw へ変更(2 倍表示でも等倍拡大)。
 
 ### 仕様の正(困ったらここを見る)
 
@@ -36,15 +40,12 @@
 
 ## 3. 残作業
 
-1. **上位 AT バトル 25 枚 + エンディング・リザルト 4 枚の組込み**(生成済み・ユーザーの画像確認待ち。原本 = `incoming/battle/上位バトル_*.png` + `incoming/ending/*.png`)。確認 OK 後:
-   - 上位バトル: WebP 化(`battle_uat_<jobId>.webp` → `src/assets/images/battle/`)+ `uatBattleStill` を下位版 `atBattleStill`(`src/ui/direction.ts`)と同型で新設(5 系統 = 義経勝ち/負け・頼朝勝ち/負け・ダブル。ルート対応は `docs/UAT_BATTLE_PRODUCTION_PLAN.md`)+ `battleView` UPPER 分岐を紙芝居へ差替え + 復活カットイン配線 + 台詞・技名テーブル新設 + バトルタイトルを「共闘BATTLE — 後白河法皇との決戦」へ変更 + テスト更新 + 原本削除。
-   - エンディング系 4 枚: 下位 AT エンディング 2 枚(`ending_to_upper` 仮ムービーの置き換え。2 枚の切替タイミングはユーザーへ確認)/ 上位 AT エンディング 1 枚(`ending_complete` の置き換え)/ 敗北後リザルト 1 枚(獲得枚数・バトル回数をアプリ側テキストで重ねる。表示タイミングはユーザーへ確認)。
-2. **残りの予告素材の制作・組込み**: 各背景の固有予告 2(2 択系)・共通予告 1・2 など。ユーザーが 1 予告ずつ構図を指示 → 生成 → 確認 → 組込みのフロー(ルール廃止により 1 会話で通してよい)。組込みは紙芝居パターン(下記 5.)。
-3. **不使用になった仮素材ムービーの削除可否をユーザーへ確認**: `battle_at_01`〜`20`(20 本)/ `yokoku_<bg>_koyu3_*`(8 本)/ 組込み後は `battle_uat_*`(17 本)も対象。OK が出たらファイル + `manifest.json` + 存在検証テストのキーを削除。
-4. **実素材の入稿待ち対応(STEP 4f)**: 連続演出用 BGM / 残り SE(払出・レア役成立・告知系)/ その他演出ムービーが `incoming/` へ入稿されたら `scripts/import_incoming_assets.py` で取り込み、対応表(`SOUND_CUES` / `BGM_FILES` + `src/ui/bgm.ts` / `YOKOKU_VIDEOS` / `RENZOKU_VIDEOS` / `AT_VIDEOS`)を差し替え。
-5. **STEP 6 の残り**(優先順はユーザー指示): 6b 永続化(保存対象 = `GameState` + `MeterState` + `PlayStats`。`src/platform/` 経由で Web = localStorage / exe = ファイル)/ 6c ペナルティ(SPEC 確定 7)/ 6d ブランク図柄の役割(ユーザーの構想待ち)。
-6. **Windows 実機確認の結果対応**: `docs/STEP5_VERIFICATION.md` の NG 報告(特に AT ステージ動画・実音再生)があれば調査・修正。
-7. **後白河法皇の Seedance 用設定資料ペア生成**(指示待ち): `node scripts/gen_character_sheets.mjs 後白河` → 検品 → `incoming/reference/設定資料/` へコミット。
+1. **残りの予告素材の制作・組込み**: 各背景の固有予告 2(2 択系)・共通予告 1・2 など。ユーザーが 1 予告ずつ構図を指示 → 生成 → 確認 → 組込みのフロー(ルール廃止により 1 会話で通してよい)。組込みは紙芝居パターン(下記 5.)。
+2. **不使用になった仮素材ムービーの削除可否をユーザーへ確認**: `battle_at_01`〜`20`(20 本)/ `yokoku_<bg>_koyu3_*`(8 本)/ `battle_uat_*`(17 本)も対象。OK が出たらファイル + `manifest.json` + 存在検証テストのキーを削除。
+3. **実素材の入稿待ち対応(STEP 4f)**: 連続演出用 BGM / 残り SE(払出・レア役成立・告知系)/ その他演出ムービーが `incoming/` へ入稿されたら `scripts/import_incoming_assets.py` で取り込み、対応表(`SOUND_CUES` / `BGM_FILES` + `src/ui/bgm.ts` / `YOKOKU_VIDEOS` / `RENZOKU_VIDEOS` / `AT_VIDEOS`)を差し替え。
+4. **STEP 6 の残り**(優先順はユーザー指示): 6b 永続化(保存対象 = `GameState` + `MeterState` + `PlayStats`。`src/platform/` 経由で Web = localStorage / exe = ファイル)/ 6c ペナルティ(SPEC 確定 7)/ 6d ブランク図柄の役割(ユーザーの構想待ち)。
+5. **Windows 実機確認の結果対応**: `docs/STEP5_VERIFICATION.md` の NG 報告(特に AT ステージ動画・実音再生)があれば調査・修正。
+6. **後白河法皇の Seedance 用設定資料ペア生成**(指示待ち): `node scripts/gen_character_sheets.mjs 後白河` → 検品 → `incoming/reference/設定資料/` へコミット。
 
 ## 4. 画像生成のルール・ノウハウ
 
@@ -81,6 +82,8 @@
 
 - 状態の再現は**デバッグパネル(サイドパネル内)の「成立役の強制指定」+「1G消化(オート)」ボタン**で行う(例: 中段チェリー強制 → 本前兆 → AT。ハズレ強制 = 抽せんなしで G 消化)。連続オート消化(160ms/G)は狙ったフェーズで止めにくいので状態作りには使わない。
 - 演出の弱強・種別はデバッグパネルの「予告演出:」行で裏取りできる(見た目だけで判断しない)。
+- **液晶表示の細部確認は遊技ボタン列の「液晶2倍」トグル**(#097 新設。液晶を実寸 2 倍の固定パネルへ複製表示。SE は本体側のみ再生)。
+- バトルなど深いフェーズの状態作りは、`App.tsx` の `initGameState` 直後に一時的に `initialState.phase` を固定するのが早い(例: `{ type: 'AT', tier: 'UPPER', part: 'KOYAKU', partGame: 10, … }` = 次レバーでバトル 1G 目。**continueRate はテーブルの実在値(下位 = 0.66/0.79/0.84/0.88・上位 = 0.93)にしないと `drawBattleRoute` が throw する**。確認後は必ず revert)。
 - 一時的なテーブル固定(演出を 100% 出す等)で確認した場合は**必ず revert してからコミット**する。
 - VM に音声デバイスはない(実音の確認は Windows 実機確認に委ねる)。
 - シミュレーションは `npm run sim -- <ゲーム数> <シード>`(100 万 G 約 13 秒)。出玉レポートは `docs/SIMULATION_REPORT.md`。

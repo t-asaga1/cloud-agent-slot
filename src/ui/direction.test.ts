@@ -23,6 +23,7 @@ import {
   BATTLE_TITLES,
   battleGameAtLeverOn,
   battleImageUrl,
+  battleStillUrls,
   battleView,
   cutinsForEvents,
   drawKaiwaCast,
@@ -1005,7 +1006,7 @@ describe('battleGameAtLeverOn / battleView(バトルパート 8G = DIRECTION_SPE
     const w6 = route('W6', 'WIN', [1, 3]); // ダブル攻撃(チャンスアップ G1・G3)
     const g1 = battleView('UPPER', w6, 1);
     expect(g1).toMatchObject({ chanceUp: true, title: BATTLE_TITLES.UPPER });
-    expect(g1.title).toContain('後白河法皇'); // Q40 = タイトル変更
+    expect(g1.title).toBe(''); // 2026-07-18 指示 = 上位のタイトル文字は表示しない
     expect(g1.still).toEqual({ leverUrl: BATTLE_IMAGES['battle_uat_g1_chance'] });
     expect(battleView('UPPER', route('W1', 'WIN', []), 1).still.leverUrl).toBe(
       BATTLE_IMAGES['battle_uat_g1_normal'],
@@ -1132,6 +1133,24 @@ describe('battleGameAtLeverOn / battleView(バトルパート 8G = DIRECTION_SPE
     // G1〜3 はルート ID 非依存のためエラーにならない
     expect(() => battleView('NORMAL', route('W9', 'WIN', []), 1)).not.toThrow();
     expect(() => battleView('UPPER', route('W9', 'WIN', []), 1)).not.toThrow();
+  });
+
+  it('battleStillUrls = ルートで使う全静止画(プリロード用 = 2026-07-18 指示)', () => {
+    // 下位 W3(義経強)= レバーオン 8 枚 + 第 3 停止差分(G4・G5・G8)= 11 のうち
+    // G6〜8 のレバーオンが桜花繚乱チャレンジ画像を共有するため重複なしで 9 枚
+    const urls = battleStillUrls('NORMAL', route('W3', 'WIN', []));
+    expect(urls).toHaveLength(9);
+    expect(urls).toContain(BATTLE_IMAGES['battle_at_g1_normal']);
+    expect(urls).toContain(BATTLE_IMAGES['battle_at_g5_yoshitsune_strong_stop3']);
+    expect(new Set(urls).size).toBe(urls.length); // 重複なし
+    // 上位 U4(頼朝負け寄り)= 8 枚 + stop3 4 枚(G4〜7)= 12 枚
+    const uatUrls = battleStillUrls('UPPER', route('U4', 'LOSE', []));
+    expect(uatUrls).toHaveLength(12);
+    expect(uatUrls).toContain(BATTLE_IMAGES['battle_uat_g7_lose_hangeki_stop3']);
+    // チャンスアップ G1 はチャンス画像が入る
+    expect(battleStillUrls('UPPER', route('W6', 'WIN', [1]))).toContain(
+      BATTLE_IMAGES['battle_uat_g1_chance'],
+    );
   });
 });
 

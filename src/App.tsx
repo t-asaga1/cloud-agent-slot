@@ -75,6 +75,7 @@ import {
   atYokokuAllowed,
   atYokokuView,
   battleGameAtLeverOn,
+  battleStillUrls,
   battleView,
   cutinsForEvents,
   drawKaiwaCast,
@@ -266,6 +267,17 @@ function scenarioSummary(scenario: OmenScenario): string {
 /** 連続演出チャンスアップの 1 行表示(デバッグパネル用) */
 function chanceUpSummary(chanceUps: RenzokuChanceUps): string {
   return chanceUps.map((pattern) => (pattern === 'CHANCE' ? 'チ' : '通')).join('・');
+}
+
+/**
+ * バトル静止画のプリロード(2026-07-18 指示)。バトル開始(ルート抽せん直後)に
+ * ルートで使う全画像をブラウザキャッシュへ読み込み、ゲーム間の画像切替で
+ * 読み込み待ち(背景動画が見える瞬間)を作らない。
+ */
+function preloadBattleStills(tier: BattleTier, route: BattleRoute): void {
+  for (const url of battleStillUrls(tier, route)) {
+    new Image().src = url;
+  }
 }
 
 /** オート消化時の目押しモード(押下位置の決め方)。手動時はタイミング押しが正 */
@@ -504,6 +516,9 @@ function App() {
   const [atResult, setAtResult] = useState<AtResultView | undefined>(undefined);
 
   const [stageSelect, setStageSelect] = useState<'AUTO' | StageId>('AUTO');
+  // 液晶 2 倍表示モード(2026-07-18 指示): 液晶(背景動画 + 演出レイヤー)を
+  // 実寸の 2 倍で複製表示する確認用パネル(複製側の SE は silent で二重再生しない)
+  const [lcdZoom, setLcdZoom] = useState(false);
   // BGM はデフォルト再生(確定 41)。ブラウザの自動再生ポリシーで初回再生が
   // ブロックされた場合は、最初のユーザー操作で再試行する(下の useEffect)
   const [bgmOn, setBgmOn] = useState(true);
@@ -550,6 +565,23 @@ function App() {
    */
   const battleRef = useRef<{ tier: BattleTier; route: BattleRoute } | undefined>(undefined);
 
+  /**
+   * 液晶 2 倍表示モードの幅(px)。筐体の実寸から「液晶部分の表示幅 × 2」を計算する
+   * (筐体幅 × LCD_RECT 比率 × 2。リサイズに追従)。
+   */
+  const cabinetRef = useRef<HTMLDivElement>(null);
+  const [lcdZoomWidth, setLcdZoomWidth] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!lcdZoom) return;
+    const measure = () => {
+      const rect = cabinetRef.current?.getBoundingClientRect();
+      if (rect !== undefined) setLcdZoomWidth(rect.width * (LCD_RECT.w / CABINET_SIZE.w) * 2);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [lcdZoom]);
+
   /** 全停止 → 表示判定 → advanceGame → レバー待ちへ(1G の締め) */
   const finishGame = (cycle: SpinCycle) => {
     const spin = finishSpin(cycle);
@@ -591,6 +623,7 @@ function App() {
           tier: nextPhase.tier,
           route: drawBattleRoute(hintRng, nextPhase.tier, true, nextPhase.continueRate),
         };
+        preloadBattleStills(battleRef.current.tier, battleRef.current.route);
       }
     } else {
       battleRef.current = undefined;
@@ -647,6 +680,7 @@ function App() {
           tier: currentPhase.tier,
           route: drawBattleRoute(hintRng, currentPhase.tier, confirmed, currentPhase.continueRate),
         };
+        preloadBattleStills(battleRef.current.tier, battleRef.current.route);
       }
       battle = battleView(battleRef.current.tier, battleRef.current.route, battleGame);
     }
@@ -970,6 +1004,16 @@ function App() {
   // AT 獲得枚数はゲーム開始時点が AT / エンディングのゲームで加算される(counters.ts)。
   // メーター表示は AT 中(エンディング含む)のみ(終了後は非表示。値は次の AT_START まで凍結)
   const atGainVisible = phase.type === 'AT' || phase.type === 'ENDING';
+  // リール消灯演出(確定 39)・紙芝居予告(2026-07-17 指示)用の停止済みフラグ。
+  // 全停止後(レバー待ち)は全 true。本体液晶と 2 倍表示モードの両方へ渡す
+  const stoppedReels: [boolean, boolean, boolean] =
+    spinUi.mode === 'SPINNING'
+      ? [
+          spinUi.cycle.stopped[0] !== undefined,
+          spinUi.cycle.stopped[1] !== undefined,
+          spinUi.cycle.stopped[2] !== undefined,
+        ]
+      : [true, true, true];
 
   return (
     <main className="app">
@@ -985,6 +1029,7 @@ function App() {
       <div className="play-area">
         <section className="cabinet-column">
           <div
+            ref={cabinetRef}
             className="cabinet"
             style={{ aspectRatio: `${CABINET_SIZE.w} / ${CABINET_SIZE.h}` }}
           >
@@ -1006,17 +1051,7 @@ function App() {
                 lever={leverDirection}
                 cutinFrame={play.cutinFrame}
                 atResult={atResult}
-                // リール消灯演出(確定 39)・紙芝居予告(2026-07-17 指示)用の
-                // 停止済みフラグ。全停止後(レバー待ち)は全 true
-                stoppedReels={
-                  spinUi.mode === 'SPINNING'
-                    ? [
-                        spinUi.cycle.stopped[0] !== undefined,
-                        spinUi.cycle.stopped[1] !== undefined,
-                        spinUi.cycle.stopped[2] !== undefined,
-                      ]
-                    : [true, true, true]
-                }
+                stoppedReels={stoppedReels}
               />
             </div>
             {REEL_WINDOW_RECTS.map((rect, reel) => {
@@ -1119,6 +1154,14 @@ function App() {
             </button>
             <button type="button" onClick={onToggleBgm}>
               BGM {bgmOn ? '停止' : '再生'}
+            </button>
+            <button
+              type="button"
+              className={lcdZoom ? 'auto-on' : undefined}
+              onClick={() => setLcdZoom((v) => !v)}
+              title="液晶(背景動画 + 演出)を実寸の 2 倍で複製表示する確認用モード"
+            >
+              液晶2倍 {lcdZoom ? 'ON' : 'OFF'}
             </button>
             <button
               type="button"
@@ -1422,6 +1465,44 @@ function App() {
           </details>
         </aside>
       </div>
+
+      {lcdZoom && (
+        // 液晶 2 倍表示モード(2026-07-18 指示): 液晶(背景動画 + 演出レイヤー)を
+        // 実寸の 2 倍で複製表示する。複製側の DirectionLayer は silent(SE は本体のみ)
+        <div className="lcd-zoom" style={{ width: lcdZoomWidth }}>
+          <div className="lcd-zoom-header">
+            <span>液晶 2倍表示(確認用)</span>
+            <button type="button" onClick={() => setLcdZoom(false)}>
+              閉じる ✕
+            </button>
+          </div>
+          <div
+            className="lcd-zoom-screen"
+            style={{ aspectRatio: `${LCD_RECT.w} / ${LCD_RECT.h}` }}
+          >
+            <video
+              key={stage}
+              className="lcd-zoom-video"
+              src={STAGE_VIDEOS[stage]}
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+            <div className="lcd-zoom-direction">
+              <DirectionLayer
+                key={`zoom-${resetCount}`}
+                overlay={overlayForState(gameState)}
+                lever={leverDirection}
+                cutinFrame={play.cutinFrame}
+                atResult={atResult}
+                stoppedReels={stoppedReels}
+                silent
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

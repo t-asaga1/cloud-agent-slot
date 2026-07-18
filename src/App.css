@@ -684,6 +684,14 @@
   animation: yokoku-in 0.3s ease-out;
 }
 
+/* バトルパートの静止画紙芝居(2026-07-18 指示): ゲーム間で背景動画へ戻さない。
+   コンテナは安定キーで 8G 間マウント維持し、フェードインなし + 完全不透過の黒下地で
+   静止画から静止画へ直接つなぐ */
+.renzoku-screen.battle-screen {
+  animation: none;
+  background: #000;
+}
+
 .renzoku-video {
   position: absolute;
   inset: 0;
@@ -702,10 +710,12 @@
   align-items: baseline;
 }
 
+/* フォントは液晶幅基準(cqw)= 液晶 2 倍表示モードでも等倍で拡大される
+   (コンテナ = .renzoku-screen / .seven-wait-screen の container-type) */
 .renzoku-title {
   color: #fca5a5;
   font-weight: 800;
-  font-size: clamp(0.8rem, 1.9vw, 1.3rem);
+  font-size: 5.4cqw;
   letter-spacing: 0.1em;
   text-shadow: 0 0 12px rgba(220, 38, 38, 0.9);
 }
@@ -714,7 +724,7 @@
   color: #fbbf24;
   font-family: 'Consolas', 'Menlo', monospace;
   font-weight: 700;
-  font-size: clamp(0.75rem, 1.7vw, 1.15rem);
+  font-size: 4.8cqw;
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
 }
 
@@ -730,7 +740,7 @@
 
 .renzoku-stage {
   color: #fef2f2;
-  font-size: clamp(0.7rem, 1.5vw, 1rem);
+  font-size: 4.2cqw;
   letter-spacing: 0.2em;
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
 }
@@ -738,7 +748,7 @@
 /* バトルの「今のゲームが何か」の小さな注記(2026-07-18 指示。画面左下へ常時表示) */
 .battle-game-note {
   color: rgba(248, 250, 252, 0.85);
-  font-size: clamp(0.55rem, 1.1vw, 0.8rem);
+  font-size: 3.3cqw;
   letter-spacing: 0.08em;
   padding: 0.15em 0.7em;
   border-radius: 999px;
@@ -867,7 +877,7 @@
   color: #1c1206;
   background: #facc15;
   font-weight: 900;
-  font-size: clamp(0.7rem, 1.5vw, 1rem);
+  font-size: 4.2cqw;
   letter-spacing: 0.12em;
   padding: 0.1em 0.6em;
   border-radius: 6px;
@@ -918,6 +928,8 @@
   overflow: hidden;
   background: rgba(0, 0, 0, 0.92);
   border: 2px solid rgba(248, 113, 113, 0.85);
+  /* renzoku-header(cqw フォント)を使うためのコンテナ化 */
+  container-type: inline-size;
 }
 
 .seven-aim {
@@ -947,7 +959,7 @@
 
 .seven-aim-text {
   color: #f87171;
-  font-size: clamp(0.85rem, 2.2vw, 1.5rem);
+  font-size: 6.2cqw;
   font-weight: 700;
   text-shadow: 0 0 10px rgba(248, 113, 113, 0.8);
 }
@@ -1169,6 +1181,64 @@
 .cutin-info .cutin-title {
   color: #7dd3fc;
   font-size: clamp(0.85rem, 2vw, 1.3rem);
+}
+
+/* --- 液晶 2 倍表示モード(2026-07-18 指示) ---
+   筐体の液晶(背景動画 + 演出レイヤー)を 2 倍サイズで複製表示する確認用パネル。
+   複製側の DirectionLayer は silent(SE は本体側のみ再生)。画面上部中央へ固定表示 */
+.lcd-zoom {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  max-width: 96vw;
+  border: 2px solid #3b4252;
+  border-radius: 10px;
+  background: #0d1015;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+}
+
+.lcd-zoom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #9aa4b2;
+  border-bottom: 1px solid #262c38;
+}
+
+.lcd-zoom-header button {
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid #3b4252;
+  background: #1f2430;
+  color: inherit;
+  cursor: pointer;
+}
+
+.lcd-zoom-screen {
+  position: relative;
+  width: 100%;
+  background: #000;
+}
+
+.lcd-zoom-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lcd-zoom-direction {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 /* --- クレジット・払出メーター(STEP 3c。7seg 風の仮デザイン) --- */
