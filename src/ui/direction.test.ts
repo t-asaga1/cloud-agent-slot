@@ -899,6 +899,7 @@ describe('battleGameAtLeverOn / battleView(バトルパート 8G = DIRECTION_SPE
     // G1 チャンス = 赤い月
     const g1 = battleView('NORMAL', w4, 1);
     expect(g1).toMatchObject({ chanceUp: true, stage: '導入' });
+    expect(g1.title).toBe(''); // 2026-07-18 指示 = 下位もタイトル文字は表示しない
     expect(g1.still).toEqual({ leverUrl: BATTLE_IMAGES['battle_at_g1_chance'] });
     // G1 通常 = 青い月
     expect(battleView('NORMAL', route('W1', 'WIN', []), 1).still?.leverUrl).toBe(

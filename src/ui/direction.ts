@@ -809,11 +809,12 @@ export function atYokokuView(
 }
 
 /**
- * バトルの全画面タイトル(2026-07-18 ユーザー指示: 上位のタイトル文字
- * 「共闘BATTLE — 後白河法皇との決戦」は表示しない = 空文字。n/8G カウントは残す)
+ * バトルの全画面タイトル(2026-07-18 ユーザー指示: 下位「BATTLE — 頼朝との一戦」・
+ * 上位「共闘BATTLE — 後白河法皇との決戦」ともタイトル文字は表示しない = 空文字。
+ * n/8G カウントは残す)
  */
 export const BATTLE_TITLES: Record<BattleTier, string> = {
-  NORMAL: 'BATTLE — 頼朝との一戦',
+  NORMAL: '',
   UPPER: '',
 };
 
