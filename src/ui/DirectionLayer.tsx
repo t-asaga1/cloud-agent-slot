@@ -64,6 +64,11 @@ interface Props {
    * 回転中は停止したリールから順に true になり、全停止後(レバー待ち)は全 true。
    */
   stoppedReels: readonly [boolean, boolean, boolean];
+  /**
+   * SE を鳴らさない(液晶 2 倍表示モード = 2026-07-18 指示 の複製インスタンス用。
+   * 本体側の DirectionLayer が鳴らすため、複製側で二重再生しない)。
+   */
+  silent?: boolean;
 }
 
 /**
@@ -148,7 +153,14 @@ function BattleStillScreen({
   );
 }
 
-export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedReels }: Props) {
+export function DirectionLayer({
+  overlay,
+  lever,
+  cutinFrame,
+  atResult,
+  stoppedReels,
+  silent = false,
+}: Props) {
   const [queue, setQueue] = useState<QueuedCutin[]>([]);
   const seenSeqRef = useRef(cutinFrame.seq);
   const keyRef = useRef(0);
@@ -171,7 +183,7 @@ export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedRe
   const headKey = head?.key;
   useEffect(() => {
     if (head === undefined) return;
-    if (head.cutin.sound !== undefined) playCue(head.cutin.sound);
+    if (!silent && head.cutin.sound !== undefined) playCue(head.cutin.sound);
     const id = window.setTimeout(
       () => setQueue((prev) => prev.slice(1)),
       head.cutin.durationMs,
@@ -186,8 +198,8 @@ export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedRe
   const leverSeq = lever.seq;
   const hasYokoku = lever.yokoku?.videoUrl !== undefined || lever.atYokoku !== undefined;
   useEffect(() => {
-    if (leverSeq > 0 && hasYokoku) playCue('TELOP');
-  }, [leverSeq, hasYokoku]);
+    if (!silent && leverSeq > 0 && hasYokoku) playCue('TELOP');
+  }, [leverSeq, hasYokoku, silent]);
 
   // 紙芝居方式の小役示唆予告(2026-07-17 指示)用の停止ボタン数。
   // 0 = レバーオン直後(1 枚目)/ 1〜2 = 第 1 停止以降(2 枚目)/ 3 = 全停止(3 枚目 + 図柄)
@@ -203,9 +215,9 @@ export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedRe
   useEffect(() => {
     const prev = prevBlackoutRef.current;
     const increased = lever.seq === prev.seq ? blackoutOn > prev.on : blackoutOn > 0;
-    if (increased) playCue('REEL_BLACKOUT');
+    if (!silent && increased) playCue('REEL_BLACKOUT');
     prevBlackoutRef.current = { seq: lever.seq, on: blackoutOn };
-  }, [lever.seq, blackoutOn]);
+  }, [lever.seq, blackoutOn, silent]);
 
   return (
     <div className="direction-layer">
@@ -227,11 +239,15 @@ export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedRe
       {lever.battle !== undefined && (
         // バトルパートの静止画紙芝居(下位・上位とも 2026-07-18 組込み。
         // レバーオン画像 → 第 3 停止で stop3 画像へ切替 + 技名・台詞・継続/敗北の
-        // アプリ側テキスト描画)。gameNote = 今のゲームが何かの小さな注記(2026-07-18 指示)
+        // アプリ側テキスト描画)。gameNote = 今のゲームが何かの小さな注記(2026-07-18 指示)。
+        // キーは安定(seq 非依存)= ゲーム間で再マウント・フェードインさせず、
+        // 前 G の静止画から次 G の静止画へ直接つなぐ(背景動画を見せない = 2026-07-18 指示)
         <div
-          key={`battle-${lever.seq}`}
+          key="battle"
           className={
-            lever.battle.chanceUp ? 'renzoku-screen renzoku-chance' : 'renzoku-screen'
+            lever.battle.chanceUp
+              ? 'renzoku-screen battle-screen renzoku-chance'
+              : 'renzoku-screen battle-screen'
           }
           data-label={lever.battle.label}
         >
@@ -241,6 +257,7 @@ export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedRe
             alt={lever.battle.label}
           />
           <div className="renzoku-header">
+            {/* 上位はタイトル文字なし(空 span で n/8G カウントを右端に保つ) */}
             <span className="renzoku-title">{lever.battle.title}</span>
             <span className="renzoku-count">
               {lever.battle.game}/{lever.battle.totalGames}G

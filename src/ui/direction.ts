@@ -808,10 +808,13 @@ export function atYokokuView(
   return { kind, videoUrl, strong: true, label };
 }
 
-/** バトルの全画面タイトル(上位は Q40 = 2026-07-18 承認で「後白河法皇との決戦」へ変更) */
+/**
+ * バトルの全画面タイトル(2026-07-18 ユーザー指示: 上位のタイトル文字
+ * 「共闘BATTLE — 後白河法皇との決戦」は表示しない = 空文字。n/8G カウントは残す)
+ */
 export const BATTLE_TITLES: Record<BattleTier, string> = {
   NORMAL: 'BATTLE — 頼朝との一戦',
-  UPPER: '共闘BATTLE — 後白河法皇との決戦',
+  UPPER: '',
 };
 
 /**
@@ -1343,6 +1346,21 @@ export function battleView(tier: BattleTier, route: BattleRoute, game: number): 
       : uatBattleGameNote(route, game, chanceUp),
     label: `${tier === 'UPPER' ? '共闘' : 'AT'}バトル ${route.id} G${game} ${stage}${chanceUp ? '(チャンス)' : ''}`,
   };
+}
+
+/**
+ * バトル 1 ルートで使う静止画 URL の一覧(重複なし・G1〜8 の全画像)。
+ * バトル開始時(ルート抽せん直後)に UI がプリロードし、ゲーム間の画像切替で
+ * 読み込み待ちの背景動画が見えないようにする(2026-07-18 指示 = 紙芝居を途切れさせない)。
+ */
+export function battleStillUrls(tier: BattleTier, route: BattleRoute): readonly string[] {
+  const urls = new Set<string>();
+  for (let game = 1; game <= BATTLE_PART_GAMES; game++) {
+    const { still } = battleView(tier, route, game);
+    urls.add(still.leverUrl);
+    if (still.stop3Url !== undefined) urls.add(still.stop3Url);
+  }
+  return [...urls];
 }
 
 /**
