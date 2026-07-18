@@ -71,6 +71,7 @@ import {
 import { StatsPanel } from './ui/StatsPanel';
 import {
   atIntroAtLeverOn,
+  atResultView,
   atYokokuAllowed,
   atYokokuView,
   battleGameAtLeverOn,
@@ -85,6 +86,7 @@ import {
   revivalCutin,
   scenarioYokokuAtLeverOn,
   sevenWaitAtLeverOn,
+  type AtResultView,
   type Cutin,
   type LeverDirection,
 } from './ui/direction';
@@ -497,6 +499,9 @@ function App() {
   const [spinUi, setSpinUi] = useState<SpinUi>({ mode: 'IDLE' });
   // レバーオン時に決定する 1G 分の予告演出(前兆シナリオ予告 / 小役示唆予告 = STEP 4c)
   const [leverDirection, setLeverDirection] = useState<LeverDirection>({ seq: 0 });
+  // AT 終了画面(2026-07-18 指示): バトル敗北後・上位エンディング到達後(AT_END)の
+  // 全停止でセットし、次のレバーオンまでリザルト(バトル回数・獲得枚数)を全画面表示する
+  const [atResult, setAtResult] = useState<AtResultView | undefined>(undefined);
 
   const [stageSelect, setStageSelect] = useState<'AUTO' | StageId>('AUTO');
   // BGM はデフォルト再生(確定 41)。ブラウザの自動再生ポリシーで初回再生が
@@ -594,6 +599,17 @@ function App() {
     // 頼朝テーマ(継続確定 BGM = 確定 38)の 1/5 抽せん・更新(演出専用 rng)
     const kakuteiBgm = updateKakuteiBgm(play.kakuteiBgm, result, hintRng);
 
+    // AT 終了画面(2026-07-18 指示): AT_END(バトル敗北 / 上位エンディング到達)の
+    // 全停止でリザルトを解決して表示する。獲得枚数は reducer と同じ meterOnFinish で
+    // このゲームの払出まで含めて確定させる(バトル回数はゲーム開始時点のフェーズから)
+    const wasAtGame = play.gameState.phase.type === 'AT' || play.gameState.phase.type === 'ENDING';
+    const resultView = atResultView(
+      play.gameState.phase,
+      result.events,
+      meterOnFinish(play.meter, wasAtGame, result).atGained,
+    );
+    if (resultView !== undefined) setAtResult(resultView);
+
     const pushOrder = cycle.pressed.map((reel) => REEL_NAMES[reel]).join('→');
     dispatch({ type: 'FINISH', spin, result, pushOrder, cutins, kakuteiBgm });
     setSpinUi({ mode: 'IDLE' });
@@ -613,6 +629,7 @@ function App() {
    * いずれも次のレバーオンまで表示。
    */
   const drawLeverDirection = (won: Role, bellMiss: boolean, naviOrder?: PushOrder) => {
+    setAtResult(undefined); // AT 終了画面は次のレバーオンで消す(2026-07-18 指示)
     const state = play.gameState;
     const { phase: currentPhase } = state;
     // 赤7待機・AT 導入(確定 37)。あるとき他の演出は出ない(フェーズが排他)
@@ -805,8 +822,9 @@ function App() {
     logs.reverse();
     eventLog.reverse();
     lastSpinStartRef.current = performance.now(); // 直後の手動レバーオンにはウェイトを掛ける
-    // 高速消化中のレバーオン演出・バトルルートは無効化(最終ゲームの状態から再開)
+    // 高速消化中のレバーオン演出・バトルルート・AT 終了画面は無効化(最終ゲームの状態から再開)
     battleRef.current = undefined;
+    setAtResult(undefined);
     setLeverDirection((prev) => ({ seq: prev.seq + 1 }));
     dispatch({
       type: 'BULK',
@@ -902,6 +920,7 @@ function App() {
     setSpinUi({ mode: 'IDLE' });
     setResetCount((n) => n + 1); // DirectionLayer を再マウントして演出キューを破棄
     setLeverDirection({ seq: 0 });
+    setAtResult(undefined);
     battleRef.current = undefined;
     dispatch({ type: 'RESET', gameState: initGameState(rng) });
   };
@@ -986,6 +1005,7 @@ function App() {
                 overlay={overlayForState(gameState)}
                 lever={leverDirection}
                 cutinFrame={play.cutinFrame}
+                atResult={atResult}
                 // リール消灯演出(確定 39)・紙芝居予告(2026-07-17 指示)用の
                 // 停止済みフラグ。全停止後(レバー待ち)は全 true
                 stoppedReels={

@@ -202,25 +202,50 @@ export const RENZOKU_VIDEOS: Record<string, string> = Object.fromEntries(
   ]),
 );
 
-// 下位 AT バトルパート演出の静止画(2026-07-18 = AI 生成の実素材 25 枚。
-// glob で一括解決。ビルド時に列挙される)
+// バトルパート演出の静止画(下位 = 2026-07-18 の 25 枚 / 上位 = 2026-07-18 の 25 枚。
+// いずれも AI 生成の実素材。glob で一括解決。ビルド時に列挙される)
 const battleImageModules = import.meta.glob('./images/battle/*.webp', {
   eager: true,
   import: 'default',
 }) as Record<string, string>;
 
 /**
- * 下位 AT バトルパート演出の静止画 URL(AI 生成の実素材。生成 =
- * scripts/gen_battle_images.mjs / 指示元 = incoming/義経物語下位AT中.pptx)。
- * キー = ファイル名 stem = `battle_at_<jobId>`(jobId は生成スクリプトの JOBS と同一。
- * 例: `battle_at_g1_normal` / `battle_at_g5_yoshitsune_weak_stop3`)。
+ * バトルパート演出の静止画 URL(AI 生成の実素材。生成 =
+ * scripts/gen_battle_images.mjs / 指示元 = incoming/義経物語下位AT中.pptx(下位)+
+ * docs/UAT_BATTLE_PRODUCTION_PLAN.md(上位))。
+ * キー = ファイル名 stem = `battle_<jobId>`(jobId は生成スクリプトの JOBS / UAT_JOBS と
+ * 同一。下位 = `battle_at_g1_normal` 等 25 枚 / 上位 = `battle_uat_g1_normal` 等 25 枚)。
  * 技名・「敗北」「継続」・台詞はアプリ側テキスト描画で重ねる(画像に焼き込まない)。
  * キーからの解決は `src/ui/direction.ts` の `battleImageUrl` を使うこと
- * (存在しないキーを検知できる)。全 25 キーの存在は direction.test.ts で検証する。
+ * (存在しないキーを検知できる)。全 50 キーの存在は direction.test.ts で検証する。
  */
 export const BATTLE_IMAGES: Record<string, string> = Object.fromEntries(
   Object.entries(battleImageModules).map(([path, url]) => [
     path.slice('./images/battle/'.length, -'.webp'.length),
+    url,
+  ]),
+);
+
+// エンディング・リザルト演出の静止画(2026-07-18 = AI 生成の実素材 4 枚)
+const endingImageModules = import.meta.glob('./images/ending/*.webp', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * エンディング・リザルト演出の静止画 URL(AI 生成の実素材。生成 =
+ * scripts/gen_battle_images.mjs の ENDING_JOBS)。キー = ファイル名 stem:
+ * - `ending_at_1_freeze` / `ending_at_2_goshirakawa` = 下位 AT エンディング
+ *   (レバーオンで 1 枚目 → 第 2 停止で 2 枚目 = 2026-07-18 指示)
+ * - `ending_uat_clear` = 上位 AT エンディング(レバーオンで 1 枚目のみ)
+ * - `ending_result_all` = AT 終了画面(バトル敗北後・上位エンディング後の共通リザルト。
+ *   バトル回数・獲得枚数はアプリ側テキスト描画で重ねる)
+ * キーからの解決は `src/ui/direction.ts` の `endingImageUrl` を使うこと
+ * (存在しないキーを検知できる)。全 4 キーの存在は direction.test.ts で検証する。
+ */
+export const ENDING_IMAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(endingImageModules).map(([path, url]) => [
+    path.slice('./images/ending/'.length, -'.webp'.length),
     url,
   ]),
 );

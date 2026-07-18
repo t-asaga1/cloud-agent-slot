@@ -735,6 +735,18 @@
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
 }
 
+/* バトルの「今のゲームが何か」の小さな注記(2026-07-18 指示。画面左下へ常時表示) */
+.battle-game-note {
+  color: rgba(248, 250, 252, 0.85);
+  font-size: clamp(0.55rem, 1.1vw, 0.8rem);
+  letter-spacing: 0.08em;
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+
 /* --- 下位 AT バトルの静止画紙芝居(2026-07-18 組込み)のテキストオーバーレイ ---
    技名・台詞・継続/敗北・チャレンジ見出しは画像に焼き込まず、ここで重ねて描画する。
    フォントは液晶幅基準(cqw)= renzoku-screen をコンテナ化して解決する */
@@ -964,6 +976,76 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* エンディング・AT 終了画面の全画面静止画(2026-07-18 = 実素材の紙芝居) */
+.ending-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* AT 終了画面(リザルト = 2026-07-18 指示。バトル回数・獲得枚数を画面下部へ重ねる) */
+.at-result-screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.92);
+  border: 2px solid rgba(250, 204, 21, 0.7);
+  container-type: inline-size;
+  animation: yokoku-in 0.3s ease-out;
+}
+
+.at-result-body {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.2cqw;
+  text-align: center;
+}
+
+.at-result-title {
+  color: #fef3c7;
+  font-weight: 900;
+  font-size: 4.6cqw;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+  text-shadow:
+    0 0 12px rgba(0, 0, 0, 0.95),
+    0 3px 8px rgba(0, 0, 0, 0.9);
+}
+
+.at-result-stats {
+  display: flex;
+  gap: 6cqw;
+  align-items: baseline;
+  padding: 1.2cqw 4cqw;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1.5px solid rgba(250, 204, 21, 0.75);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
+}
+
+.at-result-stat {
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 3.4cqw;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
+}
+
+.at-result-stat strong {
+  color: #facc15;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-weight: 900;
+  font-size: 5.4cqw;
+  text-shadow: 0 0 14px rgba(250, 204, 21, 0.6);
 }
 
 /* エンディング中のバナー(画面上部) */
