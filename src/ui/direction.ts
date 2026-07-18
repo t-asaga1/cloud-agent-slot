@@ -82,8 +82,12 @@
  * - **復活告知**: 敗北寄りルートの 8G 目全停止でセット継続(`AT_SET_CONTINUE` /
  *   `ENDING_START`)が発生していたら、UI が `drawRevival` で告知パターンを抽せんし
  *   `revivalCutin` をカットイン列の先頭へ差し込む(第 3 リール停止 = 全停止時の告知)。
- * - **エンディング**: フェーズ ENDING の常時表示(`overlayForState`)に全画面ムービーを
- *   追加(`EndingPhase.after` で `ending_to_upper` / `ending_complete` を描き分け = Q20)。
+ * - **エンディング**(2026-07-18 = 実素材静止画の紙芝居へ差し替え): フェーズ ENDING の
+ *   常時表示(`overlayForState`)。下位(after = UPPER_AT)= レバーオンで 1 枚目 →
+ *   第 2 停止で 2 枚目 / 上位(after = AT_END)= レバーオンで 1 枚目のみ。
+ * - **AT 終了画面**(2026-07-18 指示): バトル敗北後・上位エンディング到達後
+ *   (= `AT_END` イベント)の全停止で `atResultView` を解決し、次のレバーオンまで
+ *   リザルト静止画 + バトル回数・獲得枚数を全画面表示する。
  *
  * # 赤7待機・AT 導入の解決規約(確定 37 = 2026-07-14 のユーザー指示)
  *
@@ -101,12 +105,13 @@ import {
   AT_VIDEOS,
   BATTLE_IMAGES,
   EFFECT_VIDEOS,
+  ENDING_IMAGES,
   RENZOKU_VIDEOS,
   SYMBOL_IMAGES,
   YOKOKU_IMAGES,
   YOKOKU_VIDEOS,
 } from '../assets';
-import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES } from '../core/at';
+import { BATTLE_PART_GAMES, KOYAKU_PART_GAMES, RENCHAN_LIMIT } from '../core/at';
 import type { Background } from '../core/background';
 import { RENZOKU_GAMES, type RenzokuKind } from '../core/omen';
 import type { PushOrder, ReelIndex, ReelSymbol } from '../core/reel';
@@ -128,6 +133,7 @@ import {
   type EndingAfter,
   type GameEvent,
   type GameState,
+  type Phase,
 } from '../core/state';
 import type { SoundCueId } from './sound';
 
@@ -137,33 +143,52 @@ import type { SoundCueId } from './sound';
 
 /** フェーズ由来の常時表示(毎ゲーム state から導出) */
 export type StateOverlay = {
-  /** エンディング中の全画面ムービー + バナー(n/10G) */
+  /** エンディング中の全画面静止画 + バナー(n/10G) */
   kind: 'ENDING';
   game: number;
   totalGames: number;
   after: EndingAfter;
-  /** 全画面エンディングムービー(after で描き分け = Q20。STEP 4e) */
-  videoUrl: string;
+  /** レバーオンで表示する 1 枚目(静止画紙芝居 = 2026-07-18 組込み) */
+  leverUrl: string;
+  /** 第 2 停止で切り替える 2 枚目(下位エンディングのみ。上位は 1 枚目のまま) */
+  stop2Url?: string;
 };
+
+/** エンディング・リザルト静止画 URL をキーから解決する(存在しないキーは入稿漏れ = 即エラー) */
+export function endingImageUrl(key: string): string {
+  const url = ENDING_IMAGES[key];
+  if (url === undefined) throw new Error(`エンディング演出静止画がありません: ${key}`);
+  return url;
+}
 
 /**
  * 現在のフェーズから常時表示の演出を導出する(通常時・前兆中・AT 中は undefined)。
  * 前兆中の予告は 4c のシナリオ由来レバーオン演出(`scenarioYokokuAtLeverOn`)、
  * 連続演出 4G は 4d のレバーオン演出(`renzokuAtLeverOn`)が担い、常時表示は出さない
  * (予告のない G は静かに進む = 予告が出た時だけ前兆を匂わせる)。
- * エンディングは 10G 通しの全画面ムービー(STEP 4e。`ending_to_upper` = 上位 AT 突入前 /
- * `ending_complete` = 完全制覇 → AT 終了)。
+ * エンディングは 10G 通しの全画面静止画(2026-07-18 = AI 生成の実素材へ差し替え):
+ * - 下位(after = UPPER_AT): **レバーオンで 1 枚目(鳳凰堂凍結)→ 第 2 停止で
+ *   2 枚目(後白河登場・対峙)**の紙芝居(毎 G 繰り返し。切替は DirectionLayer の
+ *   stoppedReels 検知)。
+ * - 上位(after = AT_END): レバーオンで 1 枚目(雪原晴れ・笑い合う二人)のみ。
  */
 export function overlayForState(state: GameState): StateOverlay | undefined {
   const { phase } = state;
   if (phase.type === 'ENDING') {
-    return {
+    const base = {
       kind: 'ENDING',
       game: phase.game,
       totalGames: ENDING_GAMES,
       after: phase.after,
-      videoUrl: atVideoUrl(phase.after === 'UPPER_AT' ? 'ending_to_upper' : 'ending_complete'),
-    };
+    } as const;
+    if (phase.after === 'UPPER_AT') {
+      return {
+        ...base,
+        leverUrl: endingImageUrl('ending_at_1_freeze'),
+        stop2Url: endingImageUrl('ending_at_2_goshirakawa'),
+      };
+    }
+    return { ...base, leverUrl: endingImageUrl('ending_uat_clear') };
   }
   return undefined;
 }
@@ -783,15 +808,15 @@ export function atYokokuView(
   return { kind, videoUrl, strong: true, label };
 }
 
-/** バトルの全画面タイトル(仮素材用) */
+/** バトルの全画面タイトル(上位は Q40 = 2026-07-18 承認で「後白河法皇との決戦」へ変更) */
 export const BATTLE_TITLES: Record<BattleTier, string> = {
   NORMAL: 'BATTLE — 頼朝との一戦',
-  UPPER: '共闘BATTLE — 敵軍との決戦',
+  UPPER: '共闘BATTLE — 後白河法皇との決戦',
 };
 
 /**
- * 下位 AT バトル演出の静止画 URL をキーから解決する(2026-07-18 = AI 生成の実素材 25 枚。
- * 生成 = scripts/gen_battle_images.mjs / 指示元 = incoming/義経物語下位AT中.pptx)。
+ * バトル演出の静止画 URL をキーから解決する(2026-07-18 = AI 生成の実素材。
+ * 下位 25 枚 + 上位 25 枚。生成 = scripts/gen_battle_images.mjs)。
  * 存在しないキーは入稿漏れ = 即エラー。
  */
 export function battleImageUrl(key: string): string {
@@ -1025,25 +1050,238 @@ function atBattleStill(route: BattleRoute, game: number, chanceUp: boolean): Bat
 }
 
 /**
- * ルート ID → G4〜G8 のパターン No(Excel「上位AT中」シートの No。
- * 13・15・16・19 は歯抜けで、G6 のヒット判定は No 14 の 1 種のみ)。
- * ※下位 AT は静止画紙芝居(atBattleStill)へ移行済み(2026-07-18)。
- *   上位 AT は実素材が未制作のため仮ムービーのまま。
+ * 下位 AT バトルの「現在のゲームが何か」の注記(G4〜8 は演出系統別。
+ * 2026-07-18 指示の表示用テーブル。例の書式 =「4G目 義経攻撃へ」)。
  */
-const UPPER_ROUTE_PATTERN_NOS: Record<string, readonly [number, number, number, number, number]> = {
-  W1: [7, 10, 14, 17, 20],
-  W2: [7, 10, 14, 17, 20],
-  W3: [8, 11, 14, 17, 20],
-  W4: [8, 11, 14, 17, 20],
-  W5: [9, 12, 14, 17, 20],
-  W6: [9, 12, 14, 17, 20],
-  W7: [9, 12, 14, 17, 20],
-  U1: [7, 10, 14, 18, 21],
-  U2: [7, 10, 14, 18, 21],
-  U3: [8, 11, 14, 18, 21],
-  U4: [8, 11, 14, 18, 21],
-  U5: [8, 11, 14, 18, 21],
+const AT_GAME_NOTES: Record<AtBattleKind, readonly [string, string, string, string, string]> = {
+  YOSHI_WEAK: ['義経弱攻撃へ', '義経弱攻撃(穿炎刃)', '義経攻撃ヒット', '継続', '継続'],
+  YOSHI_STRONG: [
+    '義経強攻撃へ',
+    '義経強攻撃(桜花繚乱)',
+    '桜花繚乱チャレンジ',
+    '桜花繚乱チャレンジ',
+    'チャレンジ成功→継続',
+  ],
+  YORI_WEAK_WIN: ['頼朝弱攻撃へ', '頼朝弱攻撃(雷獄刃)', '頼朝攻撃 被弾', '耐える', '継続'],
+  YORI_STRONG_WIN: ['頼朝強攻撃へ', '頼朝強攻撃(御雷天昇)', '頼朝攻撃 被弾', '耐える', '継続'],
+  YORI_WEAK_LOSE: [
+    '頼朝弱攻撃へ',
+    '頼朝弱攻撃(雷獄刃)',
+    '頼朝攻撃 被弾',
+    '敗北へ',
+    '敗北(復活判定)',
+  ],
+  YORI_STRONG_LOSE: [
+    '頼朝強攻撃へ',
+    '頼朝強攻撃(御雷天昇)',
+    '頼朝攻撃 被弾',
+    '敗北へ',
+    '敗北(復活判定)',
+  ],
 };
+
+/**
+ * 現在のゲームが何か(何 G 目・どの展開か)の小さな注記を解決する(下位 AT)。
+ * 2026-07-18 指示「今のゲームが何かを小さく文字で表示(例: 1G目 通常パターン /
+ * 4G目 義経攻撃へ)」。DirectionLayer が画面左下へ小さく常時表示する。
+ */
+function atBattleGameNote(route: BattleRoute, game: number, chanceUp: boolean): string {
+  if (game === 1) return `1G目 ${chanceUp ? 'チャンスパターン(赤い月)' : '通常パターン(青い月)'}`;
+  if (game === 2) return `2G目 義経セリフ(${chanceUp ? 'チャンス' : '通常'})`;
+  if (game === 3) return `3G目 頼朝セリフ(${chanceUp ? 'チャンス' : '通常'})`;
+  const kind = AT_ROUTE_KINDS[route.id];
+  if (kind === undefined) throw new Error(`未知のバトルルート: NORMAL ${route.id}`);
+  return `${game}G目 ${AT_GAME_NOTES[kind][game - 4]}`;
+}
+
+// ---------------------------------------------------------------------------
+// 上位 AT バトルパートの静止画紙芝居(2026-07-18 組込み。
+// 素材 = AI 生成の実素材 25 枚(BATTLE_IMAGES の battle_uat_*)/
+// プランの正 = docs/UAT_BATTLE_PRODUCTION_PLAN.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * 上位 AT バトルの 2G・3G 台詞(仮セリフ = UAT_BATTLE_PRODUCTION_PLAN「3.」。
+ * チャンスアップ G は台詞が変わる(下位と同じ規約)。差し替えはこの表だけでよい)。
+ */
+export const UAT_BATTLE_SERIFU = {
+  g2Normal: { speaker: '義経', text: '頼朝、ここからが本当の戦いだ!' },
+  g2Chance: { speaker: '義経', text: '二人なら…負ける気はしない!' },
+  g3Normal: { speaker: '頼朝', text: '義経、余に続け' },
+  g3Chance: { speaker: '頼朝', text: '今宵、法皇の悪夢を断ち切る!' },
+} as const;
+
+/** 上位 AT バトルの技名(仮 = Q37 承認。画像の白帯へアプリ側テキストで重ねる) */
+export const UAT_BATTLE_WAZA = {
+  YOSHI: '蒼炎一閃',
+  YORI: '紫電轟雷',
+  DOUBLE: '炎雷共鳴',
+} as const;
+
+/**
+ * 上位 AT のルート ID → 演出系統(G4 以降の静止画の分岐)。
+ * UAT_BATTLE_PRODUCTION_PLAN「1.」の 5 系統:
+ * - YOSHI_WIN(W1・W2)= 義経攻撃 → 障壁砕け → 後白河崩れる → 継続
+ * - YORI_WIN(W3・W4)= 頼朝攻撃 → 障壁砕け → 後白河崩れる → 継続
+ * - DOUBLE_WIN(W5〜W7)= ダブル攻撃(勝利確定)→ 大爆発 → 後白河吹き飛ぶ → 継続
+ * - YOSHI_LOSE(U1・U2)/ YORI_LOSE(U3〜U5)= 攻撃 → 障壁に防がれる → 反撃・被弾 →
+ *   敗北(復活判定)
+ */
+type UatBattleKind = 'YOSHI_WIN' | 'YORI_WIN' | 'DOUBLE_WIN' | 'YOSHI_LOSE' | 'YORI_LOSE';
+
+const UAT_ROUTE_KINDS: Record<string, UatBattleKind> = {
+  W1: 'YOSHI_WIN',
+  W2: 'YOSHI_WIN',
+  W3: 'YORI_WIN',
+  W4: 'YORI_WIN',
+  W5: 'DOUBLE_WIN',
+  W6: 'DOUBLE_WIN',
+  W7: 'DOUBLE_WIN',
+  U1: 'YOSHI_LOSE',
+  U2: 'YOSHI_LOSE',
+  U3: 'YORI_LOSE',
+  U4: 'YORI_LOSE',
+  U5: 'YORI_LOSE',
+};
+
+/** 演出系統 → 攻撃側の画像キー要素(g4 アップ / g5 構え・技名)と技名テキスト */
+const UAT_ATTACKER: Record<
+  UatBattleKind,
+  { up: string; atk: string; waza: string }
+> = {
+  YOSHI_WIN: { up: 'yoshitsune', atk: 'yoshitsune', waza: UAT_BATTLE_WAZA.YOSHI },
+  YOSHI_LOSE: { up: 'yoshitsune', atk: 'yoshitsune', waza: UAT_BATTLE_WAZA.YOSHI },
+  YORI_WIN: { up: 'yoritomo', atk: 'yoritomo', waza: UAT_BATTLE_WAZA.YORI },
+  YORI_LOSE: { up: 'yoritomo', atk: 'yoritomo', waza: UAT_BATTLE_WAZA.YORI },
+  DOUBLE_WIN: { up: 'double', atk: 'double', waza: UAT_BATTLE_WAZA.DOUBLE },
+};
+
+/**
+ * 上位 AT バトルの「ルート × G → 静止画紙芝居」の解決(UAT_BATTLE_PRODUCTION_PLAN「2.」の
+ * 8G 構成: G1 導入 = 雪原の月(通常 青 / チャンス 赤)/ G2・3 = 台詞 /
+ * G4 = 三者対峙 → 攻撃側アップ / G5 = 構え → 技名 / G6 = 氷の障壁 → 成否 /
+ * G7 = 帰結 / G8 = 最終)。
+ * 復活カットイン(G8 第 3 停止)は出目確定後でないと成否が分からないため、
+ * ここでは解決せず `revivalCutin` が担う(下位と同じ規約)。
+ */
+function uatBattleStill(route: BattleRoute, game: number, chanceUp: boolean): BattleStill {
+  if (game === 1) {
+    // 導入 = 雪原の空に浮かぶ月(通常 = 青い月 / チャンス = 赤い月。下位と統一文法)
+    return { leverUrl: battleImageUrl(chanceUp ? 'battle_uat_g1_chance' : 'battle_uat_g1_normal') };
+  }
+  if (game === 2) {
+    return {
+      leverUrl: battleImageUrl('battle_uat_g2_yoshitsune_serifu'),
+      leverText: {
+        kind: 'SERIFU',
+        ...(chanceUp ? UAT_BATTLE_SERIFU.g2Chance : UAT_BATTLE_SERIFU.g2Normal),
+      },
+    };
+  }
+  if (game === 3) {
+    return {
+      leverUrl: battleImageUrl('battle_uat_g3_yoritomo_serifu'),
+      leverText: {
+        kind: 'SERIFU',
+        ...(chanceUp ? UAT_BATTLE_SERIFU.g3Chance : UAT_BATTLE_SERIFU.g3Normal),
+      },
+    };
+  }
+  const kind = UAT_ROUTE_KINDS[route.id];
+  if (kind === undefined) throw new Error(`未知のバトルルート: UPPER ${route.id}`);
+  const attacker = UAT_ATTACKER[kind];
+  const win = kind !== 'YOSHI_LOSE' && kind !== 'YORI_LOSE';
+  if (game === 4) {
+    // 攻撃決め = レバオンで三者対峙 → 第 3 停止で攻撃側アップ(ダブル = 勝利確定の合図)
+    return {
+      leverUrl: battleImageUrl('battle_uat_g4_lever_taiji'),
+      stop3Url: battleImageUrl(`battle_uat_g4_stop3_${attacker.up}_up`),
+    };
+  }
+  if (game === 5) {
+    // 攻撃 = 構え → 第 3 停止で技名カット(技名は白帯へアプリ側テキスト)
+    return {
+      leverUrl: battleImageUrl(`battle_uat_g5_${attacker.atk}_lever`),
+      stop3Url: battleImageUrl(`battle_uat_g5_${attacker.atk}_stop3`),
+      stop3Text: { kind: 'WAZA', text: attacker.waza },
+    };
+  }
+  if (game === 6) {
+    // ヒット判定 = レバオンで深紅の氷の障壁(全系統共通)→ 第 3 停止で成否
+    return {
+      leverUrl: battleImageUrl('battle_uat_g6_lever_shouheki'),
+      stop3Url: battleImageUrl(
+        kind === 'DOUBLE_WIN'
+          ? 'battle_uat_g6_stop3_double_hit'
+          : win
+            ? 'battle_uat_g6_stop3_hit'
+            : 'battle_uat_g6_stop3_guard',
+      ),
+    };
+  }
+  if (game === 7) {
+    // 帰結: 勝ち = 後白河崩れる / ダブル = 吹き飛ぶ / 負け寄り = 反撃 → 二人被弾
+    if (kind === 'DOUBLE_WIN') {
+      return { leverUrl: battleImageUrl('battle_uat_g7_double_tobu') };
+    }
+    if (win) {
+      return { leverUrl: battleImageUrl('battle_uat_g7_win_kuzureru') };
+    }
+    return {
+      leverUrl: battleImageUrl('battle_uat_g7_lose_hangeki_lever'),
+      stop3Url: battleImageUrl('battle_uat_g7_lose_hangeki_stop3'),
+    };
+  }
+  // G8 最終: 勝利ルート = 勝どき + 継続 / 敗北寄りルート = 倒れる二人 + 敗北
+  // (復活の成否は全停止後の revivalCutin が告知)
+  if (win) {
+    return {
+      leverUrl: battleImageUrl('battle_uat_g8_win_keizoku'),
+      leverText: { kind: 'KEIZOKU', text: '継続' },
+    };
+  }
+  return {
+    leverUrl: battleImageUrl('battle_uat_g8_lever_down'),
+    leverText: { kind: 'HAIBOKU', text: '敗北' },
+  };
+}
+
+/** 上位 AT バトルの「現在のゲームが何か」の注記(G4〜8 は演出系統別) */
+const UAT_GAME_NOTES: Record<UatBattleKind, readonly [string, string, string, string, string]> = {
+  YOSHI_WIN: ['義経攻撃へ', '義経攻撃(蒼炎一閃)', '障壁判定(砕けて被弾)', '後白河崩れる', '継続'],
+  YORI_WIN: ['頼朝攻撃へ', '頼朝攻撃(紫電轟雷)', '障壁判定(砕けて被弾)', '後白河崩れる', '継続'],
+  DOUBLE_WIN: [
+    'ダブル攻撃へ(勝利確定)',
+    'ダブル攻撃(炎雷共鳴)',
+    '障壁判定(大爆発)',
+    '後白河吹き飛ぶ',
+    '継続',
+  ],
+  YOSHI_LOSE: [
+    '義経攻撃へ',
+    '義経攻撃(蒼炎一閃)',
+    '障壁判定(防がれる)',
+    '反撃・被弾',
+    '敗北(復活判定)',
+  ],
+  YORI_LOSE: [
+    '頼朝攻撃へ',
+    '頼朝攻撃(紫電轟雷)',
+    '障壁判定(防がれる)',
+    '反撃・被弾',
+    '敗北(復活判定)',
+  ],
+};
+
+/** 現在のゲームが何かの小さな注記を解決する(上位 AT。書式は下位と同じ) */
+function uatBattleGameNote(route: BattleRoute, game: number, chanceUp: boolean): string {
+  if (game === 1) return `1G目 ${chanceUp ? 'チャンスパターン(赤い月)' : '通常パターン(青い月)'}`;
+  if (game === 2) return `2G目 義経セリフ(${chanceUp ? 'チャンス' : '通常'})`;
+  if (game === 3) return `3G目 頼朝セリフ(${chanceUp ? 'チャンス' : '通常'})`;
+  const kind = UAT_ROUTE_KINDS[route.id];
+  if (kind === undefined) throw new Error(`未知のバトルルート: UPPER ${route.id}`);
+  return `${game}G目 ${UAT_GAME_NOTES[kind][game - 4]}`;
+}
 
 /** バトル 1G 分の表示データ(レバーオン時に解決し、次のレバーオンまで全画面表示) */
 export interface BattleView {
@@ -1051,16 +1289,19 @@ export interface BattleView {
   /** これから回すゲームがバトル何 G 目か(1〜BATTLE_PART_GAMES) */
   game: number;
   totalGames: number;
-  /** 仮ムービー(上位 AT のみ。下位 AT は静止画紙芝居 = still へ移行済み) */
-  videoUrl?: string;
-  /** 静止画紙芝居(下位 AT = 2026-07-18 の実素材 25 枚。レバーオン → 第 3 停止で切替) */
-  still?: BattleStill;
+  /** 静止画紙芝居(下位・上位とも 2026-07-18 の実素材。レバーオン → 第 3 停止で切替) */
+  still: BattleStill;
   title: string;
   /** 8G 構成の役割ラベル(導入 / 台詞 / 攻撃 / …) */
   stage: string;
   /** この G がチャンスアップか(G1〜3 のみ。ルートへ焼き込み = Q18) */
   chanceUp: boolean;
   routeId: string;
+  /**
+   * 現在のゲームが何かの小さな注記(2026-07-18 指示。例: 1G目 通常パターン(青い月)/
+   * 4G目 義経攻撃へ)。DirectionLayer が画面左下へ小さく常時表示する。
+   */
+  gameNote: string;
   /** デバッグ・テスト用(画面には出さない) */
   label: string;
 }
@@ -1082,60 +1323,99 @@ export function battleGameAtLeverOn(state: GameState): number | undefined {
 /**
  * ルート × G → 具体演出の解決(DIRECTION_SPEC 3.6。UI がルートを保持して毎 G 呼ぶ)。
  * 下位 AT = 静止画紙芝居(`atBattleStill`。2026-07-18 の実素材 25 枚)/
- * 上位 AT = 仮ムービー(Excel「上位AT中」のパターン No。実素材は未制作)。
+ * 上位 AT = 静止画紙芝居(`uatBattleStill`。2026-07-18 の実素材 25 枚)。
  */
 export function battleView(tier: BattleTier, route: BattleRoute, game: number): BattleView {
   const chanceUp = game <= 3 && route.chanceUps.includes(game);
   const stage = BATTLE_STAGE_LABELS[tier][game - 1];
-  const base = {
+  const normal = tier === 'NORMAL';
+  return {
     tier,
     game,
     totalGames: BATTLE_PART_GAMES,
+    still: normal ? atBattleStill(route, game, chanceUp) : uatBattleStill(route, game, chanceUp),
     title: BATTLE_TITLES[tier],
     stage,
     chanceUp,
     routeId: route.id,
+    gameNote: normal
+      ? atBattleGameNote(route, game, chanceUp)
+      : uatBattleGameNote(route, game, chanceUp),
     label: `${tier === 'UPPER' ? '共闘' : 'AT'}バトル ${route.id} G${game} ${stage}${chanceUp ? '(チャンス)' : ''}`,
   };
-  if (tier === 'NORMAL') {
-    return { ...base, still: atBattleStill(route, game, chanceUp) };
-  }
-  let no: number;
-  if (game <= 3) {
-    // G1〜3 は通常/チャンスのペア No(1/2・3/4・5/6)
-    no = (game - 1) * 2 + (chanceUp ? 2 : 1);
-  } else {
-    const nos = UPPER_ROUTE_PATTERN_NOS[route.id];
-    if (nos === undefined) throw new Error(`未知のバトルルート: ${tier} ${route.id}`);
-    no = nos[game - 4];
-  }
-  return { ...base, videoUrl: atVideoUrl(`battle_uat_${String(no).padStart(2, '0')}`) };
 }
 
 /**
  * 復活告知のカットイン(敗北寄りルートの 8G 目全停止でセット継続が確定していたとき、
  * UI が `drawRevival` の結果を渡してカットイン列の先頭へ差し込む = 第 3 リール停止の告知)。
- * 下位 AT は静のカットイン静止画(pptx 8G 目「第 3 停止で静のカットイン発生で復活」)、
- * 上位 AT は実素材が未制作のため仮エフェクトムービーのまま。
+ * 下位 AT = 静のカットイン静止画(pptx 8G 目「第 3 停止で静のカットイン発生で復活」)/
+ * 上位 AT = 二人が共に立ち上がるカットイン静止画(Q39 = 2026-07-18 承認)。
  */
 export function revivalCutin(pattern: RevivalPattern, tier: BattleTier = 'NORMAL'): Cutin {
-  if (tier === 'NORMAL') {
-    return {
-      title: '復活!',
-      sub: pattern.label,
-      style: 'SPECIAL',
-      imageUrl: battleImageUrl('battle_at_g8_stop3_shizuka_cutin'),
-      sound: 'BIG_WIN',
-      durationMs: 2600,
-    };
-  }
   return {
     title: '復活!',
     sub: pattern.label,
     style: 'SPECIAL',
-    videoUrl: EFFECT_VIDEOS.cutinStrong,
+    imageUrl: battleImageUrl(
+      tier === 'NORMAL' ? 'battle_at_g8_stop3_shizuka_cutin' : 'battle_uat_g8_stop3_fukkatsu_cutin',
+    ),
     sound: 'BIG_WIN',
-    durationMs: 2200,
+    durationMs: 2600,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// AT 終了画面(リザルト = 2026-07-18 指示。バトル敗北後・上位エンディング到達後に
+// バトル回数とその AT での獲得枚数を表示する)
+// ---------------------------------------------------------------------------
+
+/** AT 終了画面の表示データ(全停止(AT_END)で解決し、次のレバーオンまで全画面表示) */
+export interface AtResultView {
+  /** リザルト静止画(全員集合。数値はアプリ側テキストで画面下部へ重ねる) */
+  imageUrl: string;
+  /** この AT で戦ったバトル回数(下位 + 上位の通算セット数) */
+  battles: number;
+  /** この AT の獲得枚数(MeterState.atGained。マイナスもあり得る) */
+  gained: number;
+  /** DEFEAT = バトル敗北 / ENDING = 上位エンディング到達(完全制覇) */
+  reason: 'DEFEAT' | 'ENDING';
+  /** デバッグ・テスト用(画面には出さない) */
+  label: string;
+}
+
+/**
+ * AT 終了画面を解決する(1G の締めで UI が呼ぶ)。イベントに `AT_END` があるとき、
+ * ゲーム開始時点(advanceGame 前)のフェーズからバトル回数を数える:
+ * - バトル敗北(reason = DEFEAT): 下位 = renchan / 上位 = 下位 10 + renchan
+ *   (上位 AT は下位 10 連(バトル 10 回)後にのみ突入するため)。
+ * - 上位エンディング到達(reason = ENDING): 下位 10 + 上位 10 = 20 回(完全制覇)。
+ * 下位エンディング(after = UPPER_AT)は AT_END を発行しないため対象外
+ * (= 終了画面は出ず上位 AT へ続く)。
+ */
+export function atResultView(
+  phaseBefore: Phase,
+  events: readonly GameEvent[],
+  atGained: number,
+): AtResultView | undefined {
+  const end = events.find(
+    (event): event is Extract<GameEvent, { type: 'AT_END' }> => event.type === 'AT_END',
+  );
+  if (end === undefined) return undefined;
+  let battles: number;
+  if (phaseBefore.type === 'AT') {
+    battles = (phaseBefore.tier === 'UPPER' ? RENCHAN_LIMIT : 0) + phaseBefore.renchan;
+  } else if (phaseBefore.type === 'ENDING') {
+    battles = RENCHAN_LIMIT * 2;
+  } else {
+    // AT_END は AT(バトル 8G 目)/ エンディング最終 G の消化でしか発行されない
+    throw new Error(`AT_END の発行元フェーズが不正です: ${phaseBefore.type}`);
+  }
+  return {
+    imageUrl: endingImageUrl('ending_result_all'),
+    battles,
+    gained: atGained,
+    reason: end.reason,
+    label: `AT終了画面(${end.reason === 'DEFEAT' ? 'バトル敗北' : '完全制覇'}: バトル${battles}回・獲得${atGained}枚)`,
   };
 }
 

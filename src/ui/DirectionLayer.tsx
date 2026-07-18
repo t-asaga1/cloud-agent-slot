@@ -20,7 +20,14 @@
  * キューを破棄する。
  */
 import { useEffect, useRef, useState } from 'react';
-import type { BattleStill, Cutin, LeverDirection, SevenWaitView, StateOverlay } from './direction';
+import type {
+  AtResultView,
+  BattleStill,
+  Cutin,
+  LeverDirection,
+  SevenWaitView,
+  StateOverlay,
+} from './direction';
 import { playCue } from './sound';
 
 /** 1 ゲーム分のカットイン列(seq = ゲーム通し番号。同じ seq は一度だけキューへ積む) */
@@ -47,8 +54,13 @@ interface Props {
   lever: LeverDirection;
   cutinFrame: CutinFrame;
   /**
+   * AT 終了画面(2026-07-18 指示)。バトル敗北後・上位エンディング到達後の全停止で
+   * 親が `atResultView` の結果をセットし、次のレバーオンで消す(undefined へ戻す)。
+   */
+  atResult: AtResultView | undefined;
+  /**
    * 各リールの停止済みフラグ(リール消灯演出 = 確定 39 / 紙芝居方式の
-   * 小役示唆予告 = 2026-07-17 指示 用)。
+   * 小役示唆予告 = 2026-07-17 指示 / エンディング紙芝居の第 2 停止切替 用)。
    * 回転中は停止したリールから順に true になり、全停止後(レバー待ち)は全 true。
    */
   stoppedReels: readonly [boolean, boolean, boolean];
@@ -136,7 +148,7 @@ function BattleStillScreen({
   );
 }
 
-export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Props) {
+export function DirectionLayer({ overlay, lever, cutinFrame, atResult, stoppedReels }: Props) {
   const [queue, setQueue] = useState<QueuedCutin[]>([]);
   const seenSeqRef = useRef(cutinFrame.seq);
   const keyRef = useRef(0);
@@ -198,21 +210,24 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
   return (
     <div className="direction-layer">
       {overlay?.kind === 'ENDING' && (
+        // エンディング静止画紙芝居(2026-07-18 組込み): 下位 = レバーオンで 1 枚目 →
+        // 第 2 停止で 2 枚目 / 上位 = レバーオンの 1 枚目のみ(stop2Url なし)
         <div className="ending-screen">
-          <video
-            className="ending-video"
-            src={overlay.videoUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
+          <img
+            className="ending-image"
+            src={
+              hintStopCount >= 2 && overlay.stop2Url !== undefined
+                ? overlay.stop2Url
+                : overlay.leverUrl
+            }
+            alt="エンディング"
           />
         </div>
       )}
       {lever.battle !== undefined && (
-        // 下位 AT = 静止画紙芝居(still。レバーオン画像 → 第 3 停止で stop3 画像へ切替 +
-        // 技名・台詞・継続/敗北のアプリ側テキスト描画 = 2026-07-18 組込み)/
-        // 上位 AT = 仮ムービー(videoUrl)のまま
+        // バトルパートの静止画紙芝居(下位・上位とも 2026-07-18 組込み。
+        // レバーオン画像 → 第 3 停止で stop3 画像へ切替 + 技名・台詞・継続/敗北の
+        // アプリ側テキスト描画)。gameNote = 今のゲームが何かの小さな注記(2026-07-18 指示)
         <div
           key={`battle-${lever.seq}`}
           className={
@@ -220,22 +235,11 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
           }
           data-label={lever.battle.label}
         >
-          {lever.battle.still !== undefined ? (
-            <BattleStillScreen
-              still={lever.battle.still}
-              stopCount={hintStopCount}
-              alt={lever.battle.label}
-            />
-          ) : (
-            <video
-              className="renzoku-video"
-              src={lever.battle.videoUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
-          )}
+          <BattleStillScreen
+            still={lever.battle.still}
+            stopCount={hintStopCount}
+            alt={lever.battle.label}
+          />
           <div className="renzoku-header">
             <span className="renzoku-title">{lever.battle.title}</span>
             <span className="renzoku-count">
@@ -243,7 +247,7 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
             </span>
           </div>
           <div className="renzoku-footer">
-            <span className="renzoku-stage">{lever.battle.stage}</span>
+            <span className="battle-game-note">{lever.battle.gameNote}</span>
             {lever.battle.chanceUp && <span className="renzoku-chance-badge">CHANCE UP!</span>}
           </div>
         </div>
@@ -292,6 +296,26 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
           />
           <div className="renzoku-header">
             <span className="renzoku-title">AT突入</span>
+          </div>
+        </div>
+      )}
+      {atResult !== undefined && (
+        // AT 終了画面(2026-07-18 指示): バトル敗北後・上位エンディング到達後の全停止から
+        // 次のレバーオンまで、リザルト静止画 + バトル回数・獲得枚数を全画面表示する
+        <div className="at-result-screen" data-label={atResult.label}>
+          <img className="ending-image" src={atResult.imageUrl} alt="AT終了画面" />
+          <div className="at-result-body">
+            <div className="at-result-title">
+              {atResult.reason === 'DEFEAT' ? 'バトル敗北 — AT終了' : '完全制覇 — AT終了'}
+            </div>
+            <div className="at-result-stats">
+              <span className="at-result-stat">
+                バトル回数 <strong>{atResult.battles}</strong> 回
+              </span>
+              <span className="at-result-stat">
+                獲得枚数 <strong>{atResult.gained > 0 ? `+${atResult.gained}` : atResult.gained}</strong> 枚
+              </span>
+            </div>
           </div>
         </div>
       )}

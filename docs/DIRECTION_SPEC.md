@@ -247,7 +247,7 @@ export interface KoyakuHint { slot: KoyakuHintSlot; strong: boolean; }
 
 下位 AT のバトル演出は AI 生成の実素材静止画 25 枚(`src/assets/images/battle/`。
 生成 = `scripts/gen_battle_images.mjs` / 指示元 = `incoming/義経物語下位AT中.pptx`)による
-**紙芝居方式**で表示する(上位 AT は実素材未制作のため仮ムービーのまま):
+**紙芝居方式**で表示する(上位 AT も 2.5.2 で同方式へ移行済み):
 
 - 1G 分の表示 = **レバーオン画像 → 第 3 停止で stop3 画像へ切替**(stop3 画像のない G は
   レバーオン画像のまま)。解決は `direction.ts` の `atBattleStill`(ルート ID → 演出系統
@@ -260,6 +260,50 @@ export interface KoyakuHint { slot: KoyakuHintSlot; strong: boolean; }
 - 8G 目の復活(敗北寄りルートで継続確定)は全停止後の `revivalCutin` が
   **静のカットイン静止画**(`battle_at_g8_stop3_shizuka_cutin`)で告知する。
 - 旧仮素材ムービー `battle_at_01`〜`20` は不使用化(削除はユーザー確認後)。
+
+#### 2.5.2 上位 AT バトルの表示 = 静止画紙芝居(2026-07-18 組込み)
+
+上位 AT のバトル演出も AI 生成の実素材静止画 25 枚(`battle_uat_*`。
+生成 = `scripts/gen_battle_images.mjs` の UAT_JOBS / プランの正 =
+`docs/UAT_BATTLE_PRODUCTION_PLAN.md`)による**紙芝居方式**で表示する:
+
+- 解決は `direction.ts` の `uatBattleStill`(ルート ID → 演出系統 `UAT_ROUTE_KINDS` の
+  **5 系統** = 義経攻撃 勝ち(W1・W2)/ 頼朝攻撃 勝ち(W3・W4)/ ダブル攻撃 = 勝利確定
+  (W5〜W7)/ 義経攻撃 負け寄り(U1・U2)/ 頼朝攻撃 負け寄り(U3〜U5))。
+- 8G 構成: G1 導入 = 雪原の月(通常 青 / チャンス 赤)→ G2・G3 台詞 →
+  G4 三者対峙 → 攻撃側アップ → G5 構え → 技名 → G6 氷の障壁 → 成否 →
+  G7 帰結(崩れる / 吹き飛ぶ / 反撃・被弾)→ G8 継続 or 敗北。
+- **技名(蒼炎一閃・紫電轟雷・炎雷共鳴)・台詞・「継続」「敗北」はアプリ側テキスト描画**
+  (差し替えは `UAT_BATTLE_SERIFU` / `UAT_BATTLE_WAZA` の表だけでよい)。
+- バトルタイトルは**「共闘BATTLE — 後白河法皇との決戦」**(Q40 = 2026-07-18 承認)。
+- 8G 目の復活は `revivalCutin` が**二人が共に立ち上がるカットイン静止画**
+  (`battle_uat_g8_stop3_fukkatsu_cutin` = Q39)で告知する。
+- 旧仮素材ムービー `battle_uat_01`〜`21`(17 本)は不使用化(削除はユーザー確認後)。
+
+#### 2.5.3 バトル中の「今のゲーム」注記(2026-07-18 指示)
+
+下位・上位のバトルパートとも、**今のゲームが何か(何 G 目・どの展開か)を画面左下に
+小さく常時表示**する(例:「1G目 通常パターン(青い月)」「4G目 義経攻撃へ」)。
+解決は `BattleView.gameNote`(`AT_GAME_NOTES` / `UAT_GAME_NOTES`)、描画は
+`DirectionLayer` の `.battle-game-note`。素材確認・実機調整時にどの画像が
+表示されているかを識別するための注記で、文言の変更はテーブル差し替えだけでよい。
+
+#### 2.5.4 エンディングと AT 終了画面(2026-07-18 組込み)
+
+- **下位エンディング**(通常 AT 10 連 → 上位 AT 突入前の 10G。after = UPPER_AT):
+  **レバーオンで 1 枚目(`ending_at_1_freeze` = 鳳凰堂凍結)→ 第 2 停止で 2 枚目
+  (`ending_at_2_goshirakawa` = 後白河登場・対峙)**の紙芝居(毎 G 繰り返し)。
+- **上位エンディング**(上位 AT 10 連 → AT 終了の 10G。after = AT_END):
+  **レバーオンで 1 枚目(`ending_uat_clear` = 雪原晴れ・笑い合う二人)のみ**。
+- 解決は `overlayForState`(StateOverlay の leverUrl / stop2Url)。切替は紙芝居予告と
+  同じ `stoppedReels` 検知。旧仮ムービー `ending_to_upper` / `ending_complete` は
+  不使用化(削除はユーザー確認後)。
+- **AT 終了画面(リザルト)**: **バトル敗北後・上位エンディング到達後**(= `AT_END`
+  イベント)の全停止から次のレバーオンまで、`ending_result_all`(全員集合)へ
+  **バトル回数とその AT での獲得枚数**を重ねて全画面表示する。解決は
+  `atResultView`(バトル回数 = 下位 renchan / 上位 10 + renchan / 完全制覇 20。
+  獲得枚数 = `MeterState.atGained` 相当をこのゲームの払出まで含めて確定)。
+  下位エンディング(上位 AT へ続く)では表示しない。
 
 ## 3. 仮テーブル(実装値。Q14・Q15 回答 =「仮値で OK」)
 

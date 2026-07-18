@@ -2050,5 +2050,266 @@
     "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
     "license": "project-original",
     "note": "下位 AT バトルパート静止画。8G 第 3 停止。復活を告げる静のカットイン(復活時のみ)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_uat_g1_normal",
+    "path": "images/battle/battle_uat_g1_normal.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。1G 導入 通常 青い月(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g1_chance",
+    "path": "images/battle/battle_uat_g1_chance.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。1G 導入 チャンス 赤い月(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g2_yoshitsune_serifu",
+    "path": "images/battle/battle_uat_g2_yoshitsune_serifu.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。2G 義経セリフ(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g3_yoritomo_serifu",
+    "path": "images/battle/battle_uat_g3_yoritomo_serifu.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。3G 頼朝セリフ(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g4_lever_taiji",
+    "path": "images/battle/battle_uat_g4_lever_taiji.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。4G レバオン 三者対峙(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g4_stop3_yoshitsune_up",
+    "path": "images/battle/battle_uat_g4_stop3_yoshitsune_up.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。4G 第3停止 義経アップ(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g4_stop3_yoritomo_up",
+    "path": "images/battle/battle_uat_g4_stop3_yoritomo_up.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。4G 第3停止 頼朝アップ(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g4_stop3_double_up",
+    "path": "images/battle/battle_uat_g4_stop3_double_up.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。4G 第3停止 ダブルアップ(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g5_yoshitsune_lever",
+    "path": "images/battle/battle_uat_g5_yoshitsune_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。5G 義経 レバオン 構え(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g5_yoshitsune_stop3",
+    "path": "images/battle/battle_uat_g5_yoshitsune_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。5G 義経 第3停止 技名蒼炎一閃(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g5_yoritomo_lever",
+    "path": "images/battle/battle_uat_g5_yoritomo_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。5G 頼朝 レバオン 構え(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g5_yoritomo_stop3",
+    "path": "images/battle/battle_uat_g5_yoritomo_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。5G 頼朝 第3停止 技名紫電轟雷(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g5_double_lever",
+    "path": "images/battle/battle_uat_g5_double_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。5G ダブル レバオン 構え(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g5_double_stop3",
+    "path": "images/battle/battle_uat_g5_double_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。5G ダブル 第3停止 技名炎雷共鳴(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g6_lever_shouheki",
+    "path": "images/battle/battle_uat_g6_lever_shouheki.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。6G レバオン 氷の障壁(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g6_stop3_hit",
+    "path": "images/battle/battle_uat_g6_stop3_hit.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。6G 第3停止 障壁砕け被弾(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g6_stop3_guard",
+    "path": "images/battle/battle_uat_g6_stop3_guard.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。6G 第3停止 防がれ冷笑(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g6_stop3_double_hit",
+    "path": "images/battle/battle_uat_g6_stop3_double_hit.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。6G 第3停止 ダブル大爆発(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g7_win_kuzureru",
+    "path": "images/battle/battle_uat_g7_win_kuzureru.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。7G 勝ち 後白河崩れる(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g7_double_tobu",
+    "path": "images/battle/battle_uat_g7_double_tobu.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。7G ダブル 後白河吹き飛ぶ(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g7_lose_hangeki_lever",
+    "path": "images/battle/battle_uat_g7_lose_hangeki_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。7G 負け レバオン 氷柱の反撃(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g7_lose_hangeki_stop3",
+    "path": "images/battle/battle_uat_g7_lose_hangeki_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。7G 負け 第3停止 二人被弾(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g8_win_keizoku",
+    "path": "images/battle/battle_uat_g8_win_keizoku.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。8G 継続 勝どき(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g8_lever_down",
+    "path": "images/battle/battle_uat_g8_lever_down.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。8G レバオン 敗北 倒れる二人(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "battle_uat_g8_stop3_fukkatsu_cutin",
+    "path": "images/battle/battle_uat_g8_stop3_fukkatsu_cutin.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs UAT_JOBS。設定資料ペア(義経/頼朝)+ 後白河 案A(全身・顔アップ)+ 共闘構図.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT バトルパート静止画。8G 第3停止 復活カットイン 共に立ち上がる(2026-07-18 制作。プラン = docs/UAT_BATTLE_PRODUCTION_PLAN.md)"
+  },
+  {
+    "id": "ending_at_1_freeze",
+    "path": "images/ending/ending_at_1_freeze.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs ENDING_JOBS。設定資料ペア(義経/頼朝/静/弁慶)+ 後白河 案A + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT エンディング静止画 1 枚目(レバオン)。燃え盛る平等院鳳凰堂が一瞬で赤く凍り付く(2026-07-18 制作)"
+  },
+  {
+    "id": "ending_at_2_goshirakawa",
+    "path": "images/ending/ending_at_2_goshirakawa.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs ENDING_JOBS。設定資料ペア(義経/頼朝/静/弁慶)+ 後白河 案A + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT エンディング静止画 2 枚目(第 2 停止)。凍った鳳凰堂を砕いて後白河法皇が登場し義経・頼朝と対峙(2026-07-18 制作)"
+  },
+  {
+    "id": "ending_uat_clear",
+    "path": "images/ending/ending_uat_clear.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs ENDING_JOBS。設定資料ペア(義経/頼朝/静/弁慶)+ 後白河 案A + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "上位 AT エンディング静止画(レバオン)。雪原が晴れ渡り義経と頼朝が笑い合う(2026-07-18 制作)"
+  },
+  {
+    "id": "ending_result_all",
+    "path": "images/ending/ending_result_all.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs ENDING_JOBS。設定資料ペア(義経/頼朝/静/弁慶)+ 後白河 案A + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "AT 終了画面(リザルト)静止画。全員集合の決めカット。バトル回数・獲得枚数はアプリ側テキストで画面下部へ重ねる(2026-07-18 制作)"
   }
 ]
