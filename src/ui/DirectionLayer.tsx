@@ -20,7 +20,7 @@
  * キューを破棄する。
  */
 import { useEffect, useRef, useState } from 'react';
-import type { Cutin, LeverDirection, SevenWaitView, StateOverlay } from './direction';
+import type { BattleStill, Cutin, LeverDirection, SevenWaitView, StateOverlay } from './direction';
 import { playCue } from './sound';
 
 /** 1 ゲーム分のカットイン列(seq = ゲーム通し番号。同じ seq は一度だけキューへ積む) */
@@ -101,6 +101,41 @@ function SevenWaitScreen({ view }: { view: SevenWaitView }) {
   );
 }
 
+/**
+ * 下位 AT バトルの静止画紙芝居 1G 分(2026-07-18 組込み)。
+ * レバーオン画像を表示し、第 3 停止(stopCount 3)で stop3 画像へ切替える
+ * (ない G はレバーオン画像のまま)。技名・台詞・継続/敗北は
+ * アプリ側テキスト描画(BattleText。画像には焼き込まない = 会話予告と同じ規約)。
+ */
+function BattleStillScreen({
+  still,
+  stopCount,
+  alt,
+}: {
+  still: BattleStill;
+  stopCount: number;
+  alt: string;
+}) {
+  const stop3 = stopCount >= 3 && still.stop3Url !== undefined;
+  const text = stop3 ? still.stop3Text : still.leverText;
+  return (
+    <>
+      <img className="renzoku-video" src={stop3 ? still.stop3Url : still.leverUrl} alt={alt} />
+      {text !== undefined && (
+        <div
+          key={text.kind + text.text}
+          className={`battle-text battle-text-${text.kind.toLowerCase()}`}
+        >
+          {text.speaker !== undefined && (
+            <span className="battle-serifu-speaker">{text.speaker}</span>
+          )}
+          <span className="battle-text-body">{text.text}</span>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Props) {
   const [queue, setQueue] = useState<QueuedCutin[]>([]);
   const seenSeqRef = useRef(cutinFrame.seq);
@@ -175,6 +210,9 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
         </div>
       )}
       {lever.battle !== undefined && (
+        // 下位 AT = 静止画紙芝居(still。レバーオン画像 → 第 3 停止で stop3 画像へ切替 +
+        // 技名・台詞・継続/敗北のアプリ側テキスト描画 = 2026-07-18 組込み)/
+        // 上位 AT = 仮ムービー(videoUrl)のまま
         <div
           key={`battle-${lever.seq}`}
           className={
@@ -182,14 +220,22 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
           }
           data-label={lever.battle.label}
         >
-          <video
-            className="renzoku-video"
-            src={lever.battle.videoUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
+          {lever.battle.still !== undefined ? (
+            <BattleStillScreen
+              still={lever.battle.still}
+              stopCount={hintStopCount}
+              alt={lever.battle.label}
+            />
+          ) : (
+            <video
+              className="renzoku-video"
+              src={lever.battle.videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          )}
           <div className="renzoku-header">
             <span className="renzoku-title">{lever.battle.title}</span>
             <span className="renzoku-count">
@@ -406,6 +452,9 @@ export function DirectionLayer({ overlay, lever, cutinFrame, stoppedReels }: Pro
               loop
               playsInline
             />
+          )}
+          {head.cutin.imageUrl !== undefined && (
+            <img className="cutin-image" src={head.cutin.imageUrl} alt={head.cutin.title} />
           )}
           <div className="cutin-body">
             <div className="cutin-title">{head.cutin.title}</div>

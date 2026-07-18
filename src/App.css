@@ -735,6 +735,116 @@
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
 }
 
+/* --- 下位 AT バトルの静止画紙芝居(2026-07-18 組込み)のテキストオーバーレイ ---
+   技名・台詞・継続/敗北・チャレンジ見出しは画像に焼き込まず、ここで重ねて描画する。
+   フォントは液晶幅基準(cqw)= renzoku-screen をコンテナ化して解決する */
+.renzoku-screen {
+  container-type: inline-size;
+}
+
+.battle-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: yokoku-in 0.25s ease-out;
+}
+
+/* 技名(画像中央の白い筆帯へ重ねる。帯は画像側に描画済み) */
+.battle-text-waza {
+  inset: 38% 8% auto;
+}
+
+.battle-text-waza .battle-text-body {
+  color: #7f1d1d;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em; /* letter-spacing の右余白ぶんを打ち消して帯の中央へ */
+  font-size: 13cqw;
+  line-height: 1;
+  -webkit-text-stroke: 1px rgba(255, 245, 235, 0.6);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* 台詞(2G・3G。画像下部の暗い空間へ話者名 + 台詞) */
+.battle-text-serifu {
+  left: 6%;
+  right: 6%;
+  bottom: 9%;
+}
+
+.battle-serifu-speaker {
+  align-self: flex-start;
+  color: #fbbf24;
+  font-weight: 800;
+  font-size: 3.4cqw;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
+}
+
+.battle-text-serifu .battle-text-body {
+  color: #f8fafc;
+  font-weight: 800;
+  font-size: 5.4cqw;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.7);
+  text-shadow:
+    0 0 10px rgba(0, 0, 0, 0.95),
+    0 3px 8px rgba(0, 0, 0, 0.85);
+}
+
+/* 桜花繚乱チャレンジの見出し(画像中央上部の空きスペースへ) */
+.battle-text-challenge {
+  inset: 8% 6% auto;
+}
+
+.battle-text-challenge .battle-text-body {
+  color: #fbcfe8;
+  font-weight: 900;
+  font-size: 8cqw;
+  letter-spacing: 0.14em;
+  -webkit-text-stroke: 1px rgba(80, 10, 40, 0.8);
+  text-shadow:
+    0 0 16px rgba(236, 72, 153, 0.9),
+    0 4px 10px rgba(0, 0, 0, 0.85);
+}
+
+/* 継続(勝利 G7〜8。画像中央上部の空きスペースへ) */
+.battle-text-keizoku {
+  inset: 10% 6% auto;
+}
+
+.battle-text-keizoku .battle-text-body {
+  color: #facc15;
+  font-weight: 900;
+  font-size: 15cqw;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  -webkit-text-stroke: 1.5px rgba(60, 30, 0, 0.85);
+  text-shadow:
+    0 0 22px rgba(250, 204, 21, 0.75),
+    0 4px 12px rgba(0, 0, 0, 0.9);
+}
+
+/* 敗北(G7 第 3 停止 / G8。画像中央上部の暗い空間へ) */
+.battle-text-haiboku {
+  inset: 12% 6% auto;
+}
+
+.battle-text-haiboku .battle-text-body {
+  color: #cbd5e1;
+  font-weight: 900;
+  font-size: 15cqw;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.9);
+  text-shadow:
+    0 0 18px rgba(15, 23, 42, 0.95),
+    0 4px 12px rgba(0, 0, 0, 0.95);
+}
+
 /* チャンスアップの G(仮素材では表示差分で表現 = DIRECTION_SPEC「4.」) */
 .renzoku-screen.renzoku-chance {
   border: 3px solid #facc15;
@@ -911,6 +1021,16 @@
   height: 100%;
   object-fit: cover;
   opacity: 0.5;
+}
+
+/* 背景の演出静止画(復活の静カットイン等。動画より鮮明に見せるため減光は弱め) */
+.cutin-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
 }
 
 .cutin-body {

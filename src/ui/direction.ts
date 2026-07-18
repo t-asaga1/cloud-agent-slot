@@ -99,6 +99,7 @@
  */
 import {
   AT_VIDEOS,
+  BATTLE_IMAGES,
   EFFECT_VIDEOS,
   RENZOKU_VIDEOS,
   SYMBOL_IMAGES,
@@ -788,36 +789,246 @@ export const BATTLE_TITLES: Record<BattleTier, string> = {
   UPPER: '共闘BATTLE — 敵軍との決戦',
 };
 
+/**
+ * 下位 AT バトル演出の静止画 URL をキーから解決する(2026-07-18 = AI 生成の実素材 25 枚。
+ * 生成 = scripts/gen_battle_images.mjs / 指示元 = incoming/義経物語下位AT中.pptx)。
+ * 存在しないキーは入稿漏れ = 即エラー。
+ */
+export function battleImageUrl(key: string): string {
+  const url = BATTLE_IMAGES[key];
+  if (url === undefined) throw new Error(`バトル演出静止画がありません: ${key}`);
+  return url;
+}
+
 /** バトル 8G の役割ラベル(SPEC「7.」「8.」の 8G 構成表) */
 export const BATTLE_STAGE_LABELS: Record<BattleTier, readonly string[]> = {
   NORMAL: ['導入', '義経台詞', '頼朝台詞', '攻撃決め', '攻撃', '判定', '帰結', '最終'],
   UPPER: ['導入', '義経台詞', '頼朝台詞', '攻撃決め', '攻撃', 'ヒット判定', '帰結', '最終'],
 };
 
+// ---------------------------------------------------------------------------
+// 下位 AT バトルパートの静止画紙芝居(2026-07-18 組込み。
+// 素材 = AI 生成の実素材 25 枚(BATTLE_IMAGES)/ 指示元 = incoming/義経物語下位AT中.pptx)
+// ---------------------------------------------------------------------------
+
 /**
- * ルート ID → G4〜G8 のパターン No(Excel「AT中」シートの No 1〜20)。
- * G1〜3 は通常/チャンスのペア(No 1/2・3/4・5/6)でルートの chanceUps から解決する。
+ * バトル静止画に重ねるテキスト(画像には文字を焼き込まない = 会話予告と同じ規約。
+ * 技名・「敗北」「継続」・台詞はすべてアプリ側テキスト描画)。
+ * kind = 表示区分(位置・書式は DirectionLayer / CSS 側で解決):
+ * - WAZA = 技名(画像中央の白い筆帯へ重ねる)
+ * - SERIFU = 台詞(画面下部。speaker = 話者名。仮セリフ = AT_BATTLE_SERIFU)
+ * - CHALLENGE = 桜花繚乱チャレンジの見出し(画面中央上部)
+ * - KEIZOKU / HAIBOKU = 継続・敗北の大文字(画面中央上部)
  */
-const AT_ROUTE_PATTERN_NOS: Record<string, readonly [number, number, number, number, number]> = {
-  W1: [7, 9, 13, 16, 19],
-  W2: [7, 9, 13, 16, 19],
-  W3: [7, 10, 14, 16, 19],
-  W4: [7, 10, 14, 16, 19],
-  W5: [8, 11, 15, 17, 19],
-  W6: [8, 11, 15, 17, 19],
-  W7: [8, 12, 15, 17, 19],
-  W8: [8, 12, 15, 17, 19],
-  U1: [8, 11, 15, 18, 20],
-  U2: [8, 11, 15, 18, 20],
-  U3: [8, 11, 15, 18, 20],
-  U4: [8, 12, 15, 18, 20],
-  U5: [8, 12, 15, 18, 20],
-  U6: [8, 12, 15, 18, 20],
+export interface BattleText {
+  kind: 'WAZA' | 'SERIFU' | 'CHALLENGE' | 'KEIZOKU' | 'HAIBOKU';
+  text: string;
+  /** 台詞の話者名(SERIFU のみ) */
+  speaker?: string;
+}
+
+/**
+ * バトル 1G 分の静止画紙芝居。レバーオンで leverUrl を表示し、
+ * 第 3 停止で stop3Url へ切替える(ない G はレバーオン画像のまま。
+ * 切替は紙芝居予告と同じく DirectionLayer の stoppedReels 検知)。
+ */
+export interface BattleStill {
+  leverUrl: string;
+  leverText?: BattleText;
+  /** 第 3 停止で切り替える画像(pptx の「第 3 停止で…」の G のみ) */
+  stop3Url?: string;
+  stop3Text?: BattleText;
+}
+
+/**
+ * 下位 AT バトルの 2G・3G 台詞(仮セリフ。チャンスアップ G は台詞が変わる =
+ * pptx「セリフ内容により通常 or チャンス」。差し替えはこの表だけでよい)。
+ */
+export const AT_BATTLE_SERIFU = {
+  g2Normal: { speaker: '義経', text: '頼朝…ここで決着をつける!' },
+  g2Chance: { speaker: '義経', text: '負ける気はしない…一気に行くぞ!' },
+  g3Normal: { speaker: '頼朝', text: '来たか義経…余に挑むか' },
+  g3Chance: { speaker: '頼朝', text: 'くくく…今宵は血が騒ぐわ' },
+} as const;
+
+/** 下位 AT バトルの技名(pptx の指定。画像の白帯へアプリ側テキストで重ねる) */
+export const AT_BATTLE_WAZA = {
+  YOSHI_WEAK: '穿炎刃',
+  YOSHI_STRONG: '桜花繚乱',
+  YORI_WEAK: '雷獄刃',
+  YORI_STRONG: '御雷天昇',
+} as const;
+
+/**
+ * ルート ID → 演出系統(G4 以降の静止画の分岐)。
+ * DIRECTION_SPEC 3.6 のルート表(W1〜W8 / U1〜U6)の「G4〜G8 の分岐」列と対応:
+ * - YOSHI_WEAK(W1・W2)= 義経弱攻撃 → ヒット → 継続
+ * - YOSHI_STRONG(W3・W4)= 義経強攻撃 → 桜花繚乱チャレンジ(G6〜8)→ 継続
+ * - YORI_WEAK/STRONG_WIN(W5〜W8)= 頼朝攻撃 → 耐える → 継続
+ * - YORI_WEAK/STRONG_LOSE(U1〜U6)= 頼朝攻撃 → 耐えれない → 敗北 → 復活判定
+ */
+type AtBattleKind =
+  | 'YOSHI_WEAK'
+  | 'YOSHI_STRONG'
+  | 'YORI_WEAK_WIN'
+  | 'YORI_STRONG_WIN'
+  | 'YORI_WEAK_LOSE'
+  | 'YORI_STRONG_LOSE';
+
+const AT_ROUTE_KINDS: Record<string, AtBattleKind> = {
+  W1: 'YOSHI_WEAK',
+  W2: 'YOSHI_WEAK',
+  W3: 'YOSHI_STRONG',
+  W4: 'YOSHI_STRONG',
+  W5: 'YORI_WEAK_WIN',
+  W6: 'YORI_WEAK_WIN',
+  W7: 'YORI_STRONG_WIN',
+  W8: 'YORI_STRONG_WIN',
+  U1: 'YORI_WEAK_LOSE',
+  U2: 'YORI_WEAK_LOSE',
+  U3: 'YORI_WEAK_LOSE',
+  U4: 'YORI_STRONG_LOSE',
+  U5: 'YORI_STRONG_LOSE',
+  U6: 'YORI_STRONG_LOSE',
 };
+
+/**
+ * 下位 AT バトルの「ルート × G → 静止画紙芝居」の解決
+ * (pptx の 8G 構成: G1 導入 = 月(通常 青 / チャンス 赤)/ G2・3 = 台詞 /
+ * G4 = 対峙 → 顔アップ / G5 = 攻撃 → 技名 / G6 = 判定 / G7 = 帰結 / G8 = 最終)。
+ * 復活時の静カットイン(G8 第 3 停止)は出目確定後でないと成否が分からないため、
+ * ここでは解決せず `revivalCutin` が担う(従来どおりカットイン側 = 全停止後)。
+ */
+function atBattleStill(route: BattleRoute, game: number, chanceUp: boolean): BattleStill {
+  if (game === 1) {
+    // 導入 = 雲に隠れた月(通常 = 青い月 / チャンス = 赤い月)
+    return { leverUrl: battleImageUrl(chanceUp ? 'battle_at_g1_chance' : 'battle_at_g1_normal') };
+  }
+  if (game === 2) {
+    return {
+      leverUrl: battleImageUrl('battle_at_g2_yoshitsune_serifu'),
+      leverText: { kind: 'SERIFU', ...(chanceUp ? AT_BATTLE_SERIFU.g2Chance : AT_BATTLE_SERIFU.g2Normal) },
+    };
+  }
+  if (game === 3) {
+    return {
+      leverUrl: battleImageUrl('battle_at_g3_yoritomo_serifu'),
+      leverText: { kind: 'SERIFU', ...(chanceUp ? AT_BATTLE_SERIFU.g3Chance : AT_BATTLE_SERIFU.g3Normal) },
+    };
+  }
+  const kind = AT_ROUTE_KINDS[route.id];
+  if (kind === undefined) throw new Error(`未知のバトルルート: NORMAL ${route.id}`);
+  const yoshi = kind === 'YOSHI_WEAK' || kind === 'YOSHI_STRONG';
+  if (game === 4) {
+    // 攻撃決め = レバオンで対峙 → 第 3 停止で攻撃側の顔アップ
+    return {
+      leverUrl: battleImageUrl('battle_at_g4_lever_taiji'),
+      stop3Url: battleImageUrl(
+        yoshi ? 'battle_at_g4_stop3_yoshitsune_up' : 'battle_at_g4_stop3_yoritomo_up',
+      ),
+    };
+  }
+  if (game === 5) {
+    // 攻撃 = 構え → 技名(義経強のみ レバオンで技名 → 第 3 停止で決めカット)
+    switch (kind) {
+      case 'YOSHI_WEAK':
+        return {
+          leverUrl: battleImageUrl('battle_at_g5_yoshitsune_weak_lever'),
+          stop3Url: battleImageUrl('battle_at_g5_yoshitsune_weak_stop3'),
+          stop3Text: { kind: 'WAZA', text: AT_BATTLE_WAZA.YOSHI_WEAK },
+        };
+      case 'YOSHI_STRONG':
+        return {
+          leverUrl: battleImageUrl('battle_at_g5_yoshitsune_strong_lever'),
+          leverText: { kind: 'WAZA', text: AT_BATTLE_WAZA.YOSHI_STRONG },
+          stop3Url: battleImageUrl('battle_at_g5_yoshitsune_strong_stop3'),
+        };
+      case 'YORI_WEAK_WIN':
+      case 'YORI_WEAK_LOSE':
+        return {
+          leverUrl: battleImageUrl('battle_at_g5_yoritomo_weak_lever'),
+          stop3Url: battleImageUrl('battle_at_g5_yoritomo_weak_stop3'),
+          stop3Text: { kind: 'WAZA', text: AT_BATTLE_WAZA.YORI_WEAK },
+        };
+      default:
+        return {
+          leverUrl: battleImageUrl('battle_at_g5_yoritomo_strong_lever'),
+          stop3Url: battleImageUrl('battle_at_g5_yoritomo_strong_stop3'),
+          stop3Text: { kind: 'WAZA', text: AT_BATTLE_WAZA.YORI_STRONG },
+        };
+    }
+  }
+  if (game === 6) {
+    // 判定: 義経攻撃 = 頼朝防御 → 余裕 / 義経強 = 桜花繚乱チャレンジ(G6〜8)/
+    // 頼朝攻撃 = 雷の龍が義経に襲い掛かる
+    if (kind === 'YOSHI_WEAK') {
+      return {
+        leverUrl: battleImageUrl('battle_at_g6_yoshitsune_atk_lever'),
+        stop3Url: battleImageUrl('battle_at_g6_yoshitsune_atk_stop3'),
+      };
+    }
+    if (kind === 'YOSHI_STRONG') {
+      return {
+        leverUrl: battleImageUrl('battle_at_g6_ouka_challenge'),
+        leverText: { kind: 'CHALLENGE', text: '桜花繚乱チャレンジ' },
+      };
+    }
+    return { leverUrl: battleImageUrl('battle_at_g6_yoritomo_atk_lever') };
+  }
+  if (game === 7) {
+    // 帰結: 義経弱 = 継続 / 義経強 = チャレンジ継続 / 頼朝攻撃 = 被弾 → 耐える or 敗北
+    if (kind === 'YOSHI_WEAK') {
+      return {
+        leverUrl: battleImageUrl('battle_at_g7_yoshitsune_atk_keizoku'),
+        leverText: { kind: 'KEIZOKU', text: '継続' },
+      };
+    }
+    if (kind === 'YOSHI_STRONG') {
+      return {
+        leverUrl: battleImageUrl('battle_at_g6_ouka_challenge'),
+        leverText: { kind: 'CHALLENGE', text: '桜花繚乱チャレンジ' },
+      };
+    }
+    return {
+      leverUrl: battleImageUrl('battle_at_g7_yoritomo_atk_lever'),
+      stop3Url: battleImageUrl(
+        kind === 'YORI_WEAK_WIN' || kind === 'YORI_STRONG_WIN'
+          ? 'battle_at_g7_stop3_taeru'
+          : 'battle_at_g7_stop3_haiboku',
+      ),
+      stop3Text:
+        kind === 'YORI_WEAK_WIN' || kind === 'YORI_STRONG_WIN'
+          ? undefined
+          : { kind: 'HAIBOKU', text: '敗北' },
+    };
+  }
+  // G8 最終: 勝利ルート = 継続(義経強はチャレンジ → 第 3 停止で継続)/
+  // 敗北寄りルート = 倒れる義経 + 敗北(復活の成否は全停止後の revivalCutin が告知)
+  if (kind === 'YORI_WEAK_LOSE' || kind === 'YORI_STRONG_LOSE') {
+    return {
+      leverUrl: battleImageUrl('battle_at_g8_lever_down'),
+      leverText: { kind: 'HAIBOKU', text: '敗北' },
+    };
+  }
+  if (kind === 'YOSHI_STRONG') {
+    return {
+      leverUrl: battleImageUrl('battle_at_g6_ouka_challenge'),
+      leverText: { kind: 'CHALLENGE', text: '桜花繚乱チャレンジ' },
+      stop3Url: battleImageUrl('battle_at_g7_yoshitsune_atk_keizoku'),
+      stop3Text: { kind: 'KEIZOKU', text: '継続' },
+    };
+  }
+  return {
+    leverUrl: battleImageUrl('battle_at_g7_yoshitsune_atk_keizoku'),
+    leverText: { kind: 'KEIZOKU', text: '継続' },
+  };
+}
 
 /**
  * ルート ID → G4〜G8 のパターン No(Excel「上位AT中」シートの No。
  * 13・15・16・19 は歯抜けで、G6 のヒット判定は No 14 の 1 種のみ)。
+ * ※下位 AT は静止画紙芝居(atBattleStill)へ移行済み(2026-07-18)。
+ *   上位 AT は実素材が未制作のため仮ムービーのまま。
  */
 const UPPER_ROUTE_PATTERN_NOS: Record<string, readonly [number, number, number, number, number]> = {
   W1: [7, 10, 14, 17, 20],
@@ -840,7 +1051,10 @@ export interface BattleView {
   /** これから回すゲームがバトル何 G 目か(1〜BATTLE_PART_GAMES) */
   game: number;
   totalGames: number;
-  videoUrl: string;
+  /** 仮ムービー(上位 AT のみ。下位 AT は静止画紙芝居 = still へ移行済み) */
+  videoUrl?: string;
+  /** 静止画紙芝居(下位 AT = 2026-07-18 の実素材 25 枚。レバーオン → 第 3 停止で切替) */
+  still?: BattleStill;
   title: string;
   /** 8G 構成の役割ラベル(導入 / 台詞 / 攻撃 / …) */
   stage: string;
@@ -865,38 +1079,56 @@ export function battleGameAtLeverOn(state: GameState): number | undefined {
   return phase.partGame < BATTLE_PART_GAMES ? phase.partGame + 1 : undefined;
 }
 
-/** ルート × G → 具体ムービーの解決(DIRECTION_SPEC 3.6。UI がルートを保持して毎 G 呼ぶ) */
+/**
+ * ルート × G → 具体演出の解決(DIRECTION_SPEC 3.6。UI がルートを保持して毎 G 呼ぶ)。
+ * 下位 AT = 静止画紙芝居(`atBattleStill`。2026-07-18 の実素材 25 枚)/
+ * 上位 AT = 仮ムービー(Excel「上位AT中」のパターン No。実素材は未制作)。
+ */
 export function battleView(tier: BattleTier, route: BattleRoute, game: number): BattleView {
   const chanceUp = game <= 3 && route.chanceUps.includes(game);
-  let no: number;
-  if (game <= 3) {
-    // G1〜3 は通常/チャンスのペア No(1/2・3/4・5/6)
-    no = (game - 1) * 2 + (chanceUp ? 2 : 1);
-  } else {
-    const nos = (tier === 'NORMAL' ? AT_ROUTE_PATTERN_NOS : UPPER_ROUTE_PATTERN_NOS)[route.id];
-    if (nos === undefined) throw new Error(`未知のバトルルート: ${tier} ${route.id}`);
-    no = nos[game - 4];
-  }
-  const key = `battle_${tier === 'NORMAL' ? 'at' : 'uat'}_${String(no).padStart(2, '0')}`;
   const stage = BATTLE_STAGE_LABELS[tier][game - 1];
-  return {
+  const base = {
     tier,
     game,
     totalGames: BATTLE_PART_GAMES,
-    videoUrl: atVideoUrl(key),
     title: BATTLE_TITLES[tier],
     stage,
     chanceUp,
     routeId: route.id,
     label: `${tier === 'UPPER' ? '共闘' : 'AT'}バトル ${route.id} G${game} ${stage}${chanceUp ? '(チャンス)' : ''}`,
   };
+  if (tier === 'NORMAL') {
+    return { ...base, still: atBattleStill(route, game, chanceUp) };
+  }
+  let no: number;
+  if (game <= 3) {
+    // G1〜3 は通常/チャンスのペア No(1/2・3/4・5/6)
+    no = (game - 1) * 2 + (chanceUp ? 2 : 1);
+  } else {
+    const nos = UPPER_ROUTE_PATTERN_NOS[route.id];
+    if (nos === undefined) throw new Error(`未知のバトルルート: ${tier} ${route.id}`);
+    no = nos[game - 4];
+  }
+  return { ...base, videoUrl: atVideoUrl(`battle_uat_${String(no).padStart(2, '0')}`) };
 }
 
 /**
  * 復活告知のカットイン(敗北寄りルートの 8G 目全停止でセット継続が確定していたとき、
  * UI が `drawRevival` の結果を渡してカットイン列の先頭へ差し込む = 第 3 リール停止の告知)。
+ * 下位 AT は静のカットイン静止画(pptx 8G 目「第 3 停止で静のカットイン発生で復活」)、
+ * 上位 AT は実素材が未制作のため仮エフェクトムービーのまま。
  */
-export function revivalCutin(pattern: RevivalPattern): Cutin {
+export function revivalCutin(pattern: RevivalPattern, tier: BattleTier = 'NORMAL'): Cutin {
+  if (tier === 'NORMAL') {
+    return {
+      title: '復活!',
+      sub: pattern.label,
+      style: 'SPECIAL',
+      imageUrl: battleImageUrl('battle_at_g8_stop3_shizuka_cutin'),
+      sound: 'BIG_WIN',
+      durationMs: 2600,
+    };
+  }
   return {
     title: '復活!',
     sub: pattern.label,
@@ -996,6 +1228,8 @@ export interface Cutin {
   style: CutinStyle;
   /** 背景の演出動画(`EFFECT_VIDEOS` の URL。省略時はテキストのみ) */
   videoUrl?: string;
+  /** 背景の演出静止画(復活の静カットイン等。videoUrl と排他) */
+  imageUrl?: string;
   /** 表示開始時に鳴らすサウンドキュー(省略時は無音) */
   sound?: SoundCueId;
   durationMs: number;

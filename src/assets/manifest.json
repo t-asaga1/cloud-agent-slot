@@ -1825,5 +1825,230 @@
     "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_yokoku_kaiwa.mjs。設定資料ペア参照。1536x1024 生成 → 上端基準 16:9 クロップ(上 0 / 下 160px)+ 1280x720 WebP 変換)",
     "license": "project-original",
     "note": "基本背景 固有予告3(会話予告)第 3 停止の全画面 = 強(弁慶の決めポーズ + キャラ別カラーのエネルギー背景)。大台詞はアプリ側テキスト描画(2026-07-17 制作)"
+  },
+  {
+    "id": "battle_at_g1_normal",
+    "path": "images/battle/battle_at_g1_normal.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。1G 導入(通常)。雲間の青い月 + 鳳凰堂シルエット(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g1_chance",
+    "path": "images/battle/battle_at_g1_chance.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。1G 導入(チャンス)。月と空が赤く変化(g1_normal と同構図)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g2_yoshitsune_serifu",
+    "path": "images/battle/battle_at_g2_yoshitsune_serifu.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。2G 義経セリフ。右へ構える義経(台詞はアプリ側テキスト)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g3_yoritomo_serifu",
+    "path": "images/battle/battle_at_g3_yoritomo_serifu.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。3G 頼朝セリフ。左へ構える頼朝(台詞はアプリ側テキスト)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g4_lever_taiji",
+    "path": "images/battle/battle_at_g4_lever_taiji.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。4G レバオン。義経と頼朝の対峙(青い炎 × 紫の雷)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g4_stop3_yoshitsune_up",
+    "path": "images/battle/battle_at_g4_stop3_yoshitsune_up.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。4G 第 3 停止。義経の顔アップ(義経攻撃ルート)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g4_stop3_yoritomo_up",
+    "path": "images/battle/battle_at_g4_stop3_yoritomo_up.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。4G 第 3 停止。頼朝の顔アップ(頼朝攻撃ルート)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoshitsune_weak_lever",
+    "path": "images/battle/battle_at_g5_yoshitsune_weak_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 義経弱攻撃 レバオン。刀に青い炎を纏う構え(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoshitsune_weak_stop3",
+    "path": "images/battle/battle_at_g5_yoshitsune_weak_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 義経弱攻撃 第 3 停止。技名カット背景(白帯へ「穿炎刃」をアプリ側テキストで重ねる)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoshitsune_strong_lever",
+    "path": "images/battle/battle_at_g5_yoshitsune_strong_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 義経強攻撃 レバオン。技名カット背景(白帯へ「桜花繚乱」をアプリ側テキストで重ねる)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoshitsune_strong_stop3",
+    "path": "images/battle/battle_at_g5_yoshitsune_strong_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 義経強攻撃 第 3 停止。桜吹雪を背にした決めカット(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoritomo_weak_lever",
+    "path": "images/battle/battle_at_g5_yoritomo_weak_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 頼朝弱攻撃 レバオン。刀に紫の雷を纏う構え(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoritomo_weak_stop3",
+    "path": "images/battle/battle_at_g5_yoritomo_weak_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 頼朝弱攻撃 第 3 停止。技名カット背景(白帯へ「雷獄刃」をアプリ側テキストで重ねる)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoritomo_strong_lever",
+    "path": "images/battle/battle_at_g5_yoritomo_strong_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 頼朝強攻撃 レバオン。天に太刀を掲げる大技の構え(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g5_yoritomo_strong_stop3",
+    "path": "images/battle/battle_at_g5_yoritomo_strong_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。5G 頼朝強攻撃 第 3 停止。技名カット背景(白帯へ「御雷天昇」をアプリ側テキストで重ねる)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g6_yoshitsune_atk_lever",
+    "path": "images/battle/battle_at_g6_yoshitsune_atk_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。6G 義経攻撃時 レバオン。頼朝が防御の構え(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g6_yoshitsune_atk_stop3",
+    "path": "images/battle/battle_at_g6_yoshitsune_atk_stop3.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。6G 義経攻撃時 第 3 停止。頼朝の余裕の表情(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g6_yoritomo_atk_lever",
+    "path": "images/battle/battle_at_g6_yoritomo_atk_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。6G 頼朝攻撃時 レバオン。雷の龍が義経に襲い掛かる(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g6_ouka_challenge",
+    "path": "images/battle/battle_at_g6_ouka_challenge.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。6〜8G 桜花繚乱チャレンジ突入カット(見出しはアプリ側テキスト)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g7_yoritomo_atk_lever",
+    "path": "images/battle/battle_at_g7_yoritomo_atk_lever.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。7G 頼朝攻撃時 レバオン。攻撃を喰らった義経(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g7_stop3_taeru",
+    "path": "images/battle/battle_at_g7_stop3_taeru.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。7G 第 3 停止。耐えて構え直す義経(勝利ルート)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g7_stop3_haiboku",
+    "path": "images/battle/battle_at_g7_stop3_haiboku.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。7G 第 3 停止。崩れ落ちる義経(「敗北」はアプリ側テキスト)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g7_yoshitsune_atk_keizoku",
+    "path": "images/battle/battle_at_g7_yoshitsune_atk_keizoku.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。7G 義経攻撃時。勝利の立ち姿(「継続」はアプリ側テキスト)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g8_lever_down",
+    "path": "images/battle/battle_at_g8_lever_down.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。8G レバオン。倒れ伏す義経(「敗北」はアプリ側テキスト)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
+  },
+  {
+    "id": "battle_at_g8_stop3_shizuka_cutin",
+    "path": "images/battle/battle_at_g8_stop3_shizuka_cutin.webp",
+    "type": "image",
+    "origin": "generated",
+    "tool": "AI 生成(fal.ai openai/gpt-image-2/edit = scripts/gen_battle_images.mjs。設定資料ペア + 対峙構図.png + 平等院鳳凰堂1.png 参照。1792x1008 生成 → 1280x720 WebP 変換)",
+    "license": "project-original",
+    "note": "下位 AT バトルパート静止画。8G 第 3 停止。復活を告げる静のカットイン(復活時のみ)(2026-07-18 制作。指示元 = incoming/義経物語下位AT中.pptx)"
   }
 ]
