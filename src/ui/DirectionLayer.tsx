@@ -257,7 +257,7 @@ export function DirectionLayer({
             alt={lever.battle.label}
           />
           <div className="renzoku-header">
-            {/* 上位はタイトル文字なし(空 span で n/8G カウントを右端に保つ) */}
+            {/* タイトル文字は下位・上位とも非表示(空 span で n/8G カウントを右端に保つ) */}
             <span className="renzoku-title">{lever.battle.title}</span>
             <span className="renzoku-count">
               {lever.battle.game}/{lever.battle.totalGames}G
