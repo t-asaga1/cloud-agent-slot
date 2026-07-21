@@ -444,7 +444,57 @@ add_text(s, Inches(0.6), Inches(6.51), SLIDE_W - Inches(1.2), Inches(0.8), bulle
 ], size=12))
 
 # ============================================================
-# S10: まとめ
+# S10: 今後の作業(応用)③ — 素材受領 → 実機デモまでの想定日数
+# ============================================================
+s = new_slide()
+header(s, "今後の作業(応用)③ 素材受領 → 実機デモまでの日数", "①②が確立した後のリードタイム試算")
+add_rect(s, Inches(0.35), Inches(1.15), SLIDE_W - Inches(0.7), Inches(1.0), C_PANEL)
+add_text(s, Inches(0.6), Inches(1.24), SLIDE_W - Inches(1.2), Inches(0.85), bullets([
+    ("最終目的: 版権取得プレゼンの場で実機が既に動作している状態を作り、完成品をイメージさせる", {"plain": True, "bold": True, "size": 15, "color": C_GOLD}),
+    ("ターゲット: アニメ素材の受領から 2 週間で「肝」の動作確認(通常時遊技 + 代表演出 + AT バトル 1 系統。全演出の網羅・完璧さは求めない)", {"plain": True, "size": 12.5}),
+], size=13))
+# 左: 工程と日数の内訳
+steps = [
+    ("Day 1", "素材の受領・検品・参照資料整備(設定資料ペア化)", "1 日"),
+    ("Day 2〜3", "仕様の自動起案(スペック・演出体系)→ 人の承認", "1〜2 日"),
+    ("Day 3〜5", "ゲームロジック実装(テンプレへのパラメータ差し替え)+ 網羅テスト・出玉シミュレーション", "2 日"),
+    ("Day 3〜7", "演出素材の AI 生成・検品(ロジック実装と並行)", "3〜4 日"),
+    ("Day 8〜9", "Web アプリへ統合・通しの動作確認", "2 日"),
+    ("Day 10〜12", "実機向け変換(C/演出データテーブルの差し替え + 同値性検証)", "2〜3 日"),
+    ("Day 13〜15", "実機(評価ボード・筐体)への組込み・調整・プレゼンリハーサル", "2〜3 日"),
+]
+ty = Inches(2.3)
+row_h = Inches(0.51)
+for i, (day, desc, dur) in enumerate(steps):
+    y = ty + i * (row_h + Inches(0.055))
+    add_rect(s, Inches(0.35), y, Inches(1.15), row_h, C_RED if i % 2 == 0 else C_PANEL2)
+    add_text(s, Inches(0.35), y, Inches(1.15), row_h, [(day, 11, C_WHITE, True, 0)],
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    add_rect(s, Inches(1.55), y, Inches(5.45), row_h, C_PANEL)
+    add_text(s, Inches(1.67), y, Inches(5.3), row_h, [(desc, 10.5, C_WHITE, False, 0)],
+             anchor=MSO_ANCHOR.MIDDLE)
+    add_rect(s, Inches(7.05), y, Inches(0.75), row_h, C_PANEL2)
+    add_text(s, Inches(7.05), y, Inches(0.75), row_h, [(dur, 10.5, C_AMBER, True, 0)],
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+# 右: 2 週間を成立させる前提条件
+x2 = Inches(8.0)
+add_rect(s, x2, Inches(2.3), Inches(4.95), Inches(3.9), C_PANEL)
+add_text(s, x2 + Inches(0.22), Inches(2.42), Inches(4.55), Inches(3.7), bullets([
+    ("2 週間を成立させる前提条件", {"head": True, "bold": True, "size": 14, "color": C_GOLD}),
+    ("実機ハード一式(基板・リールユニット・筐体)は事前調達・動作確認済み(当日手配は不可。最大のリスク要因)", {"size": 11.5}),
+    ("①②のパイプラインを別題材で事前リハーサル済み(初回題材でのぶっつけ本番にしない)", {"size": 11.5}),
+    ("承認・検品(仕様承認・生成画像の監修)が即日レスポンス(律速は AI の生成時間ではなく人の往復)", {"size": 11.5}),
+    ("スコープを「肝」に固定(全演出・全モード・型式試験対応はプレゼン後の本開発で対応)", {"size": 11.5}),
+    ("生成リトライ(モデレーション・顔ドリフト検品)と実機固有の不具合切り分けに予備日を確保", {"size": 11.5}),
+], size=11.5))
+add_rect(s, Inches(0.35), Inches(6.35), SLIDE_W - Inches(0.7), Inches(0.95), C_PANEL2, line=C_GOLD)
+add_text(s, Inches(0.6), Inches(6.42), SLIDE_W - Inches(1.2), Inches(0.85), bullets([
+    ("試算: 通算 約 10〜15 日。前提条件が揃えば「2 週間で肝が動く」は達成圏内(実働は並行処理する AI エージェント側でなく、承認往復と実機作業が律速)", {"plain": True, "bold": True, "size": 13, "color": C_AMBER}),
+    ("※ 計画としては予備 1 週間を加えた 3 週間で組み、プレゼン日程には 2 週間 + バッファを見込むのが安全", {"plain": True, "size": 10.5, "color": C_MUTE}),
+], size=12))
+
+# ============================================================
+# S11: まとめ
 # ============================================================
 s = new_slide()
 header(s, "まとめ", "ロードマップ")
@@ -460,6 +510,8 @@ add_text(s, Inches(0.5), Inches(1.35), Inches(6.6), Inches(5.6), bullets([
     ("アニメ版権素材を起点にした演出・仕様の自動生成パイプライン化", {"size": 13.5}),
     ("長期(応用 ②)", {"head": True, "bold": True, "size": 17, "color": C_GOLD}),
     ("C 言語 / アセンブラへの移植と実機 ROM 化(型式試験対応を見据えた設計)", {"size": 13.5}),
+    ("最終目的(応用 ③)", {"head": True, "bold": True, "size": 17, "color": C_GOLD}),
+    ("版権取得プレゼン時に実機デモを提示 — 素材受領から約 2 週間で「肝」が動く体制", {"size": 13.5}),
 ], size=13.5))
 add_rect(s, Inches(0.35), Inches(6.55), SLIDE_W - Inches(0.7), Pt(2.5), C_GOLD)
 add_text(s, 0, Inches(6.75), SLIDE_W, Inches(0.5),
